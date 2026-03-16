@@ -32,12 +32,13 @@ class ItemInventario {
     int c = 0;
     if (categoria == 'I') {
       c = 1;
-    } else if (categoria == 'II'){
+    } else if (categoria == 'II') {
       c = 2;
-    }else if (categoria == 'III'){
+    } else if (categoria == 'III') {
       c = 3;
-    }else if (categoria == 'IV'){
-      c = 4;}
+    } else if (categoria == 'IV') {
+      c = 4;
+    }
     c += modificacoes.length;
     if (c >= 4) return 'IV';
     if (c == 3) return 'III';
@@ -64,7 +65,6 @@ class ItemInventario {
     'periciaVinculada': periciaVinculada,
   };
 
-  // PARSING BLINDADO
   factory ItemInventario.fromJson(Map<String, dynamic> json) {
     return ItemInventario(
       nome: json['nome']?.toString() ?? 'Item Desconhecido',
@@ -107,12 +107,13 @@ class Arma {
     int c = 0;
     if (categoria == 'I') {
       c = 1;
-    } else if (categoria == 'II'){
+    } else if (categoria == 'II') {
       c = 2;
-    }else if (categoria == 'III'){
+    } else if (categoria == 'III') {
       c = 3;
-    }else if (categoria == 'IV'){
-      c = 4;}
+    } else if (categoria == 'IV') {
+      c = 4;
+    }
     c += modificacoes.length;
     if (c >= 4) return 'IV';
     if (c == 3) return 'III';
@@ -141,7 +142,6 @@ class Arma {
     'empunhadura': empunhadura,
   };
 
-  // PARSING BLINDADO
   factory Arma.fromJson(Map<String, dynamic> json) {
     return Arma(
       nome: json['nome']?.toString() ?? 'Arma Desconhecida',
@@ -174,6 +174,8 @@ class AgenteDados {
   Map<String, int> pericias;
   List<ItemInventario> inventario;
   List<Arma> armas;
+  List<String> poderes;
+  List<String> periciasClasse;
 
   AgenteDados({
     required this.nome,
@@ -194,6 +196,8 @@ class AgenteDados {
     required this.pericias,
     required this.inventario,
     required this.armas,
+    this.poderes = const [],
+    this.periciasClasse = const [],
   });
 
   Map<String, dynamic> toJson() => {
@@ -204,20 +208,17 @@ class AgenteDados {
     'afinidade': afinidade,
     'nex': nex,
     'prestigio': prestigio,
-    'agi': agi,
-    'forc': forc,
-    'inte': inte,
-    'pre': pre,
-    'vig': vig,
+    'agi': agi, 'forc': forc, 'inte': inte, 'pre': pre, 'vig': vig,
     'pvAtual': pvAtual,
     'peAtual': peAtual,
     'sanAtual': sanAtual,
     'pericias': pericias,
     'inventario': inventario.map((i) => i.toJson()).toList(),
     'armas': armas.map((a) => a.toJson()).toList(),
+    'poderes': poderes,
+    'periciasClasse': periciasClasse,
   };
 
-  // PARSING BLINDADO
   factory AgenteDados.fromJson(Map<String, dynamic> json) => AgenteDados(
     nome: json['nome']?.toString() ?? 'Desconhecido',
     classe: json['classe']?.toString() ?? 'combatente',
@@ -249,5 +250,11 @@ class AgenteDados {
     armas: json['armas'] != null
         ? (json['armas'] as List).map((a) => Arma.fromJson(a)).toList()
         : <Arma>[],
+    poderes: json['poderes'] is List
+        ? List<String>.from(json['poderes'])
+        : <String>[],
+    periciasClasse: json['periciasClasse'] is List
+        ? List<String>.from(json['periciasClasse'])
+        : <String>[],
   );
 }

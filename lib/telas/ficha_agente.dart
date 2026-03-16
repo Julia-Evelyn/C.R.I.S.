@@ -8,6 +8,7 @@ import 'package:image_cropper/image_cropper.dart';
 import '../modelos/agente_dados.dart';
 import '../dados/base.dart';
 import '../dados/itens.dart';
+import '../dados/poderes.dart';
 import '../componentes/estilizacao.dart';
 
 class FichaAgente extends StatefulWidget {
@@ -33,7 +34,11 @@ class _FichaAgenteState extends State<FichaAgente> {
   List<ItemInventario> inventario = [];
   List<Arma> armas = [];
 
-  String classeAtual = 'combatente', origemAtual = 'academico';
+  List<String> poderesEscolhidos = [];
+  List<String> periciasClasse = [];
+
+  // CORREÇÃO: O agente agora começa sem classe definida!
+  String classeAtual = '--', origemAtual = 'academico';
   String? fotoPath;
   String? afinidadeAtual;
   int nex = 5, prestigio = 0, agi = 1, forc = 1, inte = 1, pre = 1, vig = 1;
@@ -45,6 +50,14 @@ class _FichaAgenteState extends State<FichaAgente> {
   bool _modoVisualizacao = false;
 
   int _abaAtual = 0;
+
+  Color get corFundoAfinidade => afinidadeAtual == 'Morte'
+      ? Colors.white
+      : EstiloParanormal.corTema(afinidadeAtual);
+  Color get corTextoAfinidade =>
+      (afinidadeAtual == 'Morte' || afinidadeAtual == 'Conhecimento')
+      ? Colors.black
+      : Colors.white;
 
   int get espacoMaximo => forc == 0 ? 2 : forc * 5;
 
@@ -161,6 +174,9 @@ class _FichaAgenteState extends State<FichaAgente> {
       inventario = List.from(ag.inventario);
       armas = List.from(ag.armas);
 
+      poderesEscolhidos = List.from(ag.poderes);
+      periciasClasse = List.from(ag.periciasClasse);
+
       for (var p in listaPericias) {
         if (ag.pericias.containsKey(p.id)) p.treino = ag.pericias[p.id]!;
         if (ag.pericias.containsKey("${p.id}_bonus")) {
@@ -168,6 +184,7 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
       }
     }
+
     atualizarFicha(isInitialLoad: true);
   }
 
@@ -211,6 +228,8 @@ class _FichaAgenteState extends State<FichaAgente> {
       pericias: periciasTreinadas,
       inventario: inventario,
       armas: armas,
+      poderes: poderesEscolhidos,
+      periciasClasse: periciasClasse,
     );
 
     List<AgenteDados> lista = [];
@@ -266,16 +285,14 @@ class _FichaAgenteState extends State<FichaAgente> {
     int resultadoFinal = valorAtrib == 0
         ? resultados.reduce(min)
         : resultados.reduce(max);
-    Color corDoPopUp = afinidadeAtual == 'Morte'
-        ? Colors.white
-        : EstiloParanormal.corTema(afinidadeAtual);
+    Color corDoPopUp = corFundoAfinidade;
 
     String mensagemCritico = "";
     Color corNumero = Colors.white;
 
     if (resultadoFinal == 20) {
       mensagemCritico = "SUCESSO CRÍTICO!";
-      corNumero = Colors.lightGreenAccent;
+      corNumero = Colors.amberAccent;
     } else if (resultadoFinal == 1) {
       mensagemCritico = "FALHA CRÍTICA!";
       corNumero = Colors.redAccent;
@@ -317,7 +334,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                   letterSpacing: 1.2,
                 ),
               ),
-            ]
+            ],
           ],
         ),
         actions: [
@@ -389,15 +406,746 @@ class _FichaAgenteState extends State<FichaAgente> {
     );
   }
 
+  void _mostrarDialogPericiasClasse(String novaClasse) {
+    Color corTemaLocal = corFundoAfinidade;
+    Color corLetra = corTextoAfinidade;
+
+    int maxLivres = 1;
+    if (novaClasse == 'combatente') maxLivres = max(1, 1 + inte);
+    if (novaClasse == 'especialista') maxLivres = max(1, 7 + inte);
+    if (novaClasse == 'ocultista') maxLivres = max(1, 3 + inte);
+
+    String combOp1 = 'luta';
+    String combOp2 = 'fortitude';
+    List<String> selecionadasLivres = [];
+    List<String> selecionadasPerito = [];
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            List<Pericia> periciasDisponiveisParaLivres = listaPericias.where((
+              p,
+            ) {
+              if (novaClasse == 'combatente' &&
+                  (p.id == combOp1 || p.id == combOp2)) {
+                return false;
+              }
+              if (novaClasse == 'ocultista' &&
+                  (p.id == 'ocultismo' || p.id == 'vontade')) {
+                return false;
+              }
+              return true;
+            }).toList();
+
+            List<Pericia> periciasDisponiveisParaPerito = listaPericias
+                .where((p) => p.id != 'luta' && p.id != 'pontaria')
+                .toList();
+
+            bool podeConfirmar = selecionadasLivres.length == maxLivres;
+            if (novaClasse == 'especialista' &&
+                selecionadasPerito.length != 2) {
+              podeConfirmar = false;
+            }
+
+            return Dialog(
+              backgroundColor: const Color(0xFF1A1A1A),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: corTemaLocal.withValues(alpha: 0.3)),
+              ),
+              insetPadding: const EdgeInsets.all(16),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      "NOVA CLASSE: ${novaClasse.toUpperCase()}",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: corTemaLocal,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      "Defina as habilidades básicas que você adquiriu com o treinamento da sua nova classe.",
+                      style: TextStyle(color: Colors.grey, fontSize: 13),
+                    ),
+                    const SizedBox(height: 24),
+
+                    if (novaClasse == 'combatente') ...[
+                      const Text(
+                        "PERÍCIAS DE COMBATE (Escolha 1 de cada)",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildDropdown(
+                              "Armas",
+                              combOp1,
+                              ["luta", "pontaria"],
+                              (val) {
+                                setDialogState(() {
+                                  combOp1 = val!;
+                                  selecionadasLivres.remove(val);
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildDropdown(
+                              "Defesa",
+                              combOp2,
+                              ["fortitude", "reflexos"],
+                              (val) {
+                                setDialogState(() {
+                                  combOp2 = val!;
+                                  selecionadasLivres.remove(val);
+                                });
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+
+                    if (novaClasse == 'ocultista') ...[
+                      const Text(
+                        "TREINAMENTO PARANORMAL",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        "Você recebe treinamento automático em Ocultismo e Vontade.",
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "PERÍCIAS LIVRES",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          "${selecionadasLivres.length} / $maxLivres",
+                          style: TextStyle(
+                            color: selecionadasLivres.length == maxLivres
+                                ? Colors.green
+                                : Colors.redAccent,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: periciasDisponiveisParaLivres.map((p) {
+                        bool isSelected = selecionadasLivres.contains(p.id);
+                        return FilterChip(
+                          label: Text(
+                            p.nome,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isSelected
+                                  ? Colors.black
+                                  : Colors.grey.shade400,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: corTemaLocal,
+                          backgroundColor: const Color(0xFF1A1A1A),
+                          side: BorderSide(
+                            color: isSelected
+                                ? corTemaLocal
+                                : Colors.grey.shade800,
+                          ),
+                          onSelected: (selected) {
+                            setDialogState(() {
+                              if (selected) {
+                                if (selecionadasLivres.length < maxLivres) {
+                                  selecionadasLivres.add(p.id);
+                                }
+                              } else {
+                                selecionadasLivres.remove(p.id);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+
+                    if (novaClasse == 'especialista') ...[
+                      const SizedBox(height: 32),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            "PODER: PERITO",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            "${selecionadasPerito.length} / 2",
+                            style: TextStyle(
+                              color: selecionadasPerito.length == 2
+                                  ? Colors.green
+                                  : Colors.redAccent,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        "Escolha 2 perícias treinadas para ganhar o bônus de Perito (+1d6).",
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: periciasDisponiveisParaPerito.map((p) {
+                          bool isSelected = selecionadasPerito.contains(p.id);
+                          return FilterChip(
+                            label: Text(
+                              p.nome,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isSelected
+                                    ? Colors.black
+                                    : Colors.grey.shade400,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                            selected: isSelected,
+                            selectedColor: Colors.deepPurpleAccent,
+                            backgroundColor: const Color(0xFF1A1A1A),
+                            side: BorderSide(
+                              color: isSelected
+                                  ? Colors.deepPurpleAccent
+                                  : Colors.grey.shade800,
+                            ),
+                            onSelected: (selected) {
+                              setDialogState(() {
+                                if (selected) {
+                                  if (selecionadasPerito.length < 2) {
+                                    selecionadasPerito.add(p.id);
+                                  }
+                                } else {
+                                  selecionadasPerito.remove(p.id);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ],
+
+                    const SizedBox(height: 32),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              side: const BorderSide(color: Colors.grey),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: () {
+                              Navigator.pop(context);
+                              setState(
+                                () {},
+                              ); // CORREÇÃO: Força a tela a voltar para a opção visual antiga se cancelar
+                            },
+                            child: const Text(
+                              "CANCELAR",
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              backgroundColor: corTemaLocal,
+                              foregroundColor: corLetra,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: podeConfirmar
+                                ? () {
+                                    setState(() {
+                                      classeAtual = novaClasse;
+
+                                      poderesEscolhidos.removeWhere(
+                                        (p) =>
+                                            p.startsWith("Ataque Especial") ||
+                                            p.startsWith("Eclético") ||
+                                            p.startsWith("Perito") ||
+                                            p.startsWith(
+                                              "Escolhido pelo Outro Lado",
+                                            ),
+                                      );
+
+                                      if (novaClasse == 'combatente') {
+                                        poderesEscolhidos.add(
+                                          "Ataque Especial",
+                                        );
+                                      } else if (novaClasse == 'especialista') {
+                                        poderesEscolhidos.add("Eclético");
+                                        List<String> nomesPerito =
+                                            selecionadasPerito
+                                                .map(
+                                                  (id) => listaPericias
+                                                      .firstWhere(
+                                                        (p) => p.id == id,
+                                                      )
+                                                      .nome,
+                                                )
+                                                .toList();
+                                        poderesEscolhidos.add(
+                                          "Perito (${nomesPerito.join(', ')})",
+                                        );
+                                      } else if (novaClasse == 'ocultista') {
+                                        poderesEscolhidos.add(
+                                          "Escolhido pelo Outro Lado",
+                                        );
+                                      }
+
+                                      periciasClasse.clear();
+                                      if (novaClasse == 'combatente') {
+                                        periciasClasse.addAll([
+                                          combOp1,
+                                          combOp2,
+                                        ]);
+                                      } else if (novaClasse == 'ocultista') {
+                                        periciasClasse.addAll([
+                                          'ocultismo',
+                                          'vontade',
+                                        ]);
+                                      }
+                                      periciasClasse.addAll(selecionadasLivres);
+
+                                      for (String id in periciasClasse) {
+                                        var pericia = listaPericias.firstWhere(
+                                          (p) => p.id == id,
+                                        );
+                                        if (pericia.treino < 5) {
+                                          pericia.treino = 5;
+                                        }
+                                      }
+
+                                      atualizarFicha();
+                                    });
+                                    _salvarSilencioso();
+                                    Navigator.pop(context);
+                                  }
+                                : null,
+                            child: const Text(
+                              "CONFIRMAR",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // =========================================================================
+  // SISTEMA DE CATÁLOGO DE PODERES
+  // =========================================================================
+
+  void _abrirCatalogoPoderes() {
+    String busca = "";
+    String filtroPrincipal = "Gerais";
+    String filtroParanormal = "Conhecimento";
+
+    Color corTemaLocal = corFundoAfinidade;
+    Color corLetra = corTextoAfinidade;
+
+    List<String> categoriasPrincipais = [
+      "Gerais",
+      "Combatente",
+      "Especialista",
+      "Ocultista",
+      "Poderes Paranormais",
+    ];
+    List<String> categoriasParanormais = [
+      "Conhecimento",
+      "Energia",
+      "Morte",
+      "Sangue",
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            String filtroEfetivo = filtroPrincipal == "Poderes Paranormais"
+                ? filtroParanormal
+                : filtroPrincipal;
+
+            List<Poder> listaAtiva = [];
+            bool isParanormal = false;
+
+            if (filtroEfetivo == "Gerais") {
+              listaAtiva = catalogoPoderesGerais;
+            } else if (filtroEfetivo == "Combatente") {
+              listaAtiva = catalogoPoderesCombatente;
+            } else if (filtroEfetivo == "Especialista") {
+              listaAtiva = catalogoPoderesEspecialista;
+            } else if (filtroEfetivo == "Ocultista") {
+              listaAtiva = catalogoPoderesOcultista;
+            } else if (filtroEfetivo == "Conhecimento") {
+              listaAtiva = catalogoPoderesConhecimento;
+              isParanormal = true;
+            } else if (filtroEfetivo == "Energia") {
+              listaAtiva = catalogoPoderesEnergia;
+              isParanormal = true;
+            } else if (filtroEfetivo == "Morte") {
+              listaAtiva = catalogoPoderesMorte;
+              isParanormal = true;
+            } else if (filtroEfetivo == "Sangue") {
+              listaAtiva = catalogoPoderesSangue;
+              isParanormal = true;
+            }
+
+            List<Poder> filtrados = listaAtiva.where((p) {
+              if (busca.isNotEmpty &&
+                  !p.nome.toLowerCase().contains(busca.toLowerCase())) {
+                return false;
+              }
+
+              if (isParanormal) {
+                bool temAfinidade = poderesEscolhidos.contains(
+                  "${p.nome} (Afinidade)",
+                );
+                if (temAfinidade) return false;
+              } else {
+                if (poderesEscolhidos.contains(p.nome)) return false;
+              }
+
+              return true;
+            }).toList();
+
+            return Dialog(
+              backgroundColor: const Color(0xFF1A1A1A),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: corTemaLocal.withValues(alpha: 0.3)),
+              ),
+              insetPadding: const EdgeInsets.all(16),
+              child: Container(
+                width: double.maxFinite,
+                height: MediaQuery.of(context).size.height * 0.85,
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.bolt, color: corTemaLocal, size: 28),
+                        const SizedBox(width: 12),
+                        Text(
+                          "PODERES",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: corTemaLocal,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.grey),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      decoration: EstiloParanormal.customInputDeco(
+                        "Pesquisar poder...",
+                        corTemaLocal,
+                        Icons.search,
+                      ),
+                      onChanged: (val) => setDialogState(() => busca = val),
+                    ),
+                    const SizedBox(height: 12),
+
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: categoriasPrincipais
+                            .map(
+                              (cat) => Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: ChoiceChip(
+                                  label: Text(
+                                    cat,
+                                    style: TextStyle(
+                                      color: filtroPrincipal == cat
+                                          ? corLetra
+                                          : Colors.grey.shade400,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  selected: filtroPrincipal == cat,
+                                  onSelected: (val) => setDialogState(
+                                    () => filtroPrincipal = cat,
+                                  ),
+                                  selectedColor: corTemaLocal,
+                                  backgroundColor: const Color(0xFF0D0D0D),
+                                  side: BorderSide(
+                                    color: filtroPrincipal == cat
+                                        ? corTemaLocal
+                                        : Colors.grey.shade800,
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
+
+                    if (filtroPrincipal == "Poderes Paranormais") ...[
+                      const SizedBox(height: 8),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: categoriasParanormais.map((cat) {
+                            Color corElemento;
+                            switch (cat) {
+                              case 'Sangue':
+                                corElemento = const Color(0xFF990000);
+                                break;
+                              case 'Energia':
+                                corElemento = const Color(0xFF9900FF);
+                                break;
+                              case 'Conhecimento':
+                                corElemento = const Color(0xFFFFB300);
+                                break;
+                              case 'Morte':
+                              default:
+                                corElemento = Colors.white;
+                                break;
+                            }
+
+                            Color corTxtSelecionado =
+                                (cat == 'Conhecimento' || cat == 'Morte')
+                                ? Colors.black
+                                : Colors.white;
+
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: ChoiceChip(
+                                label: Text(
+                                  cat,
+                                  style: TextStyle(
+                                    color: filtroParanormal == cat
+                                        ? corTxtSelecionado
+                                        : corElemento,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                selected: filtroParanormal == cat,
+                                onSelected: (val) => setDialogState(
+                                  () => filtroParanormal = cat,
+                                ),
+                                selectedColor: corElemento,
+                                backgroundColor: const Color(0xFF0D0D0D),
+                                side: BorderSide(
+                                  color: filtroParanormal == cat
+                                      ? corElemento
+                                      : Colors.grey.shade900,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade800),
+                        ),
+                        child: filtrados.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  "Nenhum poder encontrado na categoria atual.",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: filtrados.length,
+                                itemBuilder: (context, index) {
+                                  var p = filtrados[index];
+                                  bool upandoAfinidade =
+                                      isParanormal &&
+                                      poderesEscolhidos.contains(p.nome);
+
+                                  Color corTitulo = Colors.white;
+                                  if (isParanormal) {
+                                    if (filtroParanormal == 'Sangue') {
+                                      corTitulo = const Color(0xFF990000);
+                                    } else if (filtroParanormal == 'Energia') {
+                                      corTitulo = const Color(0xFF9900FF);
+                                    } else if (filtroParanormal ==
+                                        'Conhecimento') {
+                                      corTitulo = const Color(0xFFFFB300);
+                                    } else {
+                                      corTitulo = Colors.white;
+                                    }
+                                  }
+
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      border: Border(
+                                        bottom: BorderSide(
+                                          color: Colors.grey.shade900,
+                                        ),
+                                      ),
+                                    ),
+                                    child: ListTile(
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 8,
+                                          ),
+                                      title: Text(
+                                        upandoAfinidade
+                                            ? "${p.nome} (Afinidade)"
+                                            : p.nome,
+                                        style: TextStyle(
+                                          color: corTitulo,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      subtitle: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            p.descricao,
+                                            style: const TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          if (p.preRequisitos != "Nenhum") ...[
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              "Pré-req: ${p.preRequisitos}",
+                                              style: TextStyle(
+                                                color: corTemaLocal,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      trailing: Icon(
+                                        upandoAfinidade
+                                            ? Icons.upgrade
+                                            : Icons.add_circle,
+                                        color: corTemaLocal,
+                                      ),
+                                      onTap: () {
+                                        setState(() {
+                                          if (upandoAfinidade) {
+                                            poderesEscolhidos.remove(p.nome);
+                                            poderesEscolhidos.add(
+                                              "${p.nome} (Afinidade)",
+                                            );
+                                          } else {
+                                            poderesEscolhidos.add(p.nome);
+                                          }
+                                        });
+                                        atualizarFicha();
+                                        Navigator.pop(context);
+                                      },
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // =========================================================================
+  // SISTEMA DE CATÁLOGO DE EQUIPAMENTOS
+  // =========================================================================
+
   void _abrirCatalogoEquipamento({String filtroInicial = "Todos"}) {
     String filtroAtual = filtroInicial;
     String busca = "";
-    Color corTemaLocal = afinidadeAtual == 'Morte'
-        ? Colors.white
-        : EstiloParanormal.corTema(afinidadeAtual);
-    Color corLetra = afinidadeAtual == 'Morte'
-        ? Colors.black
-        : EstiloParanormal.corTextoTema(afinidadeAtual);
+    Color corTemaLocal = corFundoAfinidade;
+    Color corLetra = corTextoAfinidade;
 
     List<String> categorias = [
       "Todos",
@@ -655,9 +1403,7 @@ class _FichaAgenteState extends State<FichaAgente> {
   void _mostrarDialogEscolherPericiaParaNovoItem(ItemInventario itemBase) {
     String periciaSelecionada = listaPericias.first.id;
     String nomePericia = listaPericias.first.nome;
-    Color corTemaLocal = afinidadeAtual == 'Morte'
-        ? Colors.white
-        : EstiloParanormal.corTema(afinidadeAtual);
+    Color corTemaLocal = corFundoAfinidade;
 
     showDialog(
       context: context,
@@ -717,7 +1463,7 @@ class _FichaAgenteState extends State<FichaAgente> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: corTemaLocal,
-                foregroundColor: EstiloParanormal.corTextoTema(afinidadeAtual),
+                foregroundColor: corTextoAfinidade,
               ),
               onPressed: () {
                 setState(() {
@@ -741,12 +1487,8 @@ class _FichaAgenteState extends State<FichaAgente> {
   }
 
   void _configurarAdicaoEquipamento(dynamic equipamentoBase) {
-    Color corTemaLocal = afinidadeAtual == 'Morte'
-        ? Colors.white
-        : EstiloParanormal.corTema(afinidadeAtual);
-    Color corLetra = afinidadeAtual == 'Morte'
-        ? Colors.black
-        : EstiloParanormal.corTextoTema(afinidadeAtual);
+    Color corTemaLocal = corFundoAfinidade;
+    Color corLetra = corTextoAfinidade;
 
     bool isArma = equipamentoBase is Arma;
 
@@ -838,7 +1580,8 @@ class _FichaAgenteState extends State<FichaAgente> {
                             });
                             _salvarSilencioso();
                           } else {
-                            ItemInventario i = equipamentoBase as ItemInventario;
+                            ItemInventario i =
+                                equipamentoBase as ItemInventario;
                             _processarNovoItem(
                               ItemInventario(
                                 nome: i.nome,
@@ -865,20 +1608,41 @@ class _FichaAgenteState extends State<FichaAgente> {
     );
   }
 
-  // --- BANCADA DE MODIFICAÇÕES (CHAMADO PELO INVENTÁRIO) ---
-  void _mostrarDialogModificarEquipamento(dynamic equipamento, int indexNaLista) {
-    Color corTemaLocal = afinidadeAtual == 'Morte' ? Colors.white : EstiloParanormal.corTema(afinidadeAtual);
-    Color corLetra = afinidadeAtual == 'Morte' ? Colors.black : EstiloParanormal.corTextoTema(afinidadeAtual);
+  void _mostrarDialogModificarEquipamento(
+    dynamic equipamento,
+    int indexNaLista,
+  ) {
+    Color corTemaLocal = corFundoAfinidade;
+    Color corLetra = corTextoAfinidade;
 
     bool isArma = equipamento is Arma;
-    bool isMunicao = !isArma && (equipamento as ItemInventario).descricao.contains("Munição");
-    bool isProtecao = !isArma && (equipamento as ItemInventario).descricao.contains("Proteção");
-    bool isVestimenta = !isArma && (equipamento as ItemInventario).nome.toLowerCase().contains("vestimenta");
+    bool isMunicao =
+        !isArma &&
+        (equipamento as ItemInventario).descricao.contains("Munição");
+    bool isProtecao =
+        !isArma &&
+        (equipamento as ItemInventario).descricao.contains("Proteção");
+    bool isVestimenta =
+        !isArma &&
+        (equipamento as ItemInventario).nome.toLowerCase().contains(
+          "vestimenta",
+        );
 
     List<String> modsDisponiveis = [];
     if (isArma) {
       modsDisponiveis = (equipamento).tipo == "Fogo"
-          ? ["Alongada", "Calibre Grosso", "Compensador", "Discreta", "Ferrolho Automático", "Mira Laser", "Mira Telescópica", "Silenciador", "Tática", "Visão de Calor"]
+          ? [
+              "Alongada",
+              "Calibre Grosso",
+              "Compensador",
+              "Discreta",
+              "Ferrolho Automático",
+              "Mira Laser",
+              "Mira Telescópica",
+              "Silenciador",
+              "Tática",
+              "Visão de Calor",
+            ]
           : ["Certeira", "Cruel", "Discreta", "Perigosa", "Tática"];
     } else if (isMunicao) {
       modsDisponiveis = ["Dum dum", "Explosiva"];
@@ -889,7 +1653,12 @@ class _FichaAgenteState extends State<FichaAgente> {
     }
 
     if (modsDisponiveis.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Este equipamento não suporta modificações."), backgroundColor: Colors.redAccent));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Este equipamento não suporta modificações."),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
       return;
     }
 
@@ -897,7 +1666,11 @@ class _FichaAgenteState extends State<FichaAgente> {
     String catBase = equipamento.categoria;
 
     int getCatInt(String c) {
-      if (c == 'I') return 1; if (c == 'II') return 2; if (c == 'III') return 3; if (c == 'IV') return 4; return 0;
+      if (c == 'I') return 1;
+      if (c == 'II') return 2;
+      if (c == 'III') return 3;
+      if (c == 'IV') return 4;
+      return 0;
     }
 
     showDialog(
@@ -905,11 +1678,15 @@ class _FichaAgenteState extends State<FichaAgente> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            bool podeAdicionarMaisMods = (getCatInt(catBase) + modsSelecionados.length) < 4;
+            bool podeAdicionarMaisMods =
+                (getCatInt(catBase) + modsSelecionados.length) < 4;
 
             return Dialog(
               backgroundColor: const Color(0xFF1A1A1A),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: corTemaLocal.withValues(alpha: 0.3))),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: corTemaLocal.withValues(alpha: 0.3)),
+              ),
               insetPadding: const EdgeInsets.all(16),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
@@ -922,20 +1699,43 @@ class _FichaAgenteState extends State<FichaAgente> {
                         Icon(Icons.build, color: corTemaLocal, size: 28),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: Text("BANCADA DE MELHORIAS", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: corTemaLocal)),
+                          child: Text(
+                            "BANCADA DE MELHORIAS",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: corTemaLocal,
+                            ),
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Text(equipamento.nome, style: const TextStyle(color: Colors.grey, fontSize: 16)),
+                    Text(
+                      equipamento.nome,
+                      style: const TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
                     const SizedBox(height: 24),
-                    
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text("MODIFICAÇÕES", style: TextStyle(color: corTemaLocal, fontWeight: FontWeight.bold)),
+                        Text(
+                          "MODIFICAÇÕES",
+                          style: TextStyle(
+                            color: corTemaLocal,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         if (!podeAdicionarMaisMods)
-                          const Text("LIMITE ATINGIDO", style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                          const Text(
+                            "LIMITE ATINGIDO",
+                            style: TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -949,18 +1749,28 @@ class _FichaAgenteState extends State<FichaAgente> {
                             mod,
                             style: TextStyle(
                               fontSize: 12,
-                              color: isSelected ? Colors.black : Colors.grey.shade400,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected
+                                  ? Colors.black
+                                  : Colors.grey.shade400,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                             ),
                           ),
                           selected: isSelected,
                           selectedColor: corTemaLocal,
                           backgroundColor: const Color(0xFF1A1A1A),
-                          side: BorderSide(color: isSelected ? corTemaLocal : Colors.grey.shade800),
+                          side: BorderSide(
+                            color: isSelected
+                                ? corTemaLocal
+                                : Colors.grey.shade800,
+                          ),
                           onSelected: (selected) {
                             setDialogState(() {
                               if (selected) {
-                                if (podeAdicionarMaisMods) modsSelecionados.add(mod);
+                                if (podeAdicionarMaisMods) {
+                                  modsSelecionados.add(mod);
+                                }
                               } else {
                                 modsSelecionados.remove(mod);
                               }
@@ -974,28 +1784,53 @@ class _FichaAgenteState extends State<FichaAgente> {
                       children: [
                         Expanded(
                           child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Colors.grey), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              side: const BorderSide(color: Colors.grey),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
                             onPressed: () => Navigator.pop(context),
-                            child: const Text("CANCELAR", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                            child: const Text(
+                              "CANCELAR",
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), backgroundColor: corTemaLocal, foregroundColor: corLetra, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              backgroundColor: corTemaLocal,
+                              foregroundColor: corLetra,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
                             onPressed: () {
                               setState(() {
                                 if (isArma) {
-                                  armas[indexNaLista].modificacoes = List.from(modsSelecionados);
+                                  armas[indexNaLista].modificacoes = List.from(
+                                    modsSelecionados,
+                                  );
                                 } else {
-                                  inventario[indexNaLista].modificacoes = List.from(modsSelecionados);
+                                  inventario[indexNaLista].modificacoes =
+                                      List.from(modsSelecionados);
                                 }
                                 atualizarFicha();
                               });
                               _salvarSilencioso();
                               Navigator.pop(context);
                             },
-                            child: const Text("APLICAR", style: TextStyle(fontWeight: FontWeight.bold)),
+                            child: const Text(
+                              "APLICAR",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ),
                       ],
@@ -1018,12 +1853,9 @@ class _FichaAgenteState extends State<FichaAgente> {
     String categoria = "0", proficiencia = "Simples", empunhadura = "Uma Mão";
     int margem = 20, mult = 2;
     double espaco = 1.0;
-    Color corTemaLocal = afinidadeAtual == 'Morte'
-        ? Colors.white
-        : EstiloParanormal.corTema(afinidadeAtual);
-    Color corLetra = afinidadeAtual == 'Morte'
-        ? Colors.black
-        : EstiloParanormal.corTextoTema(afinidadeAtual);
+
+    Color corTemaLocal = corFundoAfinidade;
+    Color corLetra = corTextoAfinidade;
 
     showDialog(
       context: context,
@@ -1322,12 +2154,51 @@ class _FichaAgenteState extends State<FichaAgente> {
           }
         }
       }
+
+      // TRAVA AS PERÍCIAS DE CLASSE!
+      for (var p in listaPericias) {
+        if (periciasClasse.contains(p.id)) {
+          if (p.treino < 5) p.treino = 5;
+        }
+      }
+
       var stats = dadosClasses[classeAtual];
       if (stats != null) {
         int nivel = (nex / 5).toInt();
         pvMax = stats.pvBase + vig + (stats.pvPorNivel * (nivel - 1));
         peMax = stats.peBase + pre + (stats.pePorNivel * (nivel - 1));
-        sanMax = stats.sanBase + (stats.sanPorNivel * (nivel - 1));
+
+        int sanidadePerdidaPorTranscender = 0;
+        int quantidadePoderesParanormais = 0;
+
+        List<Poder> todosParanormais = [
+          ...catalogoPoderesConhecimento,
+          ...catalogoPoderesEnergia,
+          ...catalogoPoderesMorte,
+          ...catalogoPoderesSangue,
+        ];
+
+        for (String nomePoderEscolhido in poderesEscolhidos) {
+          String nomeBase = nomePoderEscolhido.replaceAll(" (Afinidade)", "");
+          if (todosParanormais.any((p) => p.nome == nomeBase)) {
+            quantidadePoderesParanormais++;
+          }
+        }
+
+        sanidadePerdidaPorTranscender =
+            quantidadePoderesParanormais * stats.sanPorNivel;
+        sanMax =
+            stats.sanBase +
+            (stats.sanPorNivel * (nivel - 1)) -
+            sanidadePerdidaPorTranscender;
+        if (sanMax < 0) sanMax = 0;
+      } else {
+        // CORREÇÃO: Se não tem classe, os status máximos zeram
+        if (isInitialLoad && widget.agenteParaEditar == null) {
+          pvMax = 0;
+          peMax = 0;
+          sanMax = 0;
+        }
       }
 
       int defItens = 0;
@@ -1362,6 +2233,90 @@ class _FichaAgenteState extends State<FichaAgente> {
     if (!isInitialLoad) _salvarSilencioso();
   }
 
+  void _mostrarDialogEscolherPericia(ItemInventario item) {
+    String periciaSelecionada = listaPericias.first.id;
+    Color corTemaLocal = corFundoAfinidade;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: corTemaLocal.withValues(alpha: 0.3)),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.checkroom, color: corTemaLocal),
+              const SizedBox(width: 8),
+              Text(
+                "Vestimenta",
+                style: TextStyle(
+                  color: corTemaLocal,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Escolha a perícia que receberá o bônus desta vestimenta:",
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: periciaSelecionada,
+                dropdownColor: const Color(0xFF1A1A1A),
+                style: const TextStyle(color: Colors.white),
+                decoration: EstiloParanormal.customInputDeco(
+                  "Perícia",
+                  corTemaLocal,
+                  Icons.star,
+                ),
+                items: listaPericias
+                    .map(
+                      (p) => DropdownMenuItem(value: p.id, child: Text(p.nome)),
+                    )
+                    .toList(),
+                onChanged: (val) => periciaSelecionada = val!,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                "Cancelar",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: corTemaLocal,
+                foregroundColor: corTextoAfinidade,
+              ),
+              onPressed: () {
+                setState(() {
+                  item.equipado = true;
+                  item.periciaVinculada = periciaSelecionada;
+                  atualizarFicha();
+                });
+                Navigator.pop(context);
+              },
+              child: const Text(
+                "Equipar",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _toggleEquiparItem(ItemInventario item) {
     if (_modoVisualizacao) return;
 
@@ -1387,6 +2342,8 @@ class _FichaAgenteState extends State<FichaAgente> {
           );
           return;
         }
+        _mostrarDialogEscolherPericia(item);
+        return;
       }
 
       if (isProtecao) {
@@ -1508,12 +2465,20 @@ class _FichaAgenteState extends State<FichaAgente> {
                   child: _buildDropdown(
                     "Classe",
                     classeAtual,
-                    dadosClasses.keys.toList(),
+                    ['--', ...dadosClasses.keys],
                     block
                         ? null
                         : (val) {
-                            classeAtual = val!;
-                            atualizarFicha();
+                            if (val != classeAtual) {
+                              if (val == '--') {
+                                setState(() {
+                                  classeAtual = val!;
+                                });
+                                atualizarFicha();
+                              } else {
+                                _mostrarDialogPericiasClasse(val!);
+                              }
+                            }
                           },
                   ),
                 ),
@@ -1695,7 +2660,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                             int d20 = Random().nextInt(20) + 1;
                             Color corD20 = Colors.white;
                             String msgCrit = "";
-                            
                             if (d20 == 20) {
                               corD20 = Colors.amberAccent;
                               msgCrit = "SUCESSO CRÍTICO!";
@@ -1720,7 +2684,9 @@ class _FichaAgenteState extends State<FichaAgente> {
                                       fontFamily: 'sans-serif',
                                     ),
                                     children: [
-                                      const TextSpan(text: "Teste de Ataque (d20):\n"),
+                                      const TextSpan(
+                                        text: "Teste de Ataque (d20):\n",
+                                      ),
                                       TextSpan(
                                         text: "$d20",
                                         style: TextStyle(
@@ -1739,7 +2705,8 @@ class _FichaAgenteState extends State<FichaAgente> {
                                         ),
                                       const TextSpan(text: "\n\n"),
                                       TextSpan(
-                                        text: "Dano: ${arma.dano}$modDano\n$alertaProf",
+                                        text:
+                                            "Dano: ${arma.dano}$modDano\n$alertaProf",
                                       ),
                                     ],
                                   ),
@@ -1784,12 +2751,14 @@ class _FichaAgenteState extends State<FichaAgente> {
             );
             for (var v in vestimentas) {
               int b = v.modificacoes.contains("Aprimorada") ? 5 : 2;
-              if (b > bonusExtra) {
-                bonusExtra = b; 
-              }
+              if (b > bonusExtra) bonusExtra = b;
             }
 
             int totalBonus = pericia.treino + bonusExtra;
+
+            // Lógica para esconder a opção de "Destreinado (+0)"
+            bool isLocked =
+                pericia.daOrigem || periciasClasse.contains(pericia.id);
 
             return Container(
               decoration: BoxDecoration(
@@ -1843,7 +2812,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                           color: Colors.white,
                         ),
                         items: [
-                          if (!pericia.daOrigem)
+                          if (!isLocked)
                             const DropdownMenuItem(
                               value: 0,
                               child: Text("Destreinado (+0)"),
@@ -1878,7 +2847,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                     style: TextStyle(color: Colors.grey, fontSize: 16),
                   ),
                   const SizedBox(width: 4),
-
                   Container(
                     width: 35,
                     alignment: Alignment.center,
@@ -1897,14 +2865,12 @@ class _FichaAgenteState extends State<FichaAgente> {
                       ),
                     ),
                   ),
-
                   const SizedBox(width: 4),
                   const Text(
                     "=",
                     style: TextStyle(color: Colors.grey, fontSize: 16),
                   ),
                   const SizedBox(width: 4),
-
                   Container(
                     width: 35,
                     alignment: Alignment.center,
@@ -1982,8 +2948,129 @@ class _FichaAgenteState extends State<FichaAgente> {
                     ),
                   ],
                 ),
-              )
+              ),
             ]),
+
+          _buildSecao("Poderes", [
+            if (!block)
+              Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton.icon(
+                  onPressed: _abrirCatalogoPoderes,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text("Poder"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: corDoPainel,
+                    foregroundColor: corTextoAfinidade,
+                  ),
+                ),
+              ),
+            if (poderesEscolhidos.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 8.0),
+                child: Text(
+                  "Nenhum poder escolhido.",
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: poderesEscolhidos.length,
+              itemBuilder: (context, index) {
+                String nomePoder = poderesEscolhidos[index];
+                String nomeBase = nomePoder;
+                if (nomePoder.startsWith("Perito (")) nomeBase = "Perito";
+                if (nomePoder.endsWith(" (Afinidade)")) {
+                  nomeBase = nomePoder.replaceAll(" (Afinidade)", "");
+                }
+
+                List<Poder> todosPoderes = [
+                  ...catalogoPoderesGerais,
+                  ...catalogoPoderesCombatente,
+                  ...catalogoPoderesEspecialista,
+                  ...catalogoPoderesOcultista,
+                  ...catalogoPoderesConhecimento,
+                  ...catalogoPoderesEnergia,
+                  ...catalogoPoderesMorte,
+                  ...catalogoPoderesSangue,
+                ];
+
+                Poder p = todosPoderes.firstWhere(
+                  (pod) => pod.nome == nomeBase,
+                  orElse: () => Poder(
+                    nome: nomePoder,
+                    tipo: "Desconhecido",
+                    descricao: "Poder desconhecido.",
+                  ),
+                );
+                bool isParanormal = [
+                  "Conhecimento",
+                  "Energia",
+                  "Morte",
+                  "Sangue",
+                ].contains(p.tipo);
+
+                return Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D0D0D),
+                    border: Border.all(color: Colors.grey.shade800),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    title: Text(
+                      nomePoder,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isParanormal ? corDoPainel : Colors.white,
+                      ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text(
+                          p.descricao,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                        if (p.preRequisitos != "Nenhum") ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            "Pré-req: ${p.preRequisitos}",
+                            style: TextStyle(
+                              color: corDoPainel,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    trailing: block
+                        ? null
+                        : IconButton(
+                            icon: const Icon(
+                              Icons.delete,
+                              color: Colors.redAccent,
+                            ),
+                            onPressed: () {
+                              setState(() => poderesEscolhidos.removeAt(index));
+                              atualizarFicha();
+                            },
+                          ),
+                  ),
+                );
+              },
+            ),
+          ]),
         ],
       ),
     );
@@ -2004,7 +3091,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildSecao("Inventário", [
+          _buildSecao("Painel de Controle", [
             Container(
               padding: const EdgeInsets.all(12),
               margin: const EdgeInsets.only(bottom: 16),
@@ -2067,7 +3154,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                             atualizarFicha();
                           },
                         ),
-                      )
+                      ),
                     ],
                   ),
                   const Divider(color: Colors.grey),
@@ -2096,7 +3183,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                         ],
                       );
                     }).toList(),
-                  )
+                  ),
                 ],
               ),
             ),
@@ -2120,9 +3207,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                     label: const Text("Equipamento"),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: corDoPainel,
-                      foregroundColor: EstiloParanormal.corTextoTema(
-                        afinidadeAtual,
-                      ),
+                      foregroundColor: corTextoAfinidade,
                     ),
                   ),
               ],
@@ -2201,10 +3286,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                       ),
                       if (!block)
                         IconButton(
-                          icon: const Icon(
-                            Icons.build,
-                            color: Colors.blueGrey,
-                          ),
+                          icon: const Icon(Icons.build, color: Colors.blueGrey),
                           onPressed: () {
                             _mostrarDialogModificarEquipamento(arma, index);
                           },
@@ -2299,10 +3381,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                         ),
                       if (!block)
                         IconButton(
-                          icon: const Icon(
-                            Icons.build,
-                            color: Colors.blueGrey,
-                          ),
+                          icon: const Icon(Icons.build, color: Colors.blueGrey),
                           onPressed: () {
                             _mostrarDialogModificarEquipamento(item, index);
                           },
@@ -2323,8 +3402,8 @@ class _FichaAgenteState extends State<FichaAgente> {
                 ),
               );
             }),
-          ])
-        ]
+          ]),
+        ],
       ),
     );
   }
@@ -2416,9 +3495,7 @@ class _FichaAgenteState extends State<FichaAgente> {
   @override
   Widget build(BuildContext context) {
     bool block = _modoVisualizacao;
-    Color corDoPainel = afinidadeAtual == 'Morte'
-        ? Colors.white
-        : EstiloParanormal.corTema(afinidadeAtual);
+    Color corDoPainel = corFundoAfinidade;
 
     Widget conteudoDaAba;
     switch (_abaAtual) {
@@ -2472,7 +3549,6 @@ class _FichaAgenteState extends State<FichaAgente> {
         ],
       ),
       body: conteudoDaAba,
-
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
@@ -2482,7 +3558,6 @@ class _FichaAgenteState extends State<FichaAgente> {
     );
   }
 
-  // --- WIDGETS AUXILIARES CONSTRUTORES ---
   Widget _buildBarraStatus(
     String titulo,
     int atual,
@@ -2612,9 +3687,7 @@ class _FichaAgenteState extends State<FichaAgente> {
     bool isVisu,
     Function(String) onChanged,
   ) {
-    Color corDoPopUp = afinidadeAtual == 'Morte'
-        ? Colors.white
-        : EstiloParanormal.corTema(afinidadeAtual);
+    Color corDoPopUp = corFundoAfinidade;
     return GestureDetector(
       onTap: isVisu ? () => _rolarDado(label, value) : null,
       child: SizedBox(
@@ -2643,8 +3716,8 @@ class _FichaAgenteState extends State<FichaAgente> {
   }
 
   Widget _buildSecao(String titulo, List<Widget> filhos) {
-    Color corDoTema = EstiloParanormal.corTema(afinidadeAtual);
-    Color corLetraTema = EstiloParanormal.corTextoTema(afinidadeAtual);
+    Color corDoTema = corFundoAfinidade;
+    Color corLetraTema = corTextoAfinidade;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 24),

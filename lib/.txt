@@ -1,101 +1,31 @@
-================================================
-Armas Simples
-================================================
+MODIFICAÇÕES PARA ACESSÓRIOS:
+Modificação / Efeito
+- Aprimorado: Aumenta um dos bônus em perícia para +5.
+- Discreto: +5 em testes de ocultar e reduz o espaço em –1.
+- Função adicional: Concede +2 a uma perícia adicional.
+- Instrumental: O acessório funciona como um kit de perícia.
 
-------------------------------------------------
-Corpo a Corpo – Leves
+----------------------------------------------------------------
 
-Coronhada — 1d4/1d6 x2 — I —
-Faca 0 1d4 19 Curto C 1
-Martelo 0 1d6 x2 — I 1
-Punhal 0 1d4 x3 — P 1
-Corpo a Corpo – Uma Mão
-Bastão 0 1d6/1d8 x2 — I 1
-Machete 0 1d6 19 — C 1
-Lança 0 1d6 x2 Curto P 1
+Itens Paranormais:
+Nome / Categoria / Espaços
 
-------------------------------------------------
-Corpo a Corpo – Duas Mãos
-
-Cajado 0 1d6/1d6 x2 — I 2
-Armas de Disparo – Duas Mãos
-Arco 0 1d6 x3 Médio P 2
-Flechas 0 — — — — 1
-Besta 0 1d8 19 Médio P 2
-Flechas 0 — — — — 1
-Armas de Fogo – Leves
-Pistola I 1d12 18 Curto B 1
-Balas curtas 0 — — — — 1
-Revólver I 2d6 19/x3 Curto B 1
-Balas curtas 0 — — — — 1
-Armas de Fogo – Duas Mãos
-Fuzil de caça I 2d8 19/x3 Médio B 2
-Balas longas I — — — — 1
-
-------------------------------------------------
-Armas de Disparo – Uma Mão
-
-Pregador pneumático 0 1d4 x4 Curto P 1
-
-------------------------------------------------
-Armas de Disparo – Duas Mãos
-
-Estilingue 0 1d4 x2 Curto I 1
-
-------------------------------------------------
-Armas de Fogo – Leves
-
-Revólver compacto I 2d4 19/x3 Curto P 1
-
-Balas curtas 0 — — — — 1
+- Amarras de (elemento) II 1
+- Câmera de aura paranormal II 1
+- Componentes ritualísticos de (elemento) 0 1
+- Emissor de pulsos paranormais II 1
+- Escuta de ruídos paranormais II 1
+- Medidor de estabilidade da membrana II 1
+- Scanner de manifestação paranormal de (elemento) II 1
+- Catalisadores ritualísticos de (elemento)
+    . Ampliador I 0,5
+    . Perturbador I 0,5
+    . Potencializador I 0,5
+    . Prolongador I 0,5
+- Ligação Direta Infernal II 1
+- Medidor de Condição Vertebral II 1
+- Pé de Morto II 1
+- Pendrive selado II 0,5
+- Valete da Salvação I 0,5
 
 
-================================================
-Armas Táticas
-================================================
-
-------------------------------------------------
-Corpo a Corpo – Leves
-
-Machadinha 0 1d6 x3 Curto C 1
-
-Nunchaku 0 1d8 x2 — I 1
-
-Baioneta 0 1d4 19 — P 1
-
-Faca tática I 1d6 19 Curto C 1
-
-Gancho de carne 0 1d4 x4 — P 1
-
-------------------------------------------------
-Corpo a Corpo – Uma Mão
-
-Corrente 0 1d8 x2 — I 1
-Espada I 1d8/1d10 19 — C 1
-Florete I 1d6 18 — C 1
-Machado I 1d8 x3 — C 1
-Maça I 2d4 x2 — I 1
-Bastão policial I 1d6 x2 Curto I 1
-
-Picareta 0 1d6 x4 — P 1
-
-
-================================================
-Armas de Arremesso
-================================================
-
-Shuriken I 1d4 x2 Curto P 0,5
-
-Armas de Fogo - Uma Mão
-
-Pistola pesada I 2d8 18 Curto B 1
-
-Balas curtas 0 — — — — 1
-
-================================================
-Armas de Fogo - Duas Mãos
-================================================
-
-Espingarda de cano duplo II 4d6 x3 Curto B 2
-
-Cartuchos I — — — — 1

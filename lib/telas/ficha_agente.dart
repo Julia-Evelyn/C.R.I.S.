@@ -44,6 +44,8 @@ class _FichaAgenteState extends State<FichaAgente> {
   int? _indiceAtual;
   bool _modoVisualizacao = false;
 
+  int _abaAtual = 0;
+
   int get espacoMaximo => forc == 0 ? 2 : forc * 5;
 
   double get espacoOcupado {
@@ -56,6 +58,23 @@ class _FichaAgenteState extends State<FichaAgente> {
       (soma, arma) => soma + arma.espacoEfetivo,
     );
     return espItens + espArmas;
+  }
+
+  int get maosOcupadas {
+    int m = 0;
+    for (var a in armas.where((a) => a.equipado)) {
+      if (a.empunhadura == 'Duas Mãos') {
+        m += 2;
+      } else {
+        m += 1;
+      }
+    }
+    m += inventario
+        .where(
+          (item) => item.equipado && item.nome.toLowerCase().contains("escudo"),
+        )
+        .length;
+    return m;
   }
 
   String get patenteAtual {
@@ -251,6 +270,17 @@ class _FichaAgenteState extends State<FichaAgente> {
         ? Colors.white
         : EstiloParanormal.corTema(afinidadeAtual);
 
+    String mensagemCritico = "";
+    Color corNumero = Colors.white;
+
+    if (resultadoFinal == 20) {
+      mensagemCritico = "SUCESSO CRÍTICO!";
+      corNumero = Colors.lightGreenAccent;
+    } else if (resultadoFinal == 1) {
+      mensagemCritico = "FALHA CRÍTICA!";
+      corNumero = Colors.redAccent;
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -270,12 +300,24 @@ class _FichaAgenteState extends State<FichaAgente> {
             const SizedBox(height: 16),
             Text(
               resultadoFinal.toString(),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 48,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: corNumero,
               ),
             ),
+            if (mensagemCritico.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                mensagemCritico,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: corNumero,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ]
           ],
         ),
         actions: [
@@ -365,6 +407,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       "Itens Operacionais",
       "Medicamentos",
       "Munições",
+      "Proteções",
       "Itens Paranormais",
     ];
 
@@ -377,7 +420,6 @@ class _FichaAgenteState extends State<FichaAgente> {
               ...catalogoArmasOrdem,
               ...catalogoItensOrdem,
             ];
-
             List<dynamic> filtrados = todosEquipamentos.where((eq) {
               if (busca.isNotEmpty &&
                   !eq.nome.toLowerCase().contains(busca.toLowerCase())) {
@@ -388,26 +430,32 @@ class _FichaAgenteState extends State<FichaAgente> {
                 if (filtroAtual != "Armas" && eq is Arma) return false;
                 if (eq is ItemInventario) {
                   if (filtroAtual == "Acessórios" &&
-                      eq.descricao != "Acessório") {
+                      (!eq.descricao.contains("Acessório") &&
+                          !eq.nome.contains("Vestimenta"))) {
                     return false;
                   }
                   if (filtroAtual == "Explosivos" &&
-                      eq.descricao != "Explosivo") {
+                      !eq.descricao.contains("Explosivo")) {
                     return false;
                   }
                   if (filtroAtual == "Itens Operacionais" &&
-                      eq.descricao != "Item Operacional") {
+                      !eq.descricao.contains("Item Operacional")) {
                     return false;
                   }
                   if (filtroAtual == "Medicamentos" &&
-                      eq.descricao != "Medicamento") {
+                      !eq.descricao.contains("Medicamento")) {
                     return false;
                   }
-                  if (filtroAtual == "Munições" && eq.descricao != "Munição") {
+                  if (filtroAtual == "Munições" &&
+                      !eq.descricao.contains("Munição")) {
+                    return false;
+                  }
+                  if (filtroAtual == "Proteções" &&
+                      !eq.descricao.contains("Proteção")) {
                     return false;
                   }
                   if (filtroAtual == "Itens Paranormais" &&
-                      eq.descricao != "Item Paranormal") {
+                      !eq.descricao.contains("Item Paranormal")) {
                     return false;
                   }
                 }
@@ -450,7 +498,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                       ],
                     ),
                     const SizedBox(height: 16),
-
                     TextField(
                       decoration: EstiloParanormal.customInputDeco(
                         "Pesquisar equipamento...",
@@ -460,7 +507,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                       onChanged: (val) => setDialogState(() => busca = val),
                     ),
                     const SizedBox(height: 12),
-
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
@@ -496,7 +542,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
@@ -547,7 +592,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     Row(
                       children: [
                         Expanded(
@@ -599,6 +643,103 @@ class _FichaAgenteState extends State<FichaAgente> {
     );
   }
 
+  void _processarNovoItem(ItemInventario novoItem) {
+    if (novoItem.nome.toLowerCase().contains("vestimenta")) {
+      _mostrarDialogEscolherPericiaParaNovoItem(novoItem);
+    } else {
+      setState(() => inventario.add(novoItem));
+      _salvarSilencioso();
+    }
+  }
+
+  void _mostrarDialogEscolherPericiaParaNovoItem(ItemInventario itemBase) {
+    String periciaSelecionada = listaPericias.first.id;
+    String nomePericia = listaPericias.first.nome;
+    Color corTemaLocal = afinidadeAtual == 'Morte'
+        ? Colors.white
+        : EstiloParanormal.corTema(afinidadeAtual);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: corTemaLocal.withValues(alpha: 0.3)),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.checkroom, color: corTemaLocal),
+              const SizedBox(width: 8),
+              Text(
+                "Costurar Vestimenta",
+                style: TextStyle(
+                  color: corTemaLocal,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Escolha qual perícia esta vestimenta vai aprimorar:",
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: periciaSelecionada,
+                dropdownColor: const Color(0xFF1A1A1A),
+                style: const TextStyle(color: Colors.white),
+                decoration: EstiloParanormal.customInputDeco(
+                  "Perícia",
+                  corTemaLocal,
+                  Icons.star,
+                ),
+                items: listaPericias
+                    .map(
+                      (p) => DropdownMenuItem(value: p.id, child: Text(p.nome)),
+                    )
+                    .toList(),
+                onChanged: (val) {
+                  periciaSelecionada = val!;
+                  nomePericia = listaPericias
+                      .firstWhere((p) => p.id == val)
+                      .nome;
+                },
+              ),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: corTemaLocal,
+                foregroundColor: EstiloParanormal.corTextoTema(afinidadeAtual),
+              ),
+              onPressed: () {
+                setState(() {
+                  itemBase.periciaVinculada = periciaSelecionada;
+                  itemBase.nome = "Vestimenta de $nomePericia";
+                  inventario.add(itemBase);
+                  atualizarFicha();
+                });
+                _salvarSilencioso();
+                Navigator.pop(context);
+              },
+              child: const Text(
+                "Confirmar",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _configurarAdicaoEquipamento(dynamic equipamentoBase) {
     Color corTemaLocal = afinidadeAtual == 'Morte'
         ? Colors.white
@@ -608,18 +749,155 @@ class _FichaAgenteState extends State<FichaAgente> {
         : EstiloParanormal.corTextoTema(afinidadeAtual);
 
     bool isArma = equipamentoBase is Arma;
-    bool isMunicao =
-        !isArma && (equipamentoBase as ItemInventario).descricao == "Munição";
 
-    List<String> modsSelecionados = [];
-    String catBase = equipamentoBase.categoria;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: corTemaLocal.withValues(alpha: 0.3)),
+          ),
+          insetPadding: const EdgeInsets.all(16),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  "ADICIONAR: ${equipamentoBase.nome.toUpperCase()}",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: corTemaLocal,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  isArma
+                      ? "Dano: ${equipamentoBase.dano} | Crítico: ${equipamentoBase.margemAmeaca}/x${equipamentoBase.multiplicadorCritico}"
+                      : equipamentoBase.descricao,
+                  style: const TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 32),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: const BorderSide(color: Colors.grey),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _abrirCatalogoEquipamento();
+                        },
+                        child: const Text(
+                          "VOLTAR",
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: corTemaLocal,
+                          foregroundColor: corLetra,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          if (isArma) {
+                            Arma a = equipamentoBase;
+                            setState(() {
+                              armas.add(
+                                Arma(
+                                  nome: a.nome,
+                                  tipo: a.tipo,
+                                  dano: a.dano,
+                                  margemAmeaca: a.margemAmeaca,
+                                  multiplicadorCritico: a.multiplicadorCritico,
+                                  categoria: a.categoria,
+                                  espaco: a.espaco,
+                                  proficiencia: a.proficiencia,
+                                  empunhadura: a.empunhadura,
+                                ),
+                              );
+                            });
+                            _salvarSilencioso();
+                          } else {
+                            ItemInventario i = equipamentoBase as ItemInventario;
+                            _processarNovoItem(
+                              ItemInventario(
+                                nome: i.nome,
+                                categoria: i.categoria,
+                                espaco: i.espaco,
+                                descricao: i.descricao,
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text(
+                          "ADICIONAR",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // --- BANCADA DE MODIFICAÇÕES (CHAMADO PELO INVENTÁRIO) ---
+  void _mostrarDialogModificarEquipamento(dynamic equipamento, int indexNaLista) {
+    Color corTemaLocal = afinidadeAtual == 'Morte' ? Colors.white : EstiloParanormal.corTema(afinidadeAtual);
+    Color corLetra = afinidadeAtual == 'Morte' ? Colors.black : EstiloParanormal.corTextoTema(afinidadeAtual);
+
+    bool isArma = equipamento is Arma;
+    bool isMunicao = !isArma && (equipamento as ItemInventario).descricao.contains("Munição");
+    bool isProtecao = !isArma && (equipamento as ItemInventario).descricao.contains("Proteção");
+    bool isVestimenta = !isArma && (equipamento as ItemInventario).nome.toLowerCase().contains("vestimenta");
+
+    List<String> modsDisponiveis = [];
+    if (isArma) {
+      modsDisponiveis = (equipamento).tipo == "Fogo"
+          ? ["Alongada", "Calibre Grosso", "Compensador", "Discreta", "Ferrolho Automático", "Mira Laser", "Mira Telescópica", "Silenciador", "Tática", "Visão de Calor"]
+          : ["Certeira", "Cruel", "Discreta", "Perigosa", "Tática"];
+    } else if (isMunicao) {
+      modsDisponiveis = ["Dum dum", "Explosiva"];
+    } else if (isProtecao) {
+      modsDisponiveis = ["Antibombas", "Blindada", "Discreta", "Reforçada"];
+    } else if (isVestimenta) {
+      modsDisponiveis = ["Aprimorada"];
+    }
+
+    if (modsDisponiveis.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Este equipamento não suporta modificações."), backgroundColor: Colors.redAccent));
+      return;
+    }
+
+    List<String> modsSelecionados = List.from(equipamento.modificacoes);
+    String catBase = equipamento.categoria;
 
     int getCatInt(String c) {
-      if (c == 'I') return 1;
-      if (c == 'II') return 2;
-      if (c == 'III') return 3;
-      if (c == 'IV') return 4;
-      return 0;
+      if (c == 'I') return 1; if (c == 'II') return 2; if (c == 'III') return 3; if (c == 'IV') return 4; return 0;
     }
 
     showDialog(
@@ -627,35 +905,11 @@ class _FichaAgenteState extends State<FichaAgente> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            bool podeAdicionarMaisMods =
-                (getCatInt(catBase) + modsSelecionados.length) < 4;
-
-            List<String> modsDisponiveis = [];
-            if (isArma) {
-              modsDisponiveis = (equipamentoBase).tipo == "Fogo"
-                  ? [
-                      "Alongada",
-                      "Calibre Grosso",
-                      "Compensador",
-                      "Discreta",
-                      "Ferrolho Automático",
-                      "Mira Laser",
-                      "Mira Telescópica",
-                      "Silenciador",
-                      "Tática",
-                      "Visão de Calor",
-                    ]
-                  : ["Certeira", "Cruel", "Discreta", "Perigosa", "Tática"];
-            } else if (isMunicao) {
-              modsDisponiveis = ["Dum dum", "Explosiva"];
-            }
+            bool podeAdicionarMaisMods = (getCatInt(catBase) + modsSelecionados.length) < 4;
 
             return Dialog(
               backgroundColor: const Color(0xFF1A1A1A),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: corTemaLocal.withValues(alpha: 0.3)),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: corTemaLocal.withValues(alpha: 0.3))),
               insetPadding: const EdgeInsets.all(16),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
@@ -663,162 +917,85 @@ class _FichaAgenteState extends State<FichaAgente> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      "CONFIGURAR: ${equipamentoBase.nome.toUpperCase()}",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: corTemaLocal,
-                      ),
+                    Row(
+                      children: [
+                        Icon(Icons.build, color: corTemaLocal, size: 28),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text("BANCADA DE MELHORIAS", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: corTemaLocal)),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      isArma
-                          ? "Dano: ${equipamentoBase.dano} | Crítico: ${equipamentoBase.margemAmeaca}/x${equipamentoBase.multiplicadorCritico}"
-                          : equipamentoBase.descricao,
-                      style: const TextStyle(color: Colors.grey),
-                    ),
+                    Text(equipamento.nome, style: const TextStyle(color: Colors.grey, fontSize: 16)),
                     const SizedBox(height: 24),
-
-                    if (modsDisponiveis.isNotEmpty) ...[
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "MODIFICAÇÕES",
+                    
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text("MODIFICAÇÕES", style: TextStyle(color: corTemaLocal, fontWeight: FontWeight.bold)),
+                        if (!podeAdicionarMaisMods)
+                          const Text("LIMITE ATINGIDO", style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: modsDisponiveis.map((mod) {
+                        bool isSelected = modsSelecionados.contains(mod);
+                        return FilterChip(
+                          label: Text(
+                            mod,
                             style: TextStyle(
-                              color: corTemaLocal,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              color: isSelected ? Colors.black : Colors.grey.shade400,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                             ),
                           ),
-                          if (!podeAdicionarMaisMods)
-                            const Text(
-                              "LIMITE ATINGIDO",
-                              style: TextStyle(
-                                color: Colors.redAccent,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: modsDisponiveis.map((mod) {
-                          bool isSelected = modsSelecionados.contains(mod);
-                          return FilterChip(
-                            label: Text(
-                              mod,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isSelected
-                                    ? Colors.black
-                                    : Colors.grey.shade400,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                            selected: isSelected,
-                            selectedColor: corTemaLocal,
-                            backgroundColor: const Color(0xFF1A1A1A),
-                            side: BorderSide(
-                              color: isSelected
-                                  ? corTemaLocal
-                                  : Colors.grey.shade800,
-                            ),
-                            onSelected: (selected) {
-                              setDialogState(() {
-                                if (selected) {
-                                  if (podeAdicionarMaisMods) {
-                                    modsSelecionados.add(mod);
-                                  }
-                                } else {
-                                  modsSelecionados.remove(mod);
-                                }
-                              });
-                            },
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 32),
-                    ],
-
+                          selected: isSelected,
+                          selectedColor: corTemaLocal,
+                          backgroundColor: const Color(0xFF1A1A1A),
+                          side: BorderSide(color: isSelected ? corTemaLocal : Colors.grey.shade800),
+                          onSelected: (selected) {
+                            setDialogState(() {
+                              if (selected) {
+                                if (podeAdicionarMaisMods) modsSelecionados.add(mod);
+                              } else {
+                                modsSelecionados.remove(mod);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 32),
                     Row(
                       children: [
                         Expanded(
                           child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              side: const BorderSide(color: Colors.grey),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            onPressed: () {
-                              Navigator.pop(context);
-                              _abrirCatalogoEquipamento();
-                            },
-                            child: const Text(
-                              "VOLTAR",
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Colors.grey), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text("CANCELAR", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: corTemaLocal,
-                              foregroundColor: corLetra,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
+                            style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), backgroundColor: corTemaLocal, foregroundColor: corLetra, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
                             onPressed: () {
                               setState(() {
                                 if (isArma) {
-                                  Arma a = equipamentoBase;
-                                  armas.add(
-                                    Arma(
-                                      nome: a.nome,
-                                      tipo: a.tipo,
-                                      dano: a.dano,
-                                      margemAmeaca: a.margemAmeaca,
-                                      multiplicadorCritico:
-                                          a.multiplicadorCritico,
-                                      categoria: a.categoria,
-                                      espaco: a.espaco,
-                                      modificacoes: List.from(modsSelecionados),
-                                    ),
-                                  );
+                                  armas[indexNaLista].modificacoes = List.from(modsSelecionados);
                                 } else {
-                                  ItemInventario i =
-                                      equipamentoBase as ItemInventario;
-                                  inventario.add(
-                                    ItemInventario(
-                                      nome: i.nome,
-                                      categoria: i.categoria,
-                                      espaco: i.espaco,
-                                      descricao: i.descricao,
-                                      modificacoes: List.from(modsSelecionados),
-                                    ),
-                                  );
+                                  inventario[indexNaLista].modificacoes = List.from(modsSelecionados);
                                 }
+                                atualizarFicha();
                               });
                               _salvarSilencioso();
                               Navigator.pop(context);
                             },
-                            child: const Text(
-                              "ADICIONAR",
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
+                            child: const Text("APLICAR", style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ],
@@ -838,10 +1015,9 @@ class _FichaAgenteState extends State<FichaAgente> {
         tipo = isArma ? "Corpo a Corpo" : "I",
         dano = "1d4",
         desc = "";
-    String categoria = "0";
+    String categoria = "0", proficiencia = "Simples", empunhadura = "Uma Mão";
     int margem = 20, mult = 2;
     double espaco = 1.0;
-
     Color corTemaLocal = afinidadeAtual == 'Morte'
         ? Colors.white
         : EstiloParanormal.corTema(afinidadeAtual);
@@ -884,7 +1060,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                 ],
               ),
               const SizedBox(height: 24),
-
               TextField(
                 decoration: EstiloParanormal.customInputDeco(
                   "Nome",
@@ -894,7 +1069,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                 onChanged: (val) => nome = val,
               ),
               const SizedBox(height: 16),
-
               if (isArma) ...[
                 Row(
                   children: [
@@ -956,8 +1130,45 @@ class _FichaAgenteState extends State<FichaAgente> {
                   ],
                 ),
                 const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: proficiencia,
+                        decoration: EstiloParanormal.customInputDeco(
+                          "Proficiência",
+                          corTemaLocal,
+                          Icons.military_tech,
+                        ),
+                        items: ["Simples", "Táticas", "Pesadas"]
+                            .map(
+                              (c) => DropdownMenuItem(value: c, child: Text(c)),
+                            )
+                            .toList(),
+                        onChanged: (val) => proficiencia = val!,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: empunhadura,
+                        decoration: EstiloParanormal.customInputDeco(
+                          "Empunhadura",
+                          corTemaLocal,
+                          Icons.front_hand,
+                        ),
+                        items: ["Leve", "Uma Mão", "Duas Mãos"]
+                            .map(
+                              (c) => DropdownMenuItem(value: c, child: Text(c)),
+                            )
+                            .toList(),
+                        onChanged: (val) => empunhadura = val!,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
               ],
-
               Row(
                 children: [
                   Expanded(
@@ -993,7 +1204,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                   ),
                 ],
               ),
-
               if (!isArma) ...[
                 const SizedBox(height: 16),
                 TextField(
@@ -1007,7 +1217,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                   onChanged: (val) => desc = val,
                 ),
               ],
-
               const SizedBox(height: 32),
               Row(
                 children: [
@@ -1046,9 +1255,10 @@ class _FichaAgenteState extends State<FichaAgente> {
                       ),
                       onPressed: () {
                         if (nome.isNotEmpty) {
-                          setState(() {
-                            if (isArma) {
-                              armas.add(
+                          Navigator.pop(context);
+                          if (isArma) {
+                            setState(
+                              () => armas.add(
                                 Arma(
                                   nome: nome,
                                   tipo: tipo,
@@ -1057,21 +1267,22 @@ class _FichaAgenteState extends State<FichaAgente> {
                                   multiplicadorCritico: mult,
                                   categoria: categoria,
                                   espaco: espaco,
+                                  proficiencia: proficiencia,
+                                  empunhadura: empunhadura,
                                 ),
-                              );
-                            } else {
-                              inventario.add(
-                                ItemInventario(
-                                  nome: nome,
-                                  categoria: categoria,
-                                  espaco: espaco,
-                                  descricao: desc,
-                                ),
-                              );
-                            }
-                          });
-                          _salvarSilencioso();
-                          Navigator.pop(context);
+                              ),
+                            );
+                            _salvarSilencioso();
+                          } else {
+                            _processarNovoItem(
+                              ItemInventario(
+                                nome: nome,
+                                categoria: categoria,
+                                espaco: espaco,
+                                descricao: desc,
+                              ),
+                            );
+                          }
                         }
                       },
                       child: const Text(
@@ -1089,13 +1300,11 @@ class _FichaAgenteState extends State<FichaAgente> {
     );
   }
 
-  // --- NOVA LÓGICA DE ATUALIZAÇÃO DA FICHA (CÁLCULO DE DEFESA) ---
   void atualizarFicha({bool isInitialLoad = false}) {
     setState(() {
       if (nex < 50 && afinidadeAtual != null) {
         afinidadeAtual = null;
       }
-
       var origemData = dadosOrigens[origemAtual];
       if (origemData != null) {
         habNome = origemData.nomeHabilidade;
@@ -1121,12 +1330,17 @@ class _FichaAgenteState extends State<FichaAgente> {
         sanMax = stats.sanBase + (stats.sanPorNivel * (nivel - 1));
       }
 
-      // CÁLCULO DE DEFESA COM PROTEÇÕES EQUIPADAS
       int defItens = 0;
       for (var item in inventario.where((i) => i.equipado)) {
         String nomeLower = item.nome.toLowerCase();
-        if (nomeLower.contains("proteção leve")) defItens += 5;
-        if (nomeLower.contains("proteção pesada")) defItens += 10;
+        String descLower = item.descricao.toLowerCase();
+
+        if (descLower.contains("proteção") || nomeLower.contains("escudo")) {
+          if (nomeLower.contains("leve")) defItens += 5;
+          if (nomeLower.contains("pesada")) defItens += 10;
+          if (nomeLower.contains("escudo")) defItens += 2;
+          if (item.modificacoes.contains("Reforçada")) defItens += 2;
+        }
       }
 
       int bReflexos = 0, bFortitude = 0;
@@ -1135,7 +1349,7 @@ class _FichaAgenteState extends State<FichaAgente> {
         if (p.id == 'fortitude') bFortitude = p.treino;
       }
 
-      defesa = 10 + agi + defItens; // AGI + Bônus do Inventário
+      defesa = 10 + agi + defItens;
       esquiva = defesa + bReflexos;
       bloqueio = bFortitude;
 
@@ -1148,15 +1362,15 @@ class _FichaAgenteState extends State<FichaAgente> {
     if (!isInitialLoad) _salvarSilencioso();
   }
 
-  // Controle de Trava de Vestimentas e Proteções
   void _toggleEquiparItem(ItemInventario item) {
     if (_modoVisualizacao) return;
 
-    if (!item.equipado) {
-      String nomeLower = item.nome.toLowerCase();
+    bool isVestimenta = item.nome.toLowerCase().contains("vestimenta");
+    bool isProtecao = item.descricao.toLowerCase().contains("proteção");
+    bool isEscudo = item.nome.toLowerCase().contains("escudo");
 
-      // Limite de Vestimentas = 2
-      if (nomeLower.contains("vestimenta")) {
+    if (!item.equipado) {
+      if (isVestimenta) {
         int equipadas = inventario
             .where(
               (i) => i.equipado && i.nome.toLowerCase().contains("vestimenta"),
@@ -1175,19 +1389,47 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
       }
 
-      // Limite de Proteção = 1
-      if (nomeLower.contains("proteção")) {
-        bool temProtecao = inventario.any(
-          (i) => i.equipado && i.nome.toLowerCase().contains("proteção"),
-        );
-        if (temProtecao) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Limite: Você só pode usar 1 proteção por vez!"),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
-          return;
+      if (isProtecao) {
+        if (isEscudo) {
+          if (maosOcupadas + 1 > 2) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  "Limite: Você não tem mãos livres suficientes para equipar o Escudo!",
+                ),
+                backgroundColor: Colors.redAccent,
+              ),
+            );
+            return;
+          }
+          if (inventario.any(
+            (i) => i.equipado && i.nome.toLowerCase().contains("escudo"),
+          )) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Limite: Você já tem um escudo equipado!"),
+                backgroundColor: Colors.redAccent,
+              ),
+            );
+            return;
+          }
+        } else {
+          if (inventario.any(
+            (i) =>
+                i.equipado &&
+                i.descricao.toLowerCase().contains("proteção") &&
+                !i.nome.toLowerCase().contains("escudo"),
+          )) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  "Limite: Você só pode usar 1 proteção por vez! (Mas pode usar 1 Escudo junto)",
+                ),
+                backgroundColor: Colors.redAccent,
+              ),
+            );
+            return;
+          }
         }
       }
     }
@@ -1198,6 +1440,979 @@ class _FichaAgenteState extends State<FichaAgente> {
     });
   }
 
+  void _toggleEquiparArma(Arma arma) {
+    if (_modoVisualizacao) return;
+
+    if (!arma.equipado) {
+      int custoMaos = arma.empunhadura == 'Duas Mãos' ? 2 : 1;
+      if (maosOcupadas + custoMaos > 2) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Limite: Você não tem mãos livres suficientes para empunhar essa arma!",
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+    }
+
+    setState(() {
+      arma.equipado = !arma.equipado;
+      atualizarFicha();
+    });
+  }
+
+  // =========================================================================
+  // SISTEMA DE ABAS (FUNÇÕES DE CONSTRUÇÃO)
+  // =========================================================================
+
+  Widget _buildAbaAtributos(bool block, Color corDoPainel) {
+    List<Arma> armasEquipadas = armas.where((a) => a.equipado).toList();
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: AvatarPulsante(
+              afinidade: afinidadeAtual,
+              corTema: corDoPainel,
+              fotoPath: fotoPath,
+              isVisualizacao: block,
+              onTap: _escolherFoto,
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (nex >= 50 && afinidadeAtual == null && !block)
+            Center(
+              child: BotaoAfinidadeAnimado(onPressed: _mostrarDialogAfinidade),
+            ),
+
+          _buildSecao("Detalhes", [
+            TextFormField(
+              controller: _nomeController,
+              enabled: !block,
+              decoration: const InputDecoration(
+                labelText: "Nome",
+                border: OutlineInputBorder(),
+                filled: true,
+                fillColor: Color(0xFF0D0D0D),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildDropdown(
+                    "Classe",
+                    classeAtual,
+                    dadosClasses.keys.toList(),
+                    block
+                        ? null
+                        : (val) {
+                            classeAtual = val!;
+                            atualizarFicha();
+                          },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildDropdown(
+                    "Origem",
+                    origemAtual,
+                    dadosOrigens.keys.toList(),
+                    block
+                        ? null
+                        : (val) {
+                            origemAtual = val!;
+                            atualizarFicha();
+                          },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildDropdown(
+              "NEX (%)",
+              nex.toString(),
+              List.generate(20, (i) => ((i + 1) * 5).toString()),
+              block
+                  ? null
+                  : (val) {
+                      nex = int.parse(val!);
+                      atualizarFicha();
+                    },
+            ),
+          ]),
+
+          _buildSecao("Atributos ${block ? '(Toque para Rolar)' : ''}", [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildAtributoInput("AGI", agi, block, (val) {
+                  agi = int.tryParse(val) ?? 0;
+                  atualizarFicha();
+                }),
+                _buildAtributoInput("FOR", forc, block, (val) {
+                  forc = int.tryParse(val) ?? 0;
+                  atualizarFicha();
+                }),
+                _buildAtributoInput("INT", inte, block, (val) {
+                  inte = int.tryParse(val) ?? 0;
+                  atualizarFicha();
+                }),
+                _buildAtributoInput("PRE", pre, block, (val) {
+                  pre = int.tryParse(val) ?? 0;
+                  atualizarFicha();
+                }),
+                _buildAtributoInput("VIG", vig, block, (val) {
+                  vig = int.tryParse(val) ?? 0;
+                  atualizarFicha();
+                }),
+              ],
+            ),
+          ]),
+
+          _buildSecao("Status", [
+            _buildBarraStatus(
+              "PONTOS DE VIDA (PV)",
+              pvAtual,
+              pvMax,
+              Colors.red,
+              (val) {
+                setState(() => pvAtual = val.clamp(0, pvMax));
+                _salvarSilencioso();
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildBarraStatus(
+              "PONTOS DE ESFORÇO (PE)",
+              peAtual,
+              peMax,
+              Colors.blue,
+              (val) {
+                setState(() => peAtual = val.clamp(0, peMax));
+                _salvarSilencioso();
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildBarraStatus(
+              "SANIDADE (SAN)",
+              sanAtual,
+              sanMax,
+              Colors.blueGrey,
+              (val) {
+                setState(() => sanAtual = val.clamp(0, sanMax));
+                _salvarSilencioso();
+              },
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.0),
+              child: Divider(color: Colors.grey),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildStatusFixo("Defesa", defesa),
+                _buildStatusFixo("Esquiva", esquiva),
+                _buildStatusFixo("Bloqueio", bloqueio),
+              ],
+            ),
+          ]),
+
+          _buildSecao("Ataques (Armas Equipadas)", [
+            if (armasEquipadas.isEmpty)
+              const Text(
+                "Nenhuma arma empunhada. Vá ao inventário para equipar uma arma.",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: armasEquipadas.length,
+              itemBuilder: (context, index) {
+                final arma = armasEquipadas[index];
+                bool isProficiente =
+                    arma.proficiencia == 'Simples' ||
+                    (arma.proficiencia == 'Táticas' &&
+                        classeAtual == 'combatente');
+                String alertaProf = isProficiente
+                    ? ""
+                    : "\n⚠️ Não proficiente: -2d20 no Ataque";
+                String modDano = "";
+                if (arma.tipo == 'Corpo a Corpo' || arma.tipo == 'Arremesso') {
+                  if (forc > 0) {
+                    modDano = "+$forc";
+                  } else if (forc < 0) {
+                    modDano = "$forc";
+                  }
+                }
+                return Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D0D0D),
+                    border: Border.all(color: Colors.grey.shade800),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: ListTile(
+                    title: Text(
+                      arma.nome,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Dano: ${arma.dano}$modDano | Crítico: ${arma.margemAmeaca}/x${arma.multiplicadorCritico} \nTipo: ${arma.tipo}$alertaProf",
+                          style: TextStyle(
+                            color: isProficiente
+                                ? Colors.grey
+                                : Colors.redAccent,
+                          ),
+                        ),
+                        if (arma.modificacoes.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Text(
+                              "Mods: ${arma.modificacoes.join(', ')}",
+                              style: TextStyle(
+                                color: corDoPainel,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    isThreeLine: true,
+                    onTap: block
+                        ? () {
+                            int d20 = Random().nextInt(20) + 1;
+                            Color corD20 = Colors.white;
+                            String msgCrit = "";
+                            
+                            if (d20 == 20) {
+                              corD20 = Colors.amberAccent;
+                              msgCrit = "SUCESSO CRÍTICO!";
+                            } else if (d20 == 1) {
+                              corD20 = Colors.redAccent;
+                              msgCrit = "FALHA CRÍTICA!";
+                            }
+
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                backgroundColor: const Color(0xFF1A1A1A),
+                                title: Text(
+                                  "Ataque: ${arma.nome}",
+                                  style: TextStyle(color: corDoPainel),
+                                ),
+                                content: RichText(
+                                  text: TextSpan(
+                                    style: const TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 16,
+                                      fontFamily: 'sans-serif',
+                                    ),
+                                    children: [
+                                      const TextSpan(text: "Teste de Ataque (d20):\n"),
+                                      TextSpan(
+                                        text: "$d20",
+                                        style: TextStyle(
+                                          color: corD20,
+                                          fontSize: 48,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      if (msgCrit.isNotEmpty)
+                                        TextSpan(
+                                          text: "\n$msgCrit\n",
+                                          style: TextStyle(
+                                            color: corD20,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      const TextSpan(text: "\n\n"),
+                                      TextSpan(
+                                        text: "Dano: ${arma.dano}$modDano\n$alertaProf",
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: Text(
+                                      "OK",
+                                      style: TextStyle(color: corDoPainel),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        : null,
+                  ),
+                );
+              },
+            ),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAbaPericias(bool block, Color corDoPainel) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      child: _buildSecao("Perícias", [
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: listaPericias.length,
+          itemBuilder: (context, index) {
+            var pericia = listaPericias[index];
+
+            int bonusExtra = 0;
+            var vestimentas = inventario.where(
+              (i) => i.equipado && i.periciaVinculada == pericia.id,
+            );
+            for (var v in vestimentas) {
+              int b = v.modificacoes.contains("Aprimorada") ? 5 : 2;
+              if (b > bonusExtra) {
+                bonusExtra = b; 
+              }
+            }
+
+            int totalBonus = pericia.treino + bonusExtra;
+
+            return Container(
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: Colors.grey.shade800)),
+                color: pericia.treino > 0
+                    ? corDoPainel.withValues(alpha: 0.1)
+                    : Colors.transparent,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            "${pericia.nome} (${pericia.atributo})",
+                            style: TextStyle(
+                              color: pericia.treino > 0
+                                  ? Colors.white
+                                  : Colors.grey,
+                              fontWeight: pericia.treino > 0
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (bonusExtra > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4, right: 4),
+                            child: Icon(
+                              Icons.checkroom,
+                              color: corDoPainel,
+                              size: 14,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: pericia.treino,
+                        isExpanded: true,
+                        icon: const Icon(Icons.arrow_drop_down, size: 16),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.white,
+                        ),
+                        items: [
+                          if (!pericia.daOrigem)
+                            const DropdownMenuItem(
+                              value: 0,
+                              child: Text("Destreinado (+0)"),
+                            ),
+                          const DropdownMenuItem(
+                            value: 5,
+                            child: Text("Treinado (+5)"),
+                          ),
+                          const DropdownMenuItem(
+                            value: 10,
+                            child: Text("Veterano (+10)"),
+                          ),
+                          const DropdownMenuItem(
+                            value: 15,
+                            child: Text("Expert (+15)"),
+                          ),
+                        ],
+                        onChanged: block
+                            ? null
+                            : (val) {
+                                setState(() {
+                                  pericia.treino = val!;
+                                  atualizarFicha();
+                                });
+                              },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Text(
+                    "+",
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                  const SizedBox(width: 4),
+
+                  Container(
+                    width: 35,
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A1A1A),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.grey.shade800),
+                    ),
+                    child: Text(
+                      "+$bonusExtra",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 4),
+                  const Text(
+                    "=",
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                  const SizedBox(width: 4),
+
+                  Container(
+                    width: 35,
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: corDoPainel.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: corDoPainel.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Text(
+                      "+$totalBonus",
+                      style: TextStyle(
+                        color: corDoPainel,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildAbaHabilidades(bool block, Color corDoPainel) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildSecao("Habilidade de Origem: $habNome", [
+            Text(
+              habDesc,
+              style: const TextStyle(
+                fontSize: 14,
+                fontStyle: FontStyle.italic,
+                color: Colors.white,
+              ),
+            ),
+          ]),
+
+          if (afinidadeAtual != null)
+            _buildSecao("Afinidade Elemental", [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D0D0D),
+                  border: Border.all(color: corDoPainel, width: 1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Afinidade: ${afinidadeAtual!.toUpperCase()} | Opressor: ${_obterOpressor(afinidadeAtual!).toUpperCase()}",
+                      style: TextStyle(
+                        color: corDoPainel,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      "• Não precisa de componentes ritualísticos para conjurar rituais do elemento com o qual tem afinidade. Além disso, pode aprender rituais que exijam afinidade com esse elemento.\n\n• Recebe +2d20 em testes contra efeitos do seu elemento, mas sofre –2d20 em testes contra efeitos do seu elemento opressor.\n\n• Pode escolher poderes paranormais do seu elemento uma segunda vez para receber o benefício listado na linha “Afinidade”.",
+                      style: TextStyle(
+                        color: Colors.grey,
+                        height: 1.4,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAbaRituais(bool block, Color corDoPainel) {
+    return const Center(
+      child: Text(
+        "Grimório e Rituais serão implementados em breve...",
+        style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+      ),
+    );
+  }
+
+  Widget _buildAbaInventario(bool block, Color corDoPainel) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildSecao("Inventário", [
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                border: Border.all(color: corDoPainel, width: 0.5),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Patente: ${patenteAtual.toUpperCase()}",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: corDoPainel,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Crédito: $limiteCredito",
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                      SizedBox(
+                        width: 75,
+                        child: TextFormField(
+                          initialValue: prestigio.toString(),
+                          enabled: !block,
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: "PP",
+                            labelStyle: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                            contentPadding: EdgeInsets.symmetric(
+                              vertical: 8,
+                              horizontal: 8,
+                            ),
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Color(0xFF1A1A1A),
+                          ),
+                          onChanged: (val) {
+                            prestigio = int.tryParse(val) ?? 0;
+                            atualizarFicha();
+                          },
+                        ),
+                      )
+                    ],
+                  ),
+                  const Divider(color: Colors.grey),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: ["I", "II", "III", "IV"].map((cat) {
+                      int atual = usoCategoriaAtual[cat]!;
+                      int max = limitesCategoria[cat]!;
+                      bool excedeu = atual > max;
+                      return Column(
+                        children: [
+                          Text(
+                            "Cat $cat",
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
+                          Text(
+                            "$atual / $max",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: excedeu ? Colors.redAccent : Colors.white,
+                            ),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  )
+                ],
+              ),
+            ),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Espaço: ${espacoOcupado.toString().replaceAll('.0', '')} / $espacoMaximo",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: espacoOcupado > espacoMaximo
+                        ? Colors.redAccent
+                        : Colors.white,
+                  ),
+                ),
+                if (!block)
+                  ElevatedButton.icon(
+                    onPressed: () => _abrirCatalogoEquipamento(),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text("Equipamento"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: corDoPainel,
+                      foregroundColor: EstiloParanormal.corTextoTema(
+                        afinidadeAtual,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (inventario.isEmpty && armas.isEmpty)
+              const Text(
+                "Inventário vazio.",
+                style: TextStyle(color: Colors.grey),
+              ),
+
+            ...armas.map((arma) {
+              int index = armas.indexOf(arma);
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D0D0D),
+                  border: Border.all(color: Colors.grey.shade800),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  title: Text(
+                    arma.nome,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Arma • Cat: ${arma.categoriaEfetiva} | Espaço: ${arma.espacoEfetivo.toString().replaceAll('.0', '')} \nProf: ${arma.proficiencia} | Emp: ${arma.empunhadura}",
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                      if (arma.modificacoes.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4.0),
+                          child: Text(
+                            "Mods: ${arma.modificacoes.join(', ')}",
+                            style: TextStyle(
+                              color: corDoPainel,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  isThreeLine: true,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            "Equipar",
+                            style: TextStyle(fontSize: 9, color: Colors.grey),
+                          ),
+                          SizedBox(
+                            height: 24,
+                            child: Checkbox(
+                              value: arma.equipado,
+                              activeColor: corDoPainel,
+                              onChanged: block
+                                  ? null
+                                  : (val) => _toggleEquiparArma(arma),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (!block)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.build,
+                            color: Colors.blueGrey,
+                          ),
+                          onPressed: () {
+                            _mostrarDialogModificarEquipamento(arma, index);
+                          },
+                        ),
+                      if (!block)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete,
+                            color: Colors.redAccent,
+                          ),
+                          onPressed: () {
+                            setState(() => armas.removeAt(index));
+                            _salvarSilencioso();
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+
+            ...inventario.map((item) {
+              int index = inventario.indexOf(item);
+              bool isEquipavel =
+                  item.descricao.toLowerCase().contains("proteção") ||
+                  item.nome.toLowerCase().contains("vestimenta") ||
+                  item.nome.toLowerCase().contains("escudo");
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D0D0D),
+                  border: Border.all(color: Colors.grey.shade800),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  title: Text(
+                    item.nome,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Item • Cat: ${item.categoriaEfetiva} | Espaço: ${item.espacoEfetivo.toString().replaceAll('.0', '')} \n${item.descricao}",
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                      if (item.modificacoes.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4.0),
+                          child: Text(
+                            "Mods: ${item.modificacoes.join(', ')}",
+                            style: TextStyle(
+                              color: corDoPainel,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  isThreeLine: true,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isEquipavel)
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              "Usar",
+                              style: TextStyle(fontSize: 9, color: Colors.grey),
+                            ),
+                            SizedBox(
+                              height: 24,
+                              child: Checkbox(
+                                value: item.equipado,
+                                activeColor: corDoPainel,
+                                onChanged: block
+                                    ? null
+                                    : (val) => _toggleEquiparItem(item),
+                              ),
+                            ),
+                          ],
+                        ),
+                      if (!block)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.build,
+                            color: Colors.blueGrey,
+                          ),
+                          onPressed: () {
+                            _mostrarDialogModificarEquipamento(item, index);
+                          },
+                        ),
+                      if (!block)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete,
+                            color: Colors.redAccent,
+                          ),
+                          onPressed: () {
+                            setState(() => inventario.removeAt(index));
+                            _salvarSilencioso();
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ])
+        ]
+      ),
+    );
+  }
+
+  // =========================================================================
+  // WIDGETS AUXILIARES E FUNÇÕES DE BARRA FLUTUANTE
+  // =========================================================================
+
+  Widget _buildFloatingNavBar(bool block, Color corDoPainel) {
+    return Container(
+      height: 70,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A).withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(35),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            spreadRadius: 2,
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        border: Border.all(color: corDoPainel.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildNavBarItem(0, Icons.person, "Atributos", block, corDoPainel),
+          _buildNavBarItem(1, Icons.star, "Perícias", block, corDoPainel),
+          _buildNavBarItem(2, Icons.bolt, "Poderes", block, corDoPainel),
+          _buildNavBarItem(
+            3,
+            Icons.auto_awesome,
+            "Rituais",
+            block,
+            corDoPainel,
+          ),
+          _buildNavBarItem(4, Icons.backpack, "Inventário", block, corDoPainel),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavBarItem(
+    int index,
+    IconData icon,
+    String label,
+    bool block,
+    Color corDoPainel,
+  ) {
+    bool isSelected = _abaAtual == index;
+    Color itemColor = isSelected ? corDoPainel : Colors.grey.shade600;
+
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _abaAtual = index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? corDoPainel.withValues(alpha: 0.1)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(25),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: itemColor, size: 24),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: itemColor,
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     bool block = _modoVisualizacao;
@@ -1205,13 +2420,32 @@ class _FichaAgenteState extends State<FichaAgente> {
         ? Colors.white
         : EstiloParanormal.corTema(afinidadeAtual);
 
-    // Filtramos para os Ataques só as Armas Equipadas
-    List<Arma> armasEquipadas = armas.where((a) => a.equipado).toList();
+    Widget conteudoDaAba;
+    switch (_abaAtual) {
+      case 0:
+        conteudoDaAba = _buildAbaAtributos(block, corDoPainel);
+        break;
+      case 1:
+        conteudoDaAba = _buildAbaPericias(block, corDoPainel);
+        break;
+      case 2:
+        conteudoDaAba = _buildAbaHabilidades(block, corDoPainel);
+        break;
+      case 3:
+        conteudoDaAba = _buildAbaRituais(block, corDoPainel);
+        break;
+      case 4:
+        conteudoDaAba = _buildAbaInventario(block, corDoPainel);
+        break;
+      default:
+        conteudoDaAba = _buildAbaAtributos(block, corDoPainel);
+    }
 
     return Scaffold(
+      extendBody: true,
       appBar: AppBar(
         title: Text(
-          block ? 'VISUALIZAÇÃO' : 'EDITAR AGENTE',
+          block ? 'AGENTE' : 'EDITAR AGENTE',
           style: const TextStyle(fontFamily: 'Courier', letterSpacing: 2),
         ),
         centerTitle: true,
@@ -1237,735 +2471,18 @@ class _FichaAgenteState extends State<FichaAgente> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Center(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 900),
-            child: Form(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: AvatarPulsante(
-                      afinidade: afinidadeAtual,
-                      corTema: corDoPainel,
-                      fotoPath: fotoPath,
-                      isVisualizacao: block,
-                      onTap: _escolherFoto,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+      body: conteudoDaAba,
 
-                  if (nex >= 50 && afinidadeAtual == null && !block)
-                    Center(
-                      child: BotaoAfinidadeAnimado(
-                        onPressed: _mostrarDialogAfinidade,
-                      ),
-                    ),
-
-                  _buildSecao("Detalhes", [
-                    TextFormField(
-                      controller: _nomeController,
-                      enabled: !block,
-                      decoration: const InputDecoration(
-                        labelText: "Nome",
-                        border: OutlineInputBorder(),
-                        filled: true,
-                        fillColor: Color(0xFF0D0D0D),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildDropdown(
-                            "Classe",
-                            classeAtual,
-                            dadosClasses.keys.toList(),
-                            block
-                                ? null
-                                : (val) {
-                                    classeAtual = val!;
-                                    atualizarFicha();
-                                  },
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildDropdown(
-                            "Origem",
-                            origemAtual,
-                            dadosOrigens.keys.toList(),
-                            block
-                                ? null
-                                : (val) {
-                                    origemAtual = val!;
-                                    atualizarFicha();
-                                  },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: _buildDropdown(
-                            "NEX (%)",
-                            nex.toString(),
-                            List.generate(20, (i) => ((i + 1) * 5).toString()),
-                            block
-                                ? null
-                                : (val) {
-                                    nex = int.parse(val!);
-                                    atualizarFicha();
-                                  },
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          flex: 1,
-                          child: TextFormField(
-                            initialValue: prestigio.toString(),
-                            enabled: !block,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: "Prestígio (PP)",
-                              border: OutlineInputBorder(),
-                              filled: true,
-                              fillColor: Color(0xFF0D0D0D),
-                            ),
-                            onChanged: (val) {
-                              prestigio = int.tryParse(val) ?? 0;
-                              atualizarFicha();
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ]),
-
-                  _buildSecao(
-                    "Atributos ${block ? '(Toque para Rolar)' : ''}",
-                    [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _buildAtributoInput("AGI", agi, block, (val) {
-                            agi = int.tryParse(val) ?? 0;
-                            atualizarFicha();
-                          }),
-                          _buildAtributoInput("FOR", forc, block, (val) {
-                            forc = int.tryParse(val) ?? 0;
-                            atualizarFicha();
-                          }),
-                          _buildAtributoInput("INT", inte, block, (val) {
-                            inte = int.tryParse(val) ?? 0;
-                            atualizarFicha();
-                          }),
-                          _buildAtributoInput("PRE", pre, block, (val) {
-                            pre = int.tryParse(val) ?? 0;
-                            atualizarFicha();
-                          }),
-                          _buildAtributoInput("VIG", vig, block, (val) {
-                            vig = int.tryParse(val) ?? 0;
-                            atualizarFicha();
-                          }),
-                        ],
-                      ),
-                    ],
-                  ),
-
-                  _buildSecao("Status", [
-                    _buildBarraStatus(
-                      "PONTOS DE VIDA (PV)",
-                      pvAtual,
-                      pvMax,
-                      Colors.red,
-                      (val) {
-                        setState(() => pvAtual = val.clamp(0, pvMax));
-                        _salvarSilencioso();
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _buildBarraStatus(
-                      "PONTOS DE ESFORÇO (PE)",
-                      peAtual,
-                      peMax,
-                      Colors.blue,
-                      (val) {
-                        setState(() => peAtual = val.clamp(0, peMax));
-                        _salvarSilencioso();
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _buildBarraStatus(
-                      "SANIDADE (SAN)",
-                      sanAtual,
-                      sanMax,
-                      Colors.blueGrey,
-                      (val) {
-                        setState(() => sanAtual = val.clamp(0, sanMax));
-                        _salvarSilencioso();
-                      },
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16.0),
-                      child: Divider(color: Colors.grey),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildStatusFixo("Defesa", defesa),
-                        _buildStatusFixo("Esquiva", esquiva),
-                        _buildStatusFixo("Bloqueio", bloqueio),
-                      ],
-                    ),
-                  ]),
-
-                  // ATAQUES (Mostra APENAS armas equipadas. Sem botão de excluir aqui, o jogador exclui no Inventário)
-                  _buildSecao("Armas e Ataques", [
-                    if (armasEquipadas.isEmpty)
-                      const Text(
-                        "Nenhuma arma empunhada. Vá ao inventário para equipar uma arma.",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: armasEquipadas.length,
-                      itemBuilder: (context, index) {
-                        final arma = armasEquipadas[index];
-                        return Container(
-                          margin: const EdgeInsets.only(top: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0D0D0D),
-                            border: Border.all(color: Colors.grey.shade800),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: ListTile(
-                            title: Text(
-                              arma.nome,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Dano: ${arma.dano} | Crítico: ${arma.margemAmeaca}/x${arma.multiplicadorCritico} \nTipo: ${arma.tipo}",
-                                  style: const TextStyle(color: Colors.grey),
-                                ),
-                                if (arma.modificacoes.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 4.0),
-                                    child: Text(
-                                      "Mods: ${arma.modificacoes.join(', ')}",
-                                      style: TextStyle(
-                                        color: corDoPainel,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            isThreeLine: true,
-                            onTap: block
-                                ? () => showDialog(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      backgroundColor: const Color(0xFF1A1A1A),
-                                      title: Text(
-                                        "Atacar com ${arma.nome}",
-                                        style: TextStyle(color: corDoPainel),
-                                      ),
-                                      content: Text(
-                                        "Role seus dados de ataque e dano (${arma.dano})!",
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context),
-                                          child: Text(
-                                            "OK",
-                                            style: TextStyle(
-                                              color: corDoPainel,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                : null,
-                          ),
-                        );
-                      },
-                    ),
-                  ]),
-
-                  // INVENTÁRIO (Mostra TUDO: Armas e Itens, com Checkbox de Equipar)
-                  _buildSecao("Inventário", [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        border: Border.all(color: corDoPainel, width: 0.5),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Patente: ${patenteAtual.toUpperCase()}",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: corDoPainel,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "Crédito: $limiteCredito",
-                                    style: const TextStyle(color: Colors.grey),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const Divider(color: Colors.grey),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: ["I", "II", "III", "IV"].map((cat) {
-                              int atual = usoCategoriaAtual[cat]!;
-                              int max = limitesCategoria[cat]!;
-                              bool excedeu = atual > max;
-                              return Column(
-                                children: [
-                                  Text(
-                                    "Cat $cat",
-                                    style: const TextStyle(
-                                      color: Colors.grey,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  Text(
-                                    "$atual / $max",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: excedeu
-                                          ? Colors.redAccent
-                                          : Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "Espaço: ${espacoOcupado.toString().replaceAll('.0', '')} / $espacoMaximo",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: espacoOcupado > espacoMaximo
-                                ? Colors.redAccent
-                                : Colors.white,
-                          ),
-                        ),
-                        if (!block)
-                          ElevatedButton.icon(
-                            onPressed: () => _abrirCatalogoEquipamento(),
-                            icon: const Icon(Icons.add, size: 18),
-                            label: const Text("Equipamento"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: corDoPainel,
-                              foregroundColor: EstiloParanormal.corTextoTema(
-                                afinidadeAtual,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    if (inventario.isEmpty && armas.isEmpty)
-                      const Text(
-                        "Inventário vazio.",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-
-                    // Renderiza as Armas do Inventário
-                    ...armas.map((arma) {
-                      int index = armas.indexOf(arma);
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0D0D0D),
-                          border: Border.all(color: Colors.grey.shade800),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 4,
-                          ),
-                          title: Text(
-                            arma.nome,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Arma • Cat: ${arma.categoriaEfetiva} | Espaços: ${arma.espacoEfetivo.toString().replaceAll('.0', '')}",
-                                style: const TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              if (arma.modificacoes.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4.0),
-                                  child: Text(
-                                    "Mods: ${arma.modificacoes.join(', ')}",
-                                    style: TextStyle(
-                                      color: corDoPainel,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          isThreeLine: arma.modificacoes.isNotEmpty,
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Text(
-                                    "Equipar",
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    height: 24,
-                                    child: Checkbox(
-                                      value: arma.equipado,
-                                      activeColor: corDoPainel,
-                                      onChanged: block
-                                          ? null
-                                          : (val) {
-                                              setState(() {
-                                                arma.equipado = val!;
-                                                atualizarFicha();
-                                              });
-                                            },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (!block)
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete,
-                                    color: Colors.redAccent,
-                                  ),
-                                  onPressed: () {
-                                    setState(() => armas.removeAt(index));
-                                    _salvarSilencioso();
-                                  },
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-
-                    // Renderiza os Itens do Inventário
-                    ...inventario.map((item) {
-                      int index = inventario.indexOf(item);
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0D0D0D),
-                          border: Border.all(color: Colors.grey.shade800),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 4,
-                          ),
-                          title: Text(
-                            item.nome,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Item • Cat: ${item.categoriaEfetiva} | Espaços: ${item.espacoEfetivo.toString().replaceAll('.0', '')} \n${item.descricao}",
-                                style: const TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              if (item.modificacoes.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4.0),
-                                  child: Text(
-                                    "Mods: ${item.modificacoes.join(', ')}",
-                                    style: TextStyle(
-                                      color: corDoPainel,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          isThreeLine: true,
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Text(
-                                    "Usar",
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    height: 24,
-                                    child: Checkbox(
-                                      value: item.equipado,
-                                      activeColor: corDoPainel,
-                                      onChanged: block
-                                          ? null
-                                          : (val) => _toggleEquiparItem(item),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (!block)
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete,
-                                    color: Colors.redAccent,
-                                  ),
-                                  onPressed: () {
-                                    setState(() => inventario.removeAt(index));
-                                    _salvarSilencioso();
-                                  },
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-                  ]),
-
-                  _buildSecao("Habilidade: $habNome", [
-                    Text(
-                      habDesc,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ]),
-
-                  _buildSecao("Perícias", [
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: listaPericias.length,
-                      itemBuilder: (context, index) {
-                        var pericia = listaPericias[index];
-                        return Container(
-                          decoration: BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(color: Colors.grey.shade800),
-                            ),
-                            color: pericia.treino > 0
-                                ? corDoPainel.withValues(alpha: 0.1)
-                                : Colors.transparent,
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                flex: 4,
-                                child: Text(
-                                  "${pericia.nome} (${pericia.atributo})",
-                                  style: TextStyle(
-                                    color: pericia.treino > 0
-                                        ? Colors.white
-                                        : Colors.grey,
-                                    fontWeight: pericia.treino > 0
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 5,
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<int>(
-                                    value: pericia.treino,
-                                    isExpanded: true,
-                                    icon: const Icon(
-                                      Icons.arrow_drop_down,
-                                      size: 16,
-                                    ),
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.white,
-                                    ),
-                                    items: [
-                                      if (!pericia.daOrigem)
-                                        const DropdownMenuItem(
-                                          value: 0,
-                                          child: Text("Destreinado (+0)"),
-                                        ),
-                                      const DropdownMenuItem(
-                                        value: 5,
-                                        child: Text("Treinado (+5)"),
-                                      ),
-                                      const DropdownMenuItem(
-                                        value: 10,
-                                        child: Text("Veterano (+10)"),
-                                      ),
-                                      const DropdownMenuItem(
-                                        value: 15,
-                                        child: Text("Expert (+15)"),
-                                      ),
-                                    ],
-                                    onChanged: block
-                                        ? null
-                                        : (val) {
-                                            setState(() {
-                                              pericia.treino = val!;
-                                              atualizarFicha();
-                                            });
-                                          },
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              const Text(
-                                "+",
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              SizedBox(
-                                width: 40,
-                                child: TextFormField(
-                                  initialValue: (bonusPericias[pericia.id] ?? 0)
-                                      .toString(),
-                                  enabled: !block,
-                                  keyboardType: TextInputType.number,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  decoration: const InputDecoration(
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.symmetric(
-                                      vertical: 8,
-                                    ),
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  onChanged: (val) {
-                                    bonusPericias[pericia.id] =
-                                        int.tryParse(val) ?? 0;
-                                    _salvarSilencioso();
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ]),
-
-                  if (afinidadeAtual != null)
-                    _buildSecao("Afinidade Elemental", [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0D0D0D),
-                          border: Border.all(color: corDoPainel, width: 1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Afinidade: ${afinidadeAtual!.toUpperCase()} | Opressor: ${_obterOpressor(afinidadeAtual!).toUpperCase()}",
-                              style: TextStyle(
-                                color: corDoPainel,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              "Quando atinge NEX 50% você se conecta com um elemento a sua escolha entre Conhecimento, Energia, Morte e Sangue. Na primeira vez que transcender após isso, irá desenvolver afinidade com o elemento escolhido. Afinidade fornece os seguintes benefícios:\n\n"
-                              "• Não precisa de componentes ritualísticos para conjurar rituais do elemento com o qual tem afinidade. Além disso, pode aprender rituais que exijam afinidade com esse elemento.\n\n"
-                              "• Recebe +2d20 em testes contra efeitos do seu elemento, mas sofre –2d20 em testes contra efeitos do seu elemento opressor.\n\n"
-                              "• Pode escolher poderes paranormais do seu elemento uma segunda vez para receber o benefício listado na linha “Afinidade”.",
-                              style: TextStyle(
-                                color: Colors.grey,
-                                height: 1.4,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ]),
-                ],
-              ),
-            ),
-          ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
+          child: _buildFloatingNavBar(block, corDoPainel),
         ),
       ),
     );
   }
 
-  // --- WIDGETS AUXILIARES ---
+  // --- WIDGETS AUXILIARES CONSTRUTORES ---
   Widget _buildBarraStatus(
     String titulo,
     int atual,

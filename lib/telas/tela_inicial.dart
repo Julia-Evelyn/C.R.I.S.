@@ -24,25 +24,38 @@ class _TelaInicialState extends State<TelaInicial> {
     final prefs = await SharedPreferences.getInstance();
     final String? agentesJson = prefs.getString('agentes_salvos');
     if (agentesJson != null) {
-      setState(() => meusAgentes = (jsonDecode(agentesJson) as List).map((item) => AgenteDados.fromJson(item)).toList());
+      setState(
+        () => meusAgentes = (jsonDecode(agentesJson) as List)
+            .map((item) => AgenteDados.fromJson(item))
+            .toList(),
+      );
     }
   }
 
   Future<void> _excluirAgente(int index) async {
     final prefs = await SharedPreferences.getInstance();
     setState(() => meusAgentes.removeAt(index));
-    await prefs.setString('agentes_salvos', jsonEncode(meusAgentes.map((e) => e.toJson()).toList()));
+    await prefs.setString(
+      'agentes_salvos',
+      jsonEncode(meusAgentes.map((e) => e.toJson()).toList()),
+    );
   }
 
   // Função para puxar a cor do Agente já na tela inicial
   Color _obterCorAfinidade(String? afinidade) {
     if (afinidade == null) return Colors.white;
     switch (afinidade) {
-      case 'Sangue': return const Color(0xFF990000);
-      case 'Energia': return const Color(0xFF9900FF);
-      case 'Morte': return Colors.white54; // Na tela inicial que é preta, a Morte usa cinza/branco para destacar
-      case 'Conhecimento': return const Color(0xFFFFB300);
-      default: return Colors.white;
+      case 'Sangue':
+        return const Color(0xFF990000);
+      case 'Energia':
+        return const Color(0xFF9900FF);
+      case 'Morte':
+        return Colors
+            .white54;
+      case 'Conhecimento':
+        return const Color(0xFFFFB300);
+      default:
+        return Colors.white;
     }
   }
 
@@ -50,13 +63,29 @@ class _TelaInicialState extends State<TelaInicial> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('MEUS AGENTES', style: TextStyle(fontFamily: 'Courier', letterSpacing: 2, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'MEUS AGENTES',
+          style: TextStyle(
+            fontFamily: 'Courier',
+            letterSpacing: 2,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         centerTitle: true,
         backgroundColor: Colors.black,
-        bottom: PreferredSize(preferredSize: const Size.fromHeight(2.0), child: Container(color: Colors.white, height: 2.0)),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(2.0),
+          child: Container(color: Colors.white, height: 2.0),
+        ),
       ),
       body: meusAgentes.isEmpty
-          ? const Center(child: Text("Nenhum agente recrutado.\nClique no '+' para criar.", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)))
+          ? const Center(
+              child: Text(
+                "Nenhum agente recrutado.\nClique no '+' para criar.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+            )
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: meusAgentes.length,
@@ -69,33 +98,68 @@ class _TelaInicialState extends State<TelaInicial> {
                   decoration: BoxDecoration(
                     color: const Color(0xFF1A1A1A),
                     borderRadius: BorderRadius.circular(12),
-                    // Borda muito sutil em volta do card todo com a cor do agente
-                    border: Border.all(color: corTema.withValues(alpha: 0.3), width: 1),
+                    border: Border.all(
+                      color: corTema.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 5, offset: const Offset(0, 4))
-                    ]
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        blurRadius: 5,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(12),
                       onTap: () async {
-                        final att = await Navigator.push(context, MaterialPageRoute(builder: (context) => FichaAgente(agenteParaEditar: agente, indexEdicao: index, isVisualizacao: true)));
+                        final att = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => FichaAgente(
+                              agenteParaEditar: agente,
+                              indexEdicao: index,
+                              isVisualizacao: true,
+                            ),
+                          ),
+                        );
                         if (att == true) _carregarAgentes();
                       },
                       onLongPress: () => showDialog(
                         context: context,
                         builder: (context) => AlertDialog(
                           backgroundColor: const Color(0xFF1A1A1A),
-                          title: const Text("Excluir Agente", style: TextStyle(color: Colors.white)),
-                          content: Text("Deseja apagar a ficha de ${agente.nome}?"),
+                          title: const Text(
+                            "Excluir Agente",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          content: Text(
+                            "Deseja apagar a ficha de ${agente.nome}?",
+                          ),
                           actions: [
-                            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text(
+                                "Cancelar",
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ),
                             ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
-                              onPressed: () { _excluirAgente(index); Navigator.pop(context); },
-                              child: const Text("Excluir", style: TextStyle(fontWeight: FontWeight.bold))
-                            )
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: Colors.black,
+                              ),
+                              onPressed: () {
+                                _excluirAgente(index);
+                                Navigator.pop(context);
+                              },
+                              child: const Text(
+                                "Excluir",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -110,18 +174,34 @@ class _TelaInicialState extends State<TelaInicial> {
                               decoration: BoxDecoration(
                                 color: Colors.black,
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: corTema, width: 2), // Borda com a cor da afinidade
-                                boxShadow: agente.afinidade != null ? [
-                                  BoxShadow(color: corTema.withValues(alpha: 0.4), blurRadius: 8, spreadRadius: 1)
-                                ] : [],
-                                image: agente.fotoPath != null ? DecorationImage(image: FileImage(File(agente.fotoPath!)), fit: BoxFit.cover) : null,
+                                border: Border.all(
+                                  color: corTema,
+                                  width: 2,
+                                ), // Borda com a cor da afinidade
+                                boxShadow: agente.afinidade != null
+                                    ? [
+                                        BoxShadow(
+                                          color: corTema.withValues(alpha: 0.4),
+                                          blurRadius: 8,
+                                          spreadRadius: 1,
+                                        ),
+                                      ]
+                                    : [],
+                                image: agente.fotoPath != null
+                                    ? DecorationImage(
+                                        image: FileImage(
+                                          File(agente.fotoPath!),
+                                        ),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
                               ),
                               child: agente.fotoPath == null
                                   ? Icon(Icons.person, size: 40, color: corTema)
                                   : null,
                             ),
                             const SizedBox(width: 16),
-                            
+
                             // 2. INFORMAÇÕES DO AGENTE
                             Expanded(
                               child: Column(
@@ -129,23 +209,38 @@ class _TelaInicialState extends State<TelaInicial> {
                                 children: [
                                   Text(
                                     agente.nome.toUpperCase(),
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white, letterSpacing: 1),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                      color: Colors.white,
+                                      letterSpacing: 1,
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     "${agente.classe.toUpperCase()} • ${agente.origem.toUpperCase()}",
-                                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                    style: const TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 12,
+                                    ),
                                   ),
                                   const SizedBox(height: 12),
-                                  
+
                                   // 3. BADGES DE NEX E PP
                                   Row(
                                     children: [
-                                      _buildBadge("NEX ${agente.nex}%", corTema),
+                                      _buildBadge(
+                                        "NEX ${agente.nex}%",
+                                        corTema,
+                                      ),
                                       const SizedBox(width: 8),
-                                      _buildBadge("PP ${agente.prestigio}", Colors.grey.shade400, isOutline: true),
+                                      _buildBadge(
+                                        "PP ${agente.prestigio}",
+                                        Colors.grey.shade400,
+                                        isOutline: true,
+                                      ),
                                     ],
                                   ),
                                 ],
@@ -163,7 +258,10 @@ class _TelaInicialState extends State<TelaInicial> {
         backgroundColor: Colors.white,
         child: const Icon(Icons.add, color: Colors.black),
         onPressed: () async {
-          final att = await Navigator.push(context, MaterialPageRoute(builder: (context) => const FichaAgente()));
+          final att = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const FichaAgente()),
+          );
           if (att == true) _carregarAgentes();
         },
       ),
@@ -176,12 +274,19 @@ class _TelaInicialState extends State<TelaInicial> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: isOutline ? Colors.transparent : color.withValues(alpha: 0.2),
-        border: Border.all(color: isOutline ? color.withValues(alpha: 0.5) : color, width: 1),
+        border: Border.all(
+          color: isOutline ? color.withValues(alpha: 0.5) : color,
+          width: 1,
+        ),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         text,
-        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

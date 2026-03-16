@@ -11,11 +11,7 @@ final List<ItemInventario> catalogoItensOrdem = [
   ItemInventario(nome: "Manual operacional", categoria: "I", espaco: 1.0, descricao: "Acessório"),
   ItemInventario(nome: "Notebook", categoria: "0", espaco: 2.0, descricao: "Acessório"),
   ItemInventario(nome: "Utensílio", categoria: "I", espaco: 1.0, descricao: "Acessório"),
-  ItemInventario(nome: "Vestimenta", categoria: "I", espaco: 1.0, descricao: "Acessório"),
-
-  // Proteções
-  ItemInventario(nome: "Proteção leve", categoria: "I", espaco: 2.0, descricao: "Item Operacional (+5 Defesa.)"),
-  ItemInventario(nome: "Proteção pesada", categoria: "II", espaco: 5.0, descricao: "Item Operacional (+10 Defesa. Penalidade -2)"),
+  ItemInventario(nome: "Vestimenta", categoria: "I", espaco: 1.0, descricao: "Acessório (Concede +2 em uma perícia)"),
   
   // Explosivos
   ItemInventario(nome: "Dinamite", categoria: "I", espaco: 1.0, descricao: "Explosivo"),
@@ -29,13 +25,20 @@ final List<ItemInventario> catalogoItensOrdem = [
   ItemInventario(nome: "Granada de PEM", categoria: "I", espaco: 1.0, descricao: "Explosivo"),
   ItemInventario(nome: "Mina antipessoal", categoria: "I", espaco: 1.0, descricao: "Explosivo"),
 
+  // Proteções
+  ItemInventario(nome: "Proteção leve", categoria: "I", espaco: 2.0, descricao: "Proteção (+5 Defesa)"),
+  ItemInventario(nome: "Proteção pesada", categoria: "II", espaco: 5.0, descricao: "Proteção (+10 Defesa, Penalidade de Carga -5)"),
+  ItemInventario(nome: "Escudo", categoria: "I", espaco: 2.0, descricao: "Proteção (+2 Defesa, empunhado em 1 mão)"),
+
   // Munições
-  ItemInventario(nome: "Flechas", categoria: "0", espaco: 1.0, descricao: "Munição"),
   ItemInventario(nome: "Balas curtas", categoria: "0", espaco: 1.0, descricao: "Munição"),
   ItemInventario(nome: "Balas longas", categoria: "I", espaco: 1.0, descricao: "Munição"),
   ItemInventario(nome: "Cartuchos", categoria: "I", espaco: 1.0, descricao: "Munição"),
+  ItemInventario(nome: "Combustível", categoria: "I", espaco: 1.0, descricao: "Munição"),
+  ItemInventario(nome: "Flechas", categoria: "0", espaco: 1.0, descricao: "Munição"),
+  ItemInventario(nome: "Foguete", categoria: "I", espaco: 1.0, descricao: "Munição"),
 
-  // Itens Operacionais
+  // Itens Operacionais 
   ItemInventario(nome: "Alarme de movimento", categoria: "0", espaco: 1.0, descricao: "Item Operacional"),
   ItemInventario(nome: "Algemas", categoria: "0", espaco: 1.0, descricao: "Item Operacional"),
   ItemInventario(nome: "Alimento energético", categoria: "II", espaco: 1.0, descricao: "Item Operacional"),
@@ -71,67 +74,45 @@ final List<ItemInventario> catalogoItensOrdem = [
   ItemInventario(nome: "Traje de mergulho", categoria: "I", espaco: 2.0, descricao: "Item Operacional"),
   ItemInventario(nome: "Traje espacial", categoria: "II", espaco: 5.0, descricao: "Item Operacional"),
   ItemInventario(nome: "Traje hazmat", categoria: "I", espaco: 2.0, descricao: "Item Operacional"),
-
-  // Medicamentos
-  ItemInventario(nome: "Antibiótico", categoria: "I", espaco: 0.5, descricao: "Medicamento"),
-  ItemInventario(nome: "Antídoto", categoria: "I", espaco: 0.5, descricao: "Medicamento"),
-  ItemInventario(nome: "Antiemético", categoria: "I", espaco: 0.5, descricao: "Medicamento"),
-  ItemInventario(nome: "Antihistamínico", categoria: "I", espaco: 0.5, descricao: "Medicamento"),
-  ItemInventario(nome: "Anti-inflamatório", categoria: "I", espaco: 0.5, descricao: "Medicamento"),
-  ItemInventario(nome: "Antitérmico", categoria: "I", espaco: 0.5, descricao: "Medicamento"),
-  ItemInventario(nome: "Broncodilatador", categoria: "I", espaco: 0.5, descricao: "Medicamento"),
-  ItemInventario(nome: "Coagulante", categoria: "I", espaco: 0.5, descricao: "Medicamento"),
-
-  // Itens Paranormais
-  ItemInventario(nome: "Ampliador (Catalisador)", categoria: "I", espaco: 0.5, descricao: "Item Paranormal"),
-  ItemInventario(nome: "Perturbador (Catalisador)", categoria: "I", espaco: 0.5, descricao: "Item Paranormal"),
-  ItemInventario(nome: "Potencializador (Catalisador)", categoria: "I", espaco: 0.5, descricao: "Item Paranormal"),
-  ItemInventario(nome: "Prolongador (Catalisador)", categoria: "I", espaco: 0.5, descricao: "Item Paranormal"),
-  ItemInventario(nome: "Ligação Direta Infernal", categoria: "II", espaco: 1.0, descricao: "Item Paranormal"),
-  ItemInventario(nome: "Medidor de Condição Vertebral", categoria: "II", espaco: 1.0, descricao: "Item Paranormal"),
-  ItemInventario(nome: "Pé de Morto", categoria: "II", espaco: 1.0, descricao: "Item Paranormal"),
-  ItemInventario(nome: "Pendrive selado", categoria: "II", espaco: 0.5, descricao: "Item Paranormal"),
-  ItemInventario(nome: "Valete da Salvação", categoria: "I", espaco: 0.5, descricao: "Item Paranormal"),
 ];
 
 final List<Arma> catalogoArmasOrdem = [
+  // Simples - Corpo a Corpo
+  Arma(nome: "Coronhada", dano: "1d4/1d6", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "0", espaco: 0.0, proficiencia: "Simples", empunhadura: "Leve"),
+  Arma(nome: "Faca", dano: "1d4", tipo: "Corpo a Corpo", margemAmeaca: 19, multiplicadorCritico: 2, categoria: "0", espaco: 1.0, proficiencia: "Simples", empunhadura: "Leve"),
+  Arma(nome: "Martelo", dano: "1d6", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "0", espaco: 1.0, proficiencia: "Simples", empunhadura: "Leve"),
+  Arma(nome: "Punhal", dano: "1d4", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 3, categoria: "0", espaco: 1.0, proficiencia: "Simples", empunhadura: "Leve"),
+  Arma(nome: "Bastão", dano: "1d6/1d8", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "0", espaco: 1.0, proficiencia: "Simples", empunhadura: "Uma Mão"),
+  Arma(nome: "Machete", dano: "1d6", tipo: "Corpo a Corpo", margemAmeaca: 19, multiplicadorCritico: 2, categoria: "0", espaco: 1.0, proficiencia: "Simples", empunhadura: "Uma Mão"),
+  Arma(nome: "Lança", dano: "1d6", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "0", espaco: 1.0, proficiencia: "Simples", empunhadura: "Uma Mão"),
+  Arma(nome: "Cajado", dano: "1d6/1d6", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "0", espaco: 2.0, proficiencia: "Simples", empunhadura: "Duas Mãos"),
   
-  // Armas Simples - Corpo a Corpo
-  Arma(nome: "Coronhada", dano: "1d4/1d6", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "0", espaco: 0.0),
-  Arma(nome: "Faca", dano: "1d4", tipo: "Corpo a Corpo", margemAmeaca: 19, multiplicadorCritico: 2, categoria: "0", espaco: 1.0),
-  Arma(nome: "Martelo", dano: "1d6", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "0", espaco: 1.0),
-  Arma(nome: "Punhal", dano: "1d4", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 3, categoria: "0", espaco: 1.0),
-  Arma(nome: "Bastão", dano: "1d6/1d8", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "0", espaco: 1.0),
-  Arma(nome: "Machete", dano: "1d6", tipo: "Corpo a Corpo", margemAmeaca: 19, multiplicadorCritico: 2, categoria: "0", espaco: 1.0),
-  Arma(nome: "Lança", dano: "1d6", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "0", espaco: 1.0),
-  Arma(nome: "Cajado", dano: "1d6/1d6", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "0", espaco: 2.0),
+  // Simples - Distância
+  Arma(nome: "Arco", dano: "1d6", tipo: "Disparo", margemAmeaca: 20, multiplicadorCritico: 3, categoria: "0", espaco: 2.0, proficiencia: "Simples", empunhadura: "Duas Mãos"),
+  Arma(nome: "Besta", dano: "1d8", tipo: "Disparo", margemAmeaca: 19, multiplicadorCritico: 2, categoria: "0", espaco: 2.0, proficiencia: "Simples", empunhadura: "Duas Mãos"),
+  Arma(nome: "Estilingue", dano: "1d4", tipo: "Disparo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "0", espaco: 1.0, proficiencia: "Simples", empunhadura: "Duas Mãos"),
+  Arma(nome: "Pregador pneumático", dano: "1d4", tipo: "Disparo", margemAmeaca: 20, multiplicadorCritico: 4, categoria: "0", espaco: 1.0, proficiencia: "Simples", empunhadura: "Uma Mão"),
+  Arma(nome: "Pistola", dano: "1d12", tipo: "Fogo", margemAmeaca: 18, multiplicadorCritico: 2, categoria: "I", espaco: 1.0, proficiencia: "Simples", empunhadura: "Leve"),
+  Arma(nome: "Revólver", dano: "2d6", tipo: "Fogo", margemAmeaca: 19, multiplicadorCritico: 3, categoria: "I", espaco: 1.0, proficiencia: "Simples", empunhadura: "Leve"),
+  Arma(nome: "Revólver compacto", dano: "2d4", tipo: "Fogo", margemAmeaca: 19, multiplicadorCritico: 3, categoria: "I", espaco: 1.0, proficiencia: "Simples", empunhadura: "Leve"),
+  Arma(nome: "Fuzil de caça", dano: "2d8", tipo: "Fogo", margemAmeaca: 19, multiplicadorCritico: 3, categoria: "I", espaco: 2.0, proficiencia: "Simples", empunhadura: "Duas Mãos"),
   
-  // Armas Simples - Disparo e Fogo
-  Arma(nome: "Arco", dano: "1d6", tipo: "Disparo", margemAmeaca: 20, multiplicadorCritico: 3, categoria: "0", espaco: 2.0),
-  Arma(nome: "Besta", dano: "1d8", tipo: "Disparo", margemAmeaca: 19, multiplicadorCritico: 2, categoria: "0", espaco: 2.0),
-  Arma(nome: "Estilingue", dano: "1d4", tipo: "Disparo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "0", espaco: 1.0),
-  Arma(nome: "Pregador pneumático", dano: "1d4", tipo: "Disparo", margemAmeaca: 20, multiplicadorCritico: 4, categoria: "0", espaco: 1.0),
-  Arma(nome: "Pistola", dano: "1d12", tipo: "Fogo", margemAmeaca: 18, multiplicadorCritico: 2, categoria: "I", espaco: 1.0),
-  Arma(nome: "Revólver", dano: "2d6", tipo: "Fogo", margemAmeaca: 19, multiplicadorCritico: 3, categoria: "I", espaco: 1.0),
-  Arma(nome: "Revólver compacto", dano: "2d4", tipo: "Fogo", margemAmeaca: 19, multiplicadorCritico: 3, categoria: "I", espaco: 1.0),
-  Arma(nome: "Fuzil de caça", dano: "2d8", tipo: "Fogo", margemAmeaca: 19, multiplicadorCritico: 3, categoria: "I", espaco: 2.0),
+  // Táticas - Corpo a Corpo
+  Arma(nome: "Machadinha", dano: "1d6", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 3, categoria: "0", espaco: 1.0, proficiencia: "Táticas", empunhadura: "Leve"),
+  Arma(nome: "Nunchaku", dano: "1d8", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "0", espaco: 1.0, proficiencia: "Táticas", empunhadura: "Leve"),
+  Arma(nome: "Baioneta", dano: "1d4", tipo: "Corpo a Corpo", margemAmeaca: 19, multiplicadorCritico: 2, categoria: "0", espaco: 1.0, proficiencia: "Táticas", empunhadura: "Leve"),
+  Arma(nome: "Faca tática", dano: "1d6", tipo: "Corpo a Corpo", margemAmeaca: 19, multiplicadorCritico: 2, categoria: "I", espaco: 1.0, proficiencia: "Táticas", empunhadura: "Leve"),
+  Arma(nome: "Gancho de carne", dano: "1d4", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 4, categoria: "0", espaco: 1.0, proficiencia: "Táticas", empunhadura: "Leve"),
+  Arma(nome: "Corrente", dano: "1d8", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "0", espaco: 1.0, proficiencia: "Táticas", empunhadura: "Uma Mão"),
+  Arma(nome: "Espada", dano: "1d8/1d10", tipo: "Corpo a Corpo", margemAmeaca: 19, multiplicadorCritico: 2, categoria: "I", espaco: 1.0, proficiencia: "Táticas", empunhadura: "Uma Mão"),
+  Arma(nome: "Florete", dano: "1d6", tipo: "Corpo a Corpo", margemAmeaca: 18, multiplicadorCritico: 2, categoria: "I", espaco: 1.0, proficiencia: "Táticas", empunhadura: "Uma Mão"),
+  Arma(nome: "Machado", dano: "1d8", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 3, categoria: "I", espaco: 1.0, proficiencia: "Táticas", empunhadura: "Uma Mão"),
+  Arma(nome: "Maça", dano: "2d4", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "I", espaco: 1.0, proficiencia: "Táticas", empunhadura: "Uma Mão"),
+  Arma(nome: "Bastão policial", dano: "1d6", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "I", espaco: 1.0, proficiencia: "Táticas", empunhadura: "Uma Mão"),
+  Arma(nome: "Picareta", dano: "1d6", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 4, categoria: "0", espaco: 1.0, proficiencia: "Táticas", empunhadura: "Uma Mão"),
   
-  // Armas Táticas - Corpo a Corpo
-  Arma(nome: "Machadinha", dano: "1d6", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 3, categoria: "0", espaco: 1.0),
-  Arma(nome: "Nunchaku", dano: "1d8", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "0", espaco: 1.0),
-  Arma(nome: "Baioneta", dano: "1d4", tipo: "Corpo a Corpo", margemAmeaca: 19, multiplicadorCritico: 2, categoria: "0", espaco: 1.0),
-  Arma(nome: "Faca tática", dano: "1d6", tipo: "Corpo a Corpo", margemAmeaca: 19, multiplicadorCritico: 2, categoria: "I", espaco: 1.0),
-  Arma(nome: "Gancho de carne", dano: "1d4", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 4, categoria: "0", espaco: 1.0),
-  Arma(nome: "Corrente", dano: "1d8", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "0", espaco: 1.0),
-  Arma(nome: "Espada", dano: "1d8/1d10", tipo: "Corpo a Corpo", margemAmeaca: 19, multiplicadorCritico: 2, categoria: "I", espaco: 1.0),
-  Arma(nome: "Florete", dano: "1d6", tipo: "Corpo a Corpo", margemAmeaca: 18, multiplicadorCritico: 2, categoria: "I", espaco: 1.0),
-  Arma(nome: "Machado", dano: "1d8", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 3, categoria: "I", espaco: 1.0),
-  Arma(nome: "Maça", dano: "2d4", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "I", espaco: 1.0),
-  Arma(nome: "Bastão policial", dano: "1d6", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "I", espaco: 1.0),
-  Arma(nome: "Picareta", dano: "1d6", tipo: "Corpo a Corpo", margemAmeaca: 20, multiplicadorCritico: 4, categoria: "0", espaco: 1.0),
-  
-  // Armas Táticas - Arremesso e Fogo
-  Arma(nome: "Shuriken", dano: "1d4", tipo: "Arremesso", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "I", espaco: 0.5),
-  Arma(nome: "Pistola pesada", dano: "2d8", tipo: "Fogo", margemAmeaca: 18, multiplicadorCritico: 2, categoria: "I", espaco: 1.0),
-  Arma(nome: "Espingarda de cano duplo", dano: "4d6", tipo: "Fogo", margemAmeaca: 20, multiplicadorCritico: 3, categoria: "II", espaco: 2.0),
+  // Táticas - Arremesso e Fogo
+  Arma(nome: "Shuriken", dano: "1d4", tipo: "Arremesso", margemAmeaca: 20, multiplicadorCritico: 2, categoria: "I", espaco: 0.5, proficiencia: "Táticas", empunhadura: "Leve"),
+  Arma(nome: "Pistola pesada", dano: "2d8", tipo: "Fogo", margemAmeaca: 18, multiplicadorCritico: 2, categoria: "I", espaco: 1.0, proficiencia: "Táticas", empunhadura: "Uma Mão"),
+  Arma(nome: "Espingarda de cano duplo", dano: "4d6", tipo: "Fogo", margemAmeaca: 20, multiplicadorCritico: 3, categoria: "II", espaco: 2.0, proficiencia: "Táticas", empunhadura: "Duas Mãos"),
 ];

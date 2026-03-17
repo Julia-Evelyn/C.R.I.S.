@@ -37,7 +37,6 @@ class _FichaAgenteState extends State<FichaAgente> {
   List<String> poderesEscolhidos = [];
   List<String> periciasClasse = [];
 
-  // CORREÇÃO: O agente agora começa sem classe definida!
   String classeAtual = '--', origemAtual = 'academico';
   String? fotoPath;
   String? afinidadeAtual;
@@ -51,15 +50,24 @@ class _FichaAgenteState extends State<FichaAgente> {
 
   int _abaAtual = 0;
 
-  Color get corFundoAfinidade => afinidadeAtual == 'Morte'
+  // --- CORREÇÃO: Usando a função oficial de Estilo para evitar letras invisíveis! ---
+  Color get corDestaque => afinidadeAtual == 'Morte'
       ? Colors.white
       : EstiloParanormal.corTema(afinidadeAtual);
-  Color get corTextoAfinidade =>
-      (afinidadeAtual == 'Morte' || afinidadeAtual == 'Conhecimento')
+  Color get corFundoAfinidade => afinidadeAtual == 'Morte'
       ? Colors.black
-      : Colors.white;
+      : EstiloParanormal.corTema(afinidadeAtual);
+  Color get corTextoAfinidade => afinidadeAtual == 'Morte'
+      ? Colors.white
+      : EstiloParanormal.corTextoTema(afinidadeAtual);
 
-  int get espacoMaximo => forc == 0 ? 2 : forc * 5;
+  int get espacoMaximo {
+    int base = forc == 0 ? 2 : forc * 5;
+    if (poderesEscolhidos.contains("Mochileiro")) {
+      base += 5;
+    }
+    return base;
+  }
 
   double get espacoOcupado {
     double espItens = inventario.fold(
@@ -184,7 +192,6 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
       }
     }
-
     atualizarFicha(isInitialLoad: true);
   }
 
@@ -285,7 +292,7 @@ class _FichaAgenteState extends State<FichaAgente> {
     int resultadoFinal = valorAtrib == 0
         ? resultados.reduce(min)
         : resultados.reduce(max);
-    Color corDoPopUp = corFundoAfinidade;
+    Color corDoPopUp = corDestaque;
 
     String mensagemCritico = "";
     Color corNumero = Colors.white;
@@ -409,6 +416,7 @@ class _FichaAgenteState extends State<FichaAgente> {
   void _mostrarDialogPericiasClasse(String novaClasse) {
     Color corTemaLocal = corFundoAfinidade;
     Color corLetra = corTextoAfinidade;
+    Color corDestaqueLocal = corDestaque;
 
     int maxLivres = 1;
     if (novaClasse == 'combatente') maxLivres = max(1, 1 + inte);
@@ -445,8 +453,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                 .toList();
 
             bool podeConfirmar = selecionadasLivres.length == maxLivres;
-            if (novaClasse == 'especialista' &&
-                selecionadasPerito.length != 2) {
+            if (novaClasse == 'especialista' && selecionadasPerito.length != 2) {
               podeConfirmar = false;
             }
 
@@ -454,7 +461,9 @@ class _FichaAgenteState extends State<FichaAgente> {
               backgroundColor: const Color(0xFF1A1A1A),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: corTemaLocal.withValues(alpha: 0.3)),
+                side: BorderSide(
+                  color: corDestaqueLocal.withValues(alpha: 0.3),
+                ),
               ),
               insetPadding: const EdgeInsets.all(16),
               child: SingleChildScrollView(
@@ -468,7 +477,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: corTemaLocal,
+                        color: corDestaqueLocal,
                         letterSpacing: 1.2,
                       ),
                     ),
@@ -571,7 +580,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                             style: TextStyle(
                               fontSize: 12,
                               color: isSelected
-                                  ? Colors.black
+                                  ? corLetra
                                   : Colors.grey.shade400,
                               fontWeight: isSelected
                                   ? FontWeight.bold
@@ -583,7 +592,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                           backgroundColor: const Color(0xFF1A1A1A),
                           side: BorderSide(
                             color: isSelected
-                                ? corTemaLocal
+                                ? corDestaqueLocal
                                 : Colors.grey.shade800,
                           ),
                           onSelected: (selected) {
@@ -686,9 +695,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                             ),
                             onPressed: () {
                               Navigator.pop(context);
-                              setState(
-                                () {},
-                              ); // CORREÇÃO: Força a tela a voltar para a opção visual antiga se cancelar
+                              setState(() {});
                             },
                             child: const Text(
                               "CANCELAR",
@@ -709,6 +716,9 @@ class _FichaAgenteState extends State<FichaAgente> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
+                              side: afinidadeAtual == 'Morte'
+                                  ? const BorderSide(color: Colors.white54)
+                                  : null,
                             ),
                             onPressed: podeConfirmar
                                 ? () {
@@ -808,6 +818,7 @@ class _FichaAgenteState extends State<FichaAgente> {
 
     Color corTemaLocal = corFundoAfinidade;
     Color corLetra = corTextoAfinidade;
+    Color corDestaqueLocal = corDestaque;
 
     List<String> categoriasPrincipais = [
       "Gerais",
@@ -879,7 +890,9 @@ class _FichaAgenteState extends State<FichaAgente> {
               backgroundColor: const Color(0xFF1A1A1A),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: corTemaLocal.withValues(alpha: 0.3)),
+                side: BorderSide(
+                  color: corDestaqueLocal.withValues(alpha: 0.3),
+                ),
               ),
               insetPadding: const EdgeInsets.all(16),
               child: Container(
@@ -891,14 +904,14 @@ class _FichaAgenteState extends State<FichaAgente> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.bolt, color: corTemaLocal, size: 28),
+                        Icon(Icons.bolt, color: corDestaqueLocal, size: 28),
                         const SizedBox(width: 12),
                         Text(
                           "PODERES",
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: corTemaLocal,
+                            color: corDestaqueLocal,
                             letterSpacing: 1.5,
                           ),
                         ),
@@ -913,7 +926,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                     TextField(
                       decoration: EstiloParanormal.customInputDeco(
                         "Pesquisar poder...",
-                        corTemaLocal,
+                        corDestaqueLocal,
                         Icons.search,
                       ),
                       onChanged: (val) => setDialogState(() => busca = val),
@@ -946,7 +959,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                                   backgroundColor: const Color(0xFF0D0D0D),
                                   side: BorderSide(
                                     color: filtroPrincipal == cat
-                                        ? corTemaLocal
+                                        ? corDestaqueLocal
                                         : Colors.grey.shade800,
                                   ),
                                 ),
@@ -975,7 +988,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                                 break;
                               case 'Morte':
                               default:
-                                corElemento = Colors.white;
+                                corElemento = Colors.black;
                                 break;
                             }
 
@@ -983,6 +996,10 @@ class _FichaAgenteState extends State<FichaAgente> {
                                 (cat == 'Conhecimento' || cat == 'Morte')
                                 ? Colors.black
                                 : Colors.white;
+                            if (cat == 'Morte') {
+                              corTxtSelecionado =
+                                  Colors.white; // Fundo preto = texto branco
+                            }
 
                             return Padding(
                               padding: const EdgeInsets.only(right: 8.0),
@@ -1005,7 +1022,9 @@ class _FichaAgenteState extends State<FichaAgente> {
                                 backgroundColor: const Color(0xFF0D0D0D),
                                 side: BorderSide(
                                   color: filtroParanormal == cat
-                                      ? corElemento
+                                      ? (cat == 'Morte'
+                                            ? Colors.white54
+                                            : corElemento)
                                       : Colors.grey.shade900,
                                 ),
                               ),
@@ -1093,7 +1112,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                                             Text(
                                               "Pré-req: ${p.preRequisitos}",
                                               style: TextStyle(
-                                                color: corTemaLocal,
+                                                color: corDestaqueLocal,
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.bold,
                                               ),
@@ -1105,7 +1124,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                                         upandoAfinidade
                                             ? Icons.upgrade
                                             : Icons.add_circle,
-                                        color: corTemaLocal,
+                                        color: corDestaqueLocal,
                                       ),
                                       onTap: () {
                                         setState(() {
@@ -1146,6 +1165,7 @@ class _FichaAgenteState extends State<FichaAgente> {
     String busca = "";
     Color corTemaLocal = corFundoAfinidade;
     Color corLetra = corTextoAfinidade;
+    Color corDestaqueLocal = corDestaque;
 
     List<String> categorias = [
       "Todos",
@@ -1215,7 +1235,9 @@ class _FichaAgenteState extends State<FichaAgente> {
               backgroundColor: const Color(0xFF1A1A1A),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: corTemaLocal.withValues(alpha: 0.3)),
+                side: BorderSide(
+                  color: corDestaqueLocal.withValues(alpha: 0.3),
+                ),
               ),
               insetPadding: const EdgeInsets.all(16),
               child: Container(
@@ -1227,14 +1249,18 @@ class _FichaAgenteState extends State<FichaAgente> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.inventory_2, color: corTemaLocal, size: 28),
+                        Icon(
+                          Icons.inventory_2,
+                          color: corDestaqueLocal,
+                          size: 28,
+                        ),
                         const SizedBox(width: 12),
                         Text(
                           "ARSENAL",
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: corTemaLocal,
+                            color: corDestaqueLocal,
                             letterSpacing: 1.5,
                           ),
                         ),
@@ -1249,7 +1275,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                     TextField(
                       decoration: EstiloParanormal.customInputDeco(
                         "Pesquisar equipamento...",
-                        corTemaLocal,
+                        corDestaqueLocal,
                         Icons.search,
                       ),
                       onChanged: (val) => setDialogState(() => busca = val),
@@ -1280,7 +1306,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                                   backgroundColor: const Color(0xFF0D0D0D),
                                   side: BorderSide(
                                     color: filtroAtual == cat
-                                        ? corTemaLocal
+                                        ? corDestaqueLocal
                                         : Colors.grey.shade800,
                                   ),
                                 ),
@@ -1328,7 +1354,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                                     ),
                                     trailing: Icon(
                                       Icons.add_circle,
-                                      color: corTemaLocal,
+                                      color: corDestaqueLocal,
                                     ),
                                     onTap: () {
                                       Navigator.pop(context);
@@ -1404,6 +1430,7 @@ class _FichaAgenteState extends State<FichaAgente> {
     String periciaSelecionada = listaPericias.first.id;
     String nomePericia = listaPericias.first.nome;
     Color corTemaLocal = corFundoAfinidade;
+    Color corDestaqueLocal = corDestaque;
 
     showDialog(
       context: context,
@@ -1413,16 +1440,16 @@ class _FichaAgenteState extends State<FichaAgente> {
           backgroundColor: const Color(0xFF1A1A1A),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: corTemaLocal.withValues(alpha: 0.3)),
+            side: BorderSide(color: corDestaqueLocal.withValues(alpha: 0.3)),
           ),
           title: Row(
             children: [
-              Icon(Icons.checkroom, color: corTemaLocal),
+              Icon(Icons.checkroom, color: corDestaqueLocal),
               const SizedBox(width: 8),
               Text(
                 "Costurar Vestimenta",
                 style: TextStyle(
-                  color: corTemaLocal,
+                  color: corDestaqueLocal,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1442,7 +1469,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                 style: const TextStyle(color: Colors.white),
                 decoration: EstiloParanormal.customInputDeco(
                   "Perícia",
-                  corTemaLocal,
+                  corDestaqueLocal,
                   Icons.star,
                 ),
                 items: listaPericias
@@ -1464,6 +1491,9 @@ class _FichaAgenteState extends State<FichaAgente> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: corTemaLocal,
                 foregroundColor: corTextoAfinidade,
+                side: afinidadeAtual == 'Morte'
+                    ? const BorderSide(color: Colors.white54)
+                    : null,
               ),
               onPressed: () {
                 setState(() {
@@ -1489,6 +1519,7 @@ class _FichaAgenteState extends State<FichaAgente> {
   void _configurarAdicaoEquipamento(dynamic equipamentoBase) {
     Color corTemaLocal = corFundoAfinidade;
     Color corLetra = corTextoAfinidade;
+    Color corDestaqueLocal = corDestaque;
 
     bool isArma = equipamentoBase is Arma;
 
@@ -1499,7 +1530,7 @@ class _FichaAgenteState extends State<FichaAgente> {
           backgroundColor: const Color(0xFF1A1A1A),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: corTemaLocal.withValues(alpha: 0.3)),
+            side: BorderSide(color: corDestaqueLocal.withValues(alpha: 0.3)),
           ),
           insetPadding: const EdgeInsets.all(16),
           child: SingleChildScrollView(
@@ -1513,7 +1544,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: corTemaLocal,
+                    color: corDestaqueLocal,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1558,6 +1589,9 @@ class _FichaAgenteState extends State<FichaAgente> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
+                          side: afinidadeAtual == 'Morte'
+                              ? const BorderSide(color: Colors.white54)
+                              : null,
                         ),
                         onPressed: () {
                           Navigator.pop(context);
@@ -1614,6 +1648,7 @@ class _FichaAgenteState extends State<FichaAgente> {
   ) {
     Color corTemaLocal = corFundoAfinidade;
     Color corLetra = corTextoAfinidade;
+    Color corDestaqueLocal = corDestaque;
 
     bool isArma = equipamento is Arma;
     bool isMunicao =
@@ -1685,7 +1720,9 @@ class _FichaAgenteState extends State<FichaAgente> {
               backgroundColor: const Color(0xFF1A1A1A),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: corTemaLocal.withValues(alpha: 0.3)),
+                side: BorderSide(
+                  color: corDestaqueLocal.withValues(alpha: 0.3),
+                ),
               ),
               insetPadding: const EdgeInsets.all(16),
               child: SingleChildScrollView(
@@ -1696,7 +1733,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.build, color: corTemaLocal, size: 28),
+                        Icon(Icons.build, color: corDestaqueLocal, size: 28),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
@@ -1704,7 +1741,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: corTemaLocal,
+                              color: corDestaqueLocal,
                             ),
                           ),
                         ),
@@ -1723,7 +1760,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                         Text(
                           "MODIFICAÇÕES",
                           style: TextStyle(
-                            color: corTemaLocal,
+                            color: corDestaqueLocal,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -1750,7 +1787,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                             style: TextStyle(
                               fontSize: 12,
                               color: isSelected
-                                  ? Colors.black
+                                  ? corLetra
                                   : Colors.grey.shade400,
                               fontWeight: isSelected
                                   ? FontWeight.bold
@@ -1762,7 +1799,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                           backgroundColor: const Color(0xFF1A1A1A),
                           side: BorderSide(
                             color: isSelected
-                                ? corTemaLocal
+                                ? corDestaqueLocal
                                 : Colors.grey.shade800,
                           ),
                           onSelected: (selected) {
@@ -1811,6 +1848,9 @@ class _FichaAgenteState extends State<FichaAgente> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
+                              side: afinidadeAtual == 'Morte'
+                                  ? const BorderSide(color: Colors.white54)
+                                  : null,
                             ),
                             onPressed: () {
                               setState(() {
@@ -1856,6 +1896,7 @@ class _FichaAgenteState extends State<FichaAgente> {
 
     Color corTemaLocal = corFundoAfinidade;
     Color corLetra = corTextoAfinidade;
+    Color corDestaqueLocal = corDestaque;
 
     showDialog(
       context: context,
@@ -1863,7 +1904,7 @@ class _FichaAgenteState extends State<FichaAgente> {
         backgroundColor: const Color(0xFF1A1A1A),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: corTemaLocal.withValues(alpha: 0.3)),
+          side: BorderSide(color: corDestaqueLocal.withValues(alpha: 0.3)),
         ),
         insetPadding: const EdgeInsets.all(16),
         child: SingleChildScrollView(
@@ -1876,7 +1917,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                 children: [
                   Icon(
                     isArma ? Icons.colorize : Icons.backpack,
-                    color: corTemaLocal,
+                    color: corDestaqueLocal,
                     size: 28,
                   ),
                   const SizedBox(width: 12),
@@ -1885,7 +1926,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: corTemaLocal,
+                      color: corDestaqueLocal,
                       letterSpacing: 1.5,
                     ),
                   ),
@@ -1895,7 +1936,7 @@ class _FichaAgenteState extends State<FichaAgente> {
               TextField(
                 decoration: EstiloParanormal.customInputDeco(
                   "Nome",
-                  corTemaLocal,
+                  corDestaqueLocal,
                   Icons.edit,
                 ),
                 onChanged: (val) => nome = val,
@@ -1909,7 +1950,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                         initialValue: tipo,
                         decoration: EstiloParanormal.customInputDeco(
                           "Tipo",
-                          corTemaLocal,
+                          corDestaqueLocal,
                           Icons.category,
                         ),
                         items: ["Corpo a Corpo", "Fogo", "Arremesso", "Disparo"]
@@ -1925,7 +1966,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                       child: TextField(
                         decoration: EstiloParanormal.customInputDeco(
                           "Dano",
-                          corTemaLocal,
+                          corDestaqueLocal,
                           Icons.casino,
                         ),
                         onChanged: (val) => dano = val,
@@ -1940,7 +1981,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                       child: TextField(
                         decoration: EstiloParanormal.customInputDeco(
                           "Margem",
-                          corTemaLocal,
+                          corDestaqueLocal,
                           Icons.warning_amber,
                         ),
                         keyboardType: TextInputType.number,
@@ -1952,7 +1993,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                       child: TextField(
                         decoration: EstiloParanormal.customInputDeco(
                           "Crítico (x)",
-                          corTemaLocal,
+                          corDestaqueLocal,
                           Icons.close,
                         ),
                         keyboardType: TextInputType.number,
@@ -1969,7 +2010,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                         initialValue: proficiencia,
                         decoration: EstiloParanormal.customInputDeco(
                           "Proficiência",
-                          corTemaLocal,
+                          corDestaqueLocal,
                           Icons.military_tech,
                         ),
                         items: ["Simples", "Táticas", "Pesadas"]
@@ -1986,7 +2027,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                         initialValue: empunhadura,
                         decoration: EstiloParanormal.customInputDeco(
                           "Empunhadura",
-                          corTemaLocal,
+                          corDestaqueLocal,
                           Icons.front_hand,
                         ),
                         items: ["Leve", "Uma Mão", "Duas Mãos"]
@@ -2008,7 +2049,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                       initialValue: categoria,
                       decoration: EstiloParanormal.customInputDeco(
                         "Categoria",
-                        corTemaLocal,
+                        corDestaqueLocal,
                         Icons.format_list_bulleted,
                       ),
                       items: ["0", "I", "II", "III", "IV"]
@@ -2024,7 +2065,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                     child: TextField(
                       decoration: EstiloParanormal.customInputDeco(
                         "Espaço",
-                        corTemaLocal,
+                        corDestaqueLocal,
                         Icons.scale,
                       ),
                       keyboardType: const TextInputType.numberWithOptions(
@@ -2041,7 +2082,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                 TextField(
                   decoration: EstiloParanormal.customInputDeco(
                     "Detalhes / Efeitos",
-                    corTemaLocal,
+                    corDestaqueLocal,
                     Icons.info_outline,
                   ),
                   maxLines: 3,
@@ -2084,6 +2125,9 @@ class _FichaAgenteState extends State<FichaAgente> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
+                        side: afinidadeAtual == 'Morte'
+                            ? const BorderSide(color: Colors.white54)
+                            : null,
                       ),
                       onPressed: () {
                         if (nome.isNotEmpty) {
@@ -2155,7 +2199,6 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
       }
 
-      // TRAVA AS PERÍCIAS DE CLASSE!
       for (var p in listaPericias) {
         if (periciasClasse.contains(p.id)) {
           if (p.treino < 5) p.treino = 5;
@@ -2165,8 +2208,8 @@ class _FichaAgenteState extends State<FichaAgente> {
       var stats = dadosClasses[classeAtual];
       if (stats != null) {
         int nivel = (nex / 5).toInt();
-        pvMax = stats.pvBase + vig + (stats.pvPorNivel * (nivel - 1));
-        peMax = stats.peBase + pre + (stats.pePorNivel * (nivel - 1));
+        pvMax = stats.pvBase + (vig * nivel) + (stats.pvPorNivel * (nivel - 1));
+        peMax = stats.peBase + (pre * nivel) + (stats.pePorNivel * (nivel - 1));
 
         int sanidadePerdidaPorTranscender = 0;
         int quantidadePoderesParanormais = 0;
@@ -2193,7 +2236,6 @@ class _FichaAgenteState extends State<FichaAgente> {
             sanidadePerdidaPorTranscender;
         if (sanMax < 0) sanMax = 0;
       } else {
-        // CORREÇÃO: Se não tem classe, os status máximos zeram
         if (isInitialLoad && widget.agenteParaEditar == null) {
           pvMax = 0;
           peMax = 0;
@@ -2235,6 +2277,7 @@ class _FichaAgenteState extends State<FichaAgente> {
 
   void _mostrarDialogEscolherPericia(ItemInventario item) {
     String periciaSelecionada = listaPericias.first.id;
+    Color corDestaqueLocal = corDestaque;
     Color corTemaLocal = corFundoAfinidade;
 
     showDialog(
@@ -2244,16 +2287,16 @@ class _FichaAgenteState extends State<FichaAgente> {
           backgroundColor: const Color(0xFF1A1A1A),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: corTemaLocal.withValues(alpha: 0.3)),
+            side: BorderSide(color: corDestaqueLocal.withValues(alpha: 0.3)),
           ),
           title: Row(
             children: [
-              Icon(Icons.checkroom, color: corTemaLocal),
+              Icon(Icons.checkroom, color: corDestaqueLocal),
               const SizedBox(width: 8),
               Text(
                 "Vestimenta",
                 style: TextStyle(
-                  color: corTemaLocal,
+                  color: corDestaqueLocal,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -2273,7 +2316,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                 style: const TextStyle(color: Colors.white),
                 decoration: EstiloParanormal.customInputDeco(
                   "Perícia",
-                  corTemaLocal,
+                  corDestaqueLocal,
                   Icons.star,
                 ),
                 items: listaPericias
@@ -2297,6 +2340,9 @@ class _FichaAgenteState extends State<FichaAgente> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: corTemaLocal,
                 foregroundColor: corTextoAfinidade,
+                side: afinidadeAtual == 'Morte'
+                    ? const BorderSide(color: Colors.white54)
+                    : null,
               ),
               onPressed: () {
                 setState(() {
@@ -2331,11 +2377,15 @@ class _FichaAgenteState extends State<FichaAgente> {
               (i) => i.equipado && i.nome.toLowerCase().contains("vestimenta"),
             )
             .length;
-        if (equipadas >= 2) {
+        int limiteVestimentas = poderesEscolhidos.contains("Mochileiro")
+            ? 3
+            : 2;
+
+        if (equipadas >= limiteVestimentas) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text(
-                "Limite: Você só pode vestir 2 vestimentas ao mesmo tempo!",
+                "Limite: Você só pode vestir $limiteVestimentas vestimentas ao mesmo tempo!",
               ),
               backgroundColor: Colors.redAccent,
             ),
@@ -2755,8 +2805,6 @@ class _FichaAgenteState extends State<FichaAgente> {
             }
 
             int totalBonus = pericia.treino + bonusExtra;
-
-            // Lógica para esconder a opção de "Destreinado (+0)"
             bool isLocked =
                 pericia.daOrigem || periciasClasse.contains(pericia.id);
 
@@ -2960,8 +3008,11 @@ class _FichaAgenteState extends State<FichaAgente> {
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text("Poder"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: corDoPainel,
+                    backgroundColor: corFundoAfinidade,
                     foregroundColor: corTextoAfinidade,
+                    side: afinidadeAtual == 'Morte'
+                        ? const BorderSide(color: Colors.white54)
+                        : null,
                   ),
                 ),
               ),
@@ -3054,18 +3105,32 @@ class _FichaAgenteState extends State<FichaAgente> {
                         ],
                       ],
                     ),
-                    trailing: block
-                        ? null
-                        : IconButton(
-                            icon: const Icon(
-                              Icons.delete,
-                              color: Colors.redAccent,
-                            ),
-                            onPressed: () {
-                              setState(() => poderesEscolhidos.removeAt(index));
-                              atualizarFicha();
-                            },
+                    trailing: (() {
+                      bool isPoderDeClasse =
+                          nomeBase == "Ataque Especial" ||
+                          nomeBase == "Eclético" ||
+                          nomeBase == "Perito" ||
+                          nomeBase == "Escolhido pelo Outro Lado";
+                      if (block) return null;
+                      if (isPoderDeClasse) {
+                        return const Icon(
+                          Icons.lock,
+                          color: Colors.grey,
+                          size: 20,
+                        );
+                      } else {
+                        return IconButton(
+                          icon: const Icon(
+                            Icons.delete,
+                            color: Colors.redAccent,
                           ),
+                          onPressed: () {
+                            setState(() => poderesEscolhidos.removeAt(index));
+                            atualizarFicha();
+                          },
+                        );
+                      }
+                    })(),
                   ),
                 );
               },
@@ -3206,8 +3271,11 @@ class _FichaAgenteState extends State<FichaAgente> {
                     icon: const Icon(Icons.add, size: 18),
                     label: const Text("Equipamento"),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: corDoPainel,
+                      backgroundColor: corFundoAfinidade,
                       foregroundColor: corTextoAfinidade,
+                      side: afinidadeAtual == 'Morte'
+                          ? const BorderSide(color: Colors.white54)
+                          : null,
                     ),
                   ),
               ],
@@ -3495,7 +3563,7 @@ class _FichaAgenteState extends State<FichaAgente> {
   @override
   Widget build(BuildContext context) {
     bool block = _modoVisualizacao;
-    Color corDoPainel = corFundoAfinidade;
+    Color corDoPainel = corDestaque;
 
     Widget conteudoDaAba;
     switch (_abaAtual) {
@@ -3687,7 +3755,7 @@ class _FichaAgenteState extends State<FichaAgente> {
     bool isVisu,
     Function(String) onChanged,
   ) {
-    Color corDoPopUp = corFundoAfinidade;
+    Color corDoPopUp = corDestaque;
     return GestureDetector(
       onTap: isVisu ? () => _rolarDado(label, value) : null,
       child: SizedBox(

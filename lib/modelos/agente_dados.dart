@@ -38,8 +38,8 @@ class ItemInventario {
       c = 3;
     } else if (categoria == 'IV') {
       c = 4;
+      c += modificacoes.length;
     }
-    c += modificacoes.length;
     if (c >= 4) return 'IV';
     if (c == 3) return 'III';
     if (c == 2) return 'II';
@@ -52,7 +52,11 @@ class ItemInventario {
     if (modificacoes.contains("Discreta")) e -= 1.0;
     if (modificacoes.contains("Blindada")) e += 1.0;
     if (modificacoes.contains("Reforçada")) e += 1.0;
-    return e < 0 ? 0 : e;
+
+    // CORREÇÃO: Permite que a Mochila (peso -2) funcione livremente!
+    // Mas impede que um item normal fique com peso negativo por causa de "Discreta".
+    if (espaco >= 0 && e < 0) return 0;
+    return e;
   }
 
   Map<String, dynamic> toJson() => {
@@ -113,8 +117,8 @@ class Arma {
       c = 3;
     } else if (categoria == 'IV') {
       c = 4;
+      c += modificacoes.length;
     }
-    c += modificacoes.length;
     if (c >= 4) return 'IV';
     if (c == 3) return 'III';
     if (c == 2) return 'II';
@@ -125,7 +129,8 @@ class Arma {
   double get espacoEfetivo {
     double e = espaco;
     if (modificacoes.contains("Discreta")) e -= 1.0;
-    return e < 0 ? 0 : e;
+    if (espaco >= 0 && e < 0) return 0;
+    return e;
   }
 
   Map<String, dynamic> toJson() => {
@@ -208,7 +213,11 @@ class AgenteDados {
     'afinidade': afinidade,
     'nex': nex,
     'prestigio': prestigio,
-    'agi': agi, 'forc': forc, 'inte': inte, 'pre': pre, 'vig': vig,
+    'agi': agi,
+    'forc': forc,
+    'inte': inte,
+    'pre': pre,
+    'vig': vig,
     'pvAtual': pvAtual,
     'peAtual': peAtual,
     'sanAtual': sanAtual,

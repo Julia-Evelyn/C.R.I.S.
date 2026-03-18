@@ -7,27 +7,26 @@ Modificação / Efeito
 
 ----------------------------------------------------------------
 
-Itens Paranormais:
-Nome / Categoria / Espaços
-
-- Amarras de (elemento) II 1
-- Câmera de aura paranormal II 1
-- Componentes ritualísticos de (elemento) 0 1
-- Emissor de pulsos paranormais II 1
-- Escuta de ruídos paranormais II 1
-- Medidor de estabilidade da membrana II 1
-- Scanner de manifestação paranormal de (elemento) II 1
-- Catalisadores ritualísticos de (elemento)
-    . Ampliador I 0,5
-    . Perturbador I 0,5
-    . Potencializador I 0,5
-    . Prolongador I 0,5
-- Ligação Direta Infernal II 1
-- Medidor de Condição Vertebral II 1
-- Pé de Morto II 1
-- Pendrive selado II 0,5
-- Valete da Salvação I 0,5
-
-
-
 ====================================================================
+
+Falta fazer:
+
+- Add popup quando ganhar poder novo, atributo e melhoria de perícia
+- Lógica das melhorias de itens e Armas 
+- Lógica em cada poder de origem
+- Lógica de cada poder (geral, de classe e paranormal)
+- Criar trilha de cada classe
+- Adicionar todos os rituais
+- Add poder criar poder geral, paranormal, de classe e ritual personalizado
+- Fazer a área de detalhes do backstory do personagem (fazer opção de baixar versão pdf das anotações, 100% formatada e bonita pra enviar pro mestre)
+- Aba de perícias mostrar detalhe sobre cada perícia
+- Poder girar perícia na aba de perícias
+- Na área de ataques, mostrar listinha com ações diversas (investida, manobra, etc)
+- Add resto dos itens paranormais, armas e origens
+- Concertar sapoha de nex 100 q n existe na lore de ordem
+- Mostar pe/rodada e deslocamento
+- Limitar quantidade de atributos
+- Configurar maldições
+- Quando aumentar atributo de int, aparecer popup falando q pode escolher outra perícia
+- Permitir equipar, desequipar item no modo de visualização
+- Concertar de novo a poha do tema de morte e o padrão dos agentes ----- FEITO

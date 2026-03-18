@@ -315,7 +315,7 @@ final Map<String, DadosOrigem> dadosOrigens = {
   ),
 };
 
-// --- BASE DE PERÍCIAS PARA A FICHA ---
+// BASE DE PERÍCIAS PARA A FICHA ---
 final List<Map<String, String>> periciasBase = [
   {"nome": "Acrobacia", "atributo": "AGI", "id": "acrobacia"},
   {"nome": "Adestramento", "atributo": "PRE", "id": "adestramento"},

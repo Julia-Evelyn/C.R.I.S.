@@ -12,7 +12,7 @@ class Poder {
   });
 }
 
-// --- PODERES DE CLASSE E GERAIS ---
+// PODERES GERAIS
 
 final List<Poder> catalogoPoderesGerais = [
   Poder(
@@ -280,6 +280,8 @@ final List<Poder> catalogoPoderesGerais = [
   ),
 ];
 
+// PODERES DE COMBATENTE
+
 final List<Poder> catalogoPoderesCombatente = [
   Poder(
     nome: "Apego Angustiado",
@@ -440,6 +442,8 @@ final List<Poder> catalogoPoderesCombatente = [
     descricao: "Quando faz um ataque, você pode gastar 2 PE para receber +5 no teste de ataque ou na rolagem de dano. Conforme avança de NEX, você pode gastar +1 PE para receber mais bônus de +5. Você pode aplicar cada bônus de +5 em ataque ou dano.",
   ),
 ];
+
+// PODERES DE ESPECIALISTA
 
 final List<Poder> catalogoPoderesEspecialista = [
   Poder(
@@ -609,6 +613,8 @@ final List<Poder> catalogoPoderesEspecialista = [
   ),
 ];
 
+// PODERES DE OCULTISTA
+
 final List<Poder> catalogoPoderesOcultista = [
   Poder(
     nome: "Camuflar Ocultismo",
@@ -757,8 +763,9 @@ final List<Poder> catalogoPoderesOcultista = [
   ),
 ];
 
-// --- PODERES PARANORMAIS (TRANSCENDER) ---
+// PODERES PARANORMAIS
 
+// CONHECIMENTO
 final List<Poder> catalogoPoderesConhecimento = [
   Poder(
     nome: "Absorver Conhecimento",
@@ -824,6 +831,7 @@ final List<Poder> catalogoPoderesConhecimento = [
   ),
 ];
 
+// ENERGIA
 final List<Poder> catalogoPoderesEnergia = [
   Poder(
     nome: "Afortunado",
@@ -885,6 +893,7 @@ final List<Poder> catalogoPoderesEnergia = [
   ),
 ];
 
+// MORTE
 final List<Poder> catalogoPoderesMorte = [
   Poder(
     nome: "Antecipar Vitalidade",
@@ -944,6 +953,7 @@ final List<Poder> catalogoPoderesMorte = [
   ),
 ];
 
+// SANGUE
 final List<Poder> catalogoPoderesSangue = [
   Poder(
     nome: "Anatomia Insana",

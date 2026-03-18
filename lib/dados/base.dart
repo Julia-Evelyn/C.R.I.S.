@@ -140,7 +140,7 @@ final Map<String, DadosOrigem> dadosOrigens = {
     "Experimento",
     ["atletismo", "fortitude"],
     "Mutação",
-    "Você recebe resistência a dano 2 e +2 em uma perícia baseada em Força, Agilidade ou Vigor à sua escolha, mas sofre −O em Diplomacia.",
+    "Você recebe resistência a dano 2 e +2 em uma perícia baseada em Força, Agilidade ou Vigor à sua escolha, mas sofre −1d20 em Diplomacia.",
   ),
   'fanatico_por_criaturas': DadosOrigem(
     "Fanático por Criaturas",
@@ -312,6 +312,48 @@ final Map<String, DadosOrigem> dadosOrigens = {
     ["reflexos", "vontade"],
     "Cicatrizes Psicológicas",
     "Você recebe +1 de Sanidade para cada 5% de NEX.",
+  ),
+  'body_builder': DadosOrigem(
+    "Body Builder",
+    ["atletismo", "fortitude"],
+    "Saindo da Jaula",
+    "O éxtase de ir além dos limites do seu corpo é inebriante. Quando faz um teste usando Força ou Vigor (exceto Luta) você pode gastar 2 PE para receber +5 nesse teste.",
+  ),
+  'personal_trainer': DadosOrigem(
+    "Personal Trainer",
+    ["atletismo", "ciencias"],
+    "Todo Mundo Pagando 10",
+    "Você pode gastar uma ação de movimento e 2 PE para motivar sua equipe. Enquanto você estiver consciente, você e seus aliados em alcance curto recebem +2 em testes de perícia que usam Força ou Agilidade (exceto Luta e Pontaria) até o fim da cena.",
+  ),
+  'blaster': DadosOrigem(
+    "Blaster",
+    ["ciencias", "profissao"],
+    "Explosão Solidária",
+    "Seus explosivos que provocam dano causam +2d6 pontos de dano. Além disso, você pode gastar 2 PE e uma ação de interlúdio para melhorar um explosivo, aumentando a CD para resistir a ele em +5. Só é possível melhorar o mesmo explosivo uma vez.",
+  ),
+  'duble': DadosOrigem(
+    "Dublê",
+    ["pilotagem", "reflexos"],
+    "Destemido",
+    "Quando faz um teste de perícia para o qual uma falha terá como consequência direta dano ou uma condição negativa, você recebe +5 nesse teste.",
+  ),
+  'ginasta': DadosOrigem(
+    "Ginasta",
+    ["acrobacia", "reflexos"],
+    "Mobilidade Acrobática",
+    "Você recebe +2 na Defesa e seu deslocamento aumenta em +3m.",
+  ),
+  'revoltado': DadosOrigem(
+    "Revoltado",
+    ["furtividade", "vontade"],
+    "Antes Só...",
+    "Você recebe +1 na Defesa, em testes de perícias e em seu limite de PE por turno se estiver sem nenhum aliado em alcance curto.",
+  ),
+  'gauderio_abutre': DadosOrigem(
+    "Gaudério Abutre",
+    ["luta", "pilotagem"],
+    "Fraternidade Gaudéria",
+    "Uma vez por rodada, quando um aliado adjacente é alvo de um ataque ou efeito, você pode gastar 1 PE para trocar de lugar com este aliado e se tornar o alvo deste ataque ou efeito. Se fizer isso, em seu próximo turno você recebe +2 em testes de ataque contra o agressor.",
   ),
 };
 

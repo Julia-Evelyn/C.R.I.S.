@@ -11,7 +11,7 @@ import '../dados/itens.dart';
 import '../dados/poderes.dart';
 import '../componentes/estilizacao.dart';
 import '../componentes/widgets_ficha.dart';
-import '../componentes/dialogos_ficha.dart';
+import '../componentes/dialogs_ficha.dart';
 
 class FichaAgente extends StatefulWidget {
   final AgenteDados? agenteParaEditar;
@@ -39,6 +39,11 @@ class _FichaAgenteState extends State<FichaAgente> {
   List<String> poderesEscolhidos = [];
   List<String> periciasClasse = [];
 
+  // === NOVAS VARIÁVEIS DE ESTADO ===
+  Map<String, int> resistencias = {};
+  Map<String, int> bonusOrigem = {};
+  // =================================
+
   String classeAtual = '--', origemAtual = '--';
   String? fotoPath;
   String? afinidadeAtual;
@@ -49,8 +54,8 @@ class _FichaAgenteState extends State<FichaAgente> {
 
   int? _indiceAtual;
   bool _modoVisualizacao = false;
-
   int _abaAtual = 0;
+  bool sofrePenalidadeProtecao = false;
 
   Color get corDestaque {
     if (afinidadeAtual == 'Morte' ||
@@ -76,11 +81,29 @@ class _FichaAgenteState extends State<FichaAgente> {
     return Colors.black;
   }
 
+  int get limitePePorTurno {
+    int baseLimite = (nex / 5).ceil();
+    if (origemAtual == 'universitario') baseLimite += 1;
+
+    // Revoltado Sozinho
+    if (origemAtual == 'revoltado' &&
+        poderesEscolhidos.contains("Revoltado_Sozinho")) {
+      baseLimite += 1;
+    }
+
+    return baseLimite;
+  }
+
+  int get deslocamento {
+    int baseDesl = 9;
+    // Ginasta
+    if (origemAtual == 'ginasta') baseDesl += 3;
+    return baseDesl;
+  }
+
   int get espacoMaximo {
     int base = forc == 0 ? 2 : forc * 5;
-    if (poderesEscolhidos.contains("Mochileiro")) {
-      base += 5;
-    }
+    if (poderesEscolhidos.contains("Mochileiro")) base += 5;
     return base;
   }
 
@@ -121,11 +144,18 @@ class _FichaAgenteState extends State<FichaAgente> {
     return "Recruta";
   }
 
+  // --- LÓGICA: Limite de Crédito do Magnata ---
   String get limiteCredito {
-    if (prestigio >= 200) return "Ilimitado";
-    if (prestigio >= 100) return "Alto";
-    if (prestigio >= 20) return "Médio";
-    return "Baixo";
+    if (origemAtual == 'magnata') {
+      if (prestigio >= 100) return "Ilimitado";
+      if (prestigio >= 20) return "Alto";
+      return "Médio"; // Um nível acima do recruta sempre!
+    } else {
+      if (prestigio >= 200) return "Ilimitado";
+      if (prestigio >= 100) return "Alto";
+      if (prestigio >= 20) return "Médio";
+      return "Baixo";
+    }
   }
 
   Map<String, int> get limitesCategoria {
@@ -166,6 +196,47 @@ class _FichaAgenteState extends State<FichaAgente> {
     }
   }
 
+  void _mostrarNotificacao(String mensagem) {
+    final overlay = Overlay.of(context);
+    final entry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: MediaQuery.of(context).padding.top + 20,
+        left: 20,
+        right: 20,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.green.shade700,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Text(
+              mensagem,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    overlay.insert(entry);
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      entry.remove();
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -196,7 +267,6 @@ class _FichaAgenteState extends State<FichaAgente> {
       sanAtual = ag.sanAtual ?? 0;
       inventario = List.from(ag.inventario);
       armas = List.from(ag.armas);
-
       poderesEscolhidos = List.from(ag.poderes);
       periciasClasse = List.from(ag.periciasClasse);
 
@@ -308,13 +378,12 @@ class _FichaAgenteState extends State<FichaAgente> {
         ? resultados.reduce(min)
         : resultados.reduce(max);
     Color corDoPopUp = corDestaque;
-
     String mensagemCritico = "";
     Color corNumero = Colors.white;
 
     if (resultadoFinal == 20) {
       mensagemCritico = "SUCESSO CRÍTICO!";
-      corNumero = Colors.amberAccent;
+      corNumero = const Color.fromARGB(255, 63, 152, 63);
     } else if (resultadoFinal == 1) {
       mensagemCritico = "FALHA CRÍTICA!";
       corNumero = Colors.redAccent;
@@ -405,7 +474,6 @@ class _FichaAgenteState extends State<FichaAgente> {
     Color corDoTexto = (elemento == 'Conhecimento')
         ? Colors.black
         : Colors.white;
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: ElevatedButton(
@@ -464,9 +532,20 @@ class _FichaAgenteState extends State<FichaAgente> {
               return true;
             }).toList();
 
-            List<Pericia> periciasDisponiveisParaPerito = listaPericias
-                .where((p) => p.id != 'luta' && p.id != 'pontaria')
-                .toList();
+            List<Pericia> periciasDisponiveisParaPerito = listaPericias.where((
+              p,
+            ) {
+              if (p.id == 'luta' || p.id == 'pontaria') return false;
+              return p.treino > 0 ||
+                  p.daOrigem ||
+                  selecionadasLivres.contains(p.id);
+            }).toList();
+
+            selecionadasPerito.removeWhere(
+              (id) => !periciasDisponiveisParaPerito.any(
+                (pericia) => pericia.id == id,
+              ),
+            );
 
             bool podeConfirmar = selecionadasLivres.length == maxLivres;
             if (novaClasse == 'especialista' &&
@@ -652,50 +731,62 @@ class _FichaAgenteState extends State<FichaAgente> {
                       ),
                       const SizedBox(height: 4),
                       const Text(
-                        "Escolha 2 perícias treinadas para ganhar o bônus de Perito (+1d6).",
+                        "Escolha 2 perícias treinadas para ganhar o bônus de Perito (+1d6). Dica: Escolha suas perícias livres acima primeiro!",
                         style: TextStyle(color: Colors.grey, fontSize: 12),
                       ),
                       const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: periciasDisponiveisParaPerito.map((p) {
-                          bool isSelected = selecionadasPerito.contains(p.id);
-                          return FilterChip(
-                            label: Text(
-                              p.nome,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isSelected
-                                    ? Colors.black
-                                    : Colors.grey.shade400,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
+                      if (periciasDisponiveisParaPerito.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text(
+                            "Selecione suas perícias livres acima para habilitá-las aqui.",
+                            style: TextStyle(
+                              color: Colors.redAccent,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        )
+                      else
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: periciasDisponiveisParaPerito.map((p) {
+                            bool isSelected = selecionadasPerito.contains(p.id);
+                            return FilterChip(
+                              label: Text(
+                                p.nome,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isSelected
+                                      ? Colors.black
+                                      : Colors.grey.shade400,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
                               ),
-                            ),
-                            selected: isSelected,
-                            selectedColor: Colors.deepPurpleAccent,
-                            backgroundColor: const Color(0xFF1A1A1A),
-                            side: BorderSide(
-                              color: isSelected
-                                  ? Colors.deepPurpleAccent
-                                  : Colors.grey.shade800,
-                            ),
-                            onSelected: (selected) {
-                              setDialogState(() {
-                                if (selected) {
-                                  if (selecionadasPerito.length < 2) {
-                                    selecionadasPerito.add(p.id);
+                              selected: isSelected,
+                              selectedColor: Colors.deepPurpleAccent,
+                              backgroundColor: const Color(0xFF1A1A1A),
+                              side: BorderSide(
+                                color: isSelected
+                                    ? Colors.deepPurpleAccent
+                                    : Colors.grey.shade800,
+                              ),
+                              onSelected: (selected) {
+                                setDialogState(() {
+                                  if (selected) {
+                                    if (selecionadasPerito.length < 2) {
+                                      selecionadasPerito.add(p.id);
+                                    }
+                                  } else {
+                                    selecionadasPerito.remove(p.id);
                                   }
-                                } else {
-                                  selecionadasPerito.remove(p.id);
-                                }
-                              });
-                            },
-                          );
-                        }).toList(),
-                      ),
+                                });
+                              },
+                            );
+                          }).toList(),
+                        ),
                     ],
 
                     const SizedBox(height: 32),
@@ -741,7 +832,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                                 ? () {
                                     setState(() {
                                       classeAtual = novaClasse;
-
                                       poderesEscolhidos.removeWhere(
                                         (p) =>
                                             p.startsWith("Ataque Especial") ||
@@ -751,7 +841,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                                               "Escolhido pelo Outro Lado",
                                             ),
                                       );
-
                                       if (novaClasse == 'combatente') {
                                         poderesEscolhidos.add(
                                           "Ataque Especial",
@@ -799,7 +888,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                                           pericia.treino = 5;
                                         }
                                       }
-
                                       atualizarFicha();
                                     });
                                     _salvarSilencioso();
@@ -848,6 +936,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                   return true;
                 })
                 .toList();
+            filtrados.sort((a, b) => a.value.nome.compareTo(b.value.nome));
 
             return Dialog(
               backgroundColor: const Color(0xFF1A1A1A),
@@ -943,10 +1032,8 @@ class _FichaAgenteState extends State<FichaAgente> {
                                   var entry = filtrados[index];
                                   DadosOrigem org = entry.value;
                                   String keyOrigem = entry.key;
-
                                   bool isExpanded =
                                       origemExpandida == keyOrigem;
-
                                   List<String> nomesPericias = org.pericias.map(
                                     (id) {
                                       try {
@@ -1062,12 +1149,50 @@ class _FichaAgenteState extends State<FichaAgente> {
                                                         : null,
                                                   ),
                                                   onPressed: () {
-                                                    setState(() {
-                                                      origemAtual = keyOrigem;
-                                                      atualizarFicha();
-                                                    });
-                                                    _salvarSilencioso();
-                                                    Navigator.pop(context);
+                                                    // LIMPA TRIGGERS ANTIGOS DE ORIGEM AO TROCAR
+                                                    poderesEscolhidos
+                                                        .removeWhere(
+                                                          (p) =>
+                                                              p.startsWith(
+                                                                "Experimento_",
+                                                              ) ||
+                                                              p.startsWith(
+                                                                "Profetizado_",
+                                                              ) ||
+                                                              p.startsWith(
+                                                                "Colegial_",
+                                                              ),
+                                                        );
+
+                                                    // == INTERCEPTADORES DE ORIGEM ==
+                                                    if (keyOrigem ==
+                                                        'cultista_arrependido') {
+                                                      Navigator.pop(context);
+                                                      _mostrarDialogPoderCultista();
+                                                    } else if (keyOrigem ==
+                                                        'operario') {
+                                                      Navigator.pop(context);
+                                                      _mostrarDialogOperario();
+                                                    } else if (keyOrigem ==
+                                                        'experimento') {
+                                                      Navigator.pop(context);
+                                                      _mostrarDialogExperimento();
+                                                    } else if (keyOrigem ==
+                                                        'profetizado') {
+                                                      Navigator.pop(context);
+                                                      _mostrarDialogProfetizado();
+                                                    } else if (keyOrigem ==
+                                                        'engenheiro') {
+                                                      Navigator.pop(context);
+                                                      _mostrarDialogEngenheiro();
+                                                    } else {
+                                                      setState(() {
+                                                        origemAtual = keyOrigem;
+                                                        atualizarFicha();
+                                                      });
+                                                      _salvarSilencioso();
+                                                      Navigator.pop(context);
+                                                    }
                                                   },
                                                   child: const Text(
                                                     "ESCOLHER ORIGEM",
@@ -1129,7 +1254,6 @@ class _FichaAgenteState extends State<FichaAgente> {
             String filtroEfetivo = filtroPrincipal == "Poderes Paranormais"
                 ? filtroParanormal
                 : filtroPrincipal;
-
             List<Poder> listaAtiva = [];
             bool isParanormal = false;
 
@@ -1160,7 +1284,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                   !p.nome.toLowerCase().contains(busca.toLowerCase())) {
                 return false;
               }
-
               if (isParanormal) {
                 bool temAfinidade = poderesEscolhidos.contains(
                   "${p.nome} (Afinidade)",
@@ -1169,7 +1292,6 @@ class _FichaAgenteState extends State<FichaAgente> {
               } else {
                 if (poderesEscolhidos.contains(p.nome)) return false;
               }
-
               return true;
             }).toList();
 
@@ -1278,7 +1400,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                                 corElemento = Colors.black;
                                 break;
                             }
-
                             Color corTxtSelecionado =
                                 (cat == 'Conhecimento' || cat == 'Morte')
                                 ? Colors.black
@@ -1343,7 +1464,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                                   bool upandoAfinidade =
                                       isParanormal &&
                                       poderesEscolhidos.contains(p.nome);
-
                                   Color corTitulo = Colors.white;
                                   if (isParanormal) {
                                     if (filtroParanormal == 'Sangue') {
@@ -1444,6 +1564,7 @@ class _FichaAgenteState extends State<FichaAgente> {
 
   void _abrirCatalogoEquipamento({String filtroInicial = "Todos"}) {
     String filtroAtual = filtroInicial;
+    List<String> subFiltrosAtivos = [];
     String busca = "";
     Color corTemaLocal = corFundoAfinidade;
     Color corLetra = corTextoAfinidade;
@@ -1465,6 +1586,69 @@ class _FichaAgenteState extends State<FichaAgente> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            Widget buildFiltroArma(String label, List<String> opcoes) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4.0),
+                    child: Text(
+                      label.toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: opcoes.map((sub) {
+                      bool isSelected = subFiltrosAtivos.contains(sub);
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: FilterChip(
+                          label: Text(
+                            sub,
+                            style: TextStyle(
+                              color: isSelected
+                                  ? Colors.black
+                                  : Colors.grey.shade400,
+                              fontSize: 11,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: Colors.grey.shade300,
+                          backgroundColor: const Color(0xFF151515),
+                          side: BorderSide(
+                            color: isSelected
+                                ? Colors.grey.shade300
+                                : Colors.grey.shade800,
+                          ),
+                          onSelected: (val) {
+                            setDialogState(() {
+                              if (isSelected) {
+                                subFiltrosAtivos.remove(sub);
+                              } else {
+                                subFiltrosAtivos.removeWhere(
+                                  (e) => opcoes.contains(e),
+                                );
+                                subFiltrosAtivos.add(sub);
+                              }
+                            });
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              );
+            }
+
             List<dynamic> todosEquipamentos = [
               ...catalogoArmasOrdem,
               ...catalogoItensOrdem,
@@ -1475,33 +1659,50 @@ class _FichaAgenteState extends State<FichaAgente> {
                 return false;
               }
               if (filtroAtual != "Todos") {
-                if (filtroAtual == "Armas" && eq is! Arma) return false;
-                if (filtroAtual != "Armas" && eq is Arma) return false;
-                if (eq is ItemInventario) {
-                  if (filtroAtual == "Acessórios" &&
-                      (!eq.descricao.contains("Acessório") &&
-                          !eq.nome.contains("Vestimenta"))) {
-                    return false;
+                if (filtroAtual == "Armas") {
+                  if (eq is! Arma) return false;
+                  for (String sub in subFiltrosAtivos) {
+                    if (["Simples", "Táticas", "Pesadas"].contains(sub) &&
+                        eq.proficiencia != sub) {
+                      return false;
+                    }
+                    if (["Corpo a Corpo", "Fogo", "Disparo"].contains(sub) &&
+                        eq.tipo != sub) {
+                      return false;
+                    }
+                    if (["Leve", "Uma Mão", "Duas Mãos"].contains(sub) &&
+                        eq.empunhadura != sub) {
+                      return false;
+                    }
                   }
-                  if (filtroAtual == "Explosivos" &&
-                      !eq.descricao.contains("Explosivo")) {
-                    return false;
-                  }
-                  if (filtroAtual == "Itens Operacionais" &&
-                      !eq.descricao.contains("Item Operacional")) {
-                    return false;
-                  }
-                  if (filtroAtual == "Munições" &&
-                      !eq.descricao.contains("Munição")) {
-                    return false;
-                  }
-                  if (filtroAtual == "Proteções" &&
-                      !eq.descricao.contains("Proteção")) {
-                    return false;
-                  }
-                  if (filtroAtual == "Itens Paranormais" &&
-                      !eq.descricao.contains("Item Paranormal")) {
-                    return false;
+                } else {
+                  if (eq is Arma) return false;
+                  if (eq is ItemInventario) {
+                    if (filtroAtual == "Acessórios" &&
+                        (!eq.descricao.contains("Acessório") &&
+                            !eq.nome.contains("Vestimenta"))) {
+                      return false;
+                    }
+                    if (filtroAtual == "Explosivos" &&
+                        !eq.descricao.contains("Explosivo")) {
+                      return false;
+                    }
+                    if (filtroAtual == "Itens Operacionais" &&
+                        !eq.descricao.contains("Item Operacional")) {
+                      return false;
+                    }
+                    if (filtroAtual == "Munições" &&
+                        !eq.descricao.contains("Munição")) {
+                      return false;
+                    }
+                    if (filtroAtual == "Proteções" &&
+                        !eq.descricao.contains("Proteção")) {
+                      return false;
+                    }
+                    if (filtroAtual == "Itens Paranormais" &&
+                        !eq.descricao.contains("Item Paranormal")) {
+                      return false;
+                    }
                   }
                 }
               }
@@ -1558,6 +1759,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                       onChanged: (val) => setDialogState(() => busca = val),
                     ),
                     const SizedBox(height: 12),
+
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
@@ -1577,8 +1779,10 @@ class _FichaAgenteState extends State<FichaAgente> {
                                     ),
                                   ),
                                   selected: filtroAtual == cat,
-                                  onSelected: (val) =>
-                                      setDialogState(() => filtroAtual = cat),
+                                  onSelected: (val) => setDialogState(() {
+                                    filtroAtual = cat;
+                                    subFiltrosAtivos.clear();
+                                  }),
                                   selectedColor: corTemaLocal,
                                   backgroundColor: const Color(0xFF0D0D0D),
                                   side: BorderSide(
@@ -1592,7 +1796,54 @@ class _FichaAgenteState extends State<FichaAgente> {
                             .toList(),
                       ),
                     ),
-                    const SizedBox(height: 16),
+
+                    if (filtroAtual == "Armas") ...[
+                      const SizedBox(height: 16),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            buildFiltroArma("Proficiência", [
+                              "Simples",
+                              "Táticas",
+                              "Pesadas",
+                            ]),
+                            Container(
+                              height: 40,
+                              width: 1,
+                              color: Colors.grey.shade800,
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                            ),
+                            buildFiltroArma("Tipo", [
+                              "Corpo a Corpo",
+                              "Fogo",
+                              "Disparo",
+                            ]),
+                            Container(
+                              height: 40,
+                              width: 1,
+                              color: Colors.grey.shade800,
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                            ),
+                            buildFiltroArma("Empunhadura", [
+                              "Leve",
+                              "Uma Mão",
+                              "Duas Mãos",
+                            ]),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+
+                    const SizedBox(height: 8),
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
@@ -1612,93 +1863,322 @@ class _FichaAgenteState extends State<FichaAgente> {
                                 itemBuilder: (context, index) {
                                   var eq = filtrados[index];
                                   bool isArma = eq is Arma;
-                                  return ListTile(
-                                    title: Text(
-                                      eq.nome,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
+                                  String tipoItem = "";
+                                  String descLimpa = "";
+                                  if (!isArma) {
+                                    tipoItem = eq.descricao.split('.').first;
+                                    descLimpa = eq.descricao
+                                        .replaceFirst("$tipoItem.", "")
+                                        .trim();
+                                    if (descLimpa.isEmpty) descLimpa = tipoItem;
+                                  }
+
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF151515),
+                                      border: Border.all(
+                                        color: Colors.grey.shade900,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Theme(
+                                      data: Theme.of(context).copyWith(
+                                        dividerColor: Colors.transparent,
+                                      ),
+                                      child: ExpansionTile(
+                                        iconColor: corDestaqueLocal,
+                                        collapsedIconColor: Colors.grey,
+                                        tilePadding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 4,
+                                        ),
+                                        title: isArma
+                                            ? RichText(
+                                                text: TextSpan(
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.white,
+                                                    fontSize: 16,
+                                                  ),
+                                                  children: [
+                                                    TextSpan(
+                                                      text: "${eq.nome}  ",
+                                                    ),
+                                                    TextSpan(
+                                                      text:
+                                                          "${eq.proficiencia} - ${eq.tipo} - ${eq.empunhadura}",
+                                                      style: const TextStyle(
+                                                        fontSize: 10,
+                                                        color: Colors.grey,
+                                                        fontStyle:
+                                                            FontStyle.italic,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              )
+                                            : Text(
+                                                eq.nome,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                        subtitle: RichText(
+                                          text: TextSpan(
+                                            style: TextStyle(
+                                              color: corDestaqueLocal,
+                                              fontSize: 13,
+                                            ),
+                                            children: isArma
+                                                ? [
+                                                    const TextSpan(
+                                                      text: "Categoria: ",
+                                                    ),
+                                                    TextSpan(
+                                                      text:
+                                                          "${eq.categoria}   ",
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    const TextSpan(
+                                                      text: "Dano: ",
+                                                    ),
+                                                    TextSpan(
+                                                      text: "${eq.dano}   ",
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    const TextSpan(
+                                                      text: "Crítico: ",
+                                                    ),
+                                                    TextSpan(
+                                                      text:
+                                                          "x${eq.multiplicadorCritico}   ",
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    const TextSpan(
+                                                      text: "Espaços: ",
+                                                    ),
+                                                    TextSpan(
+                                                      text: eq.espaco
+                                                          .toString()
+                                                          .replaceAll('.0', ''),
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ]
+                                                : [
+                                                    const TextSpan(
+                                                      text: "Categoria: ",
+                                                    ),
+                                                    TextSpan(
+                                                      text:
+                                                          "${eq.categoria}   ",
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    const TextSpan(
+                                                      text: "Espaços: ",
+                                                    ),
+                                                    TextSpan(
+                                                      text: eq.espaco
+                                                          .toString()
+                                                          .replaceAll('.0', ''),
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ],
+                                          ),
+                                        ),
+                                        trailing: SizedBox(
+                                          width: 90,
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.end,
+                                            children: [
+                                              IconButton(
+                                                icon: Icon(
+                                                  Icons.add_circle,
+                                                  color: corDestaqueLocal,
+                                                  size: 28,
+                                                ),
+                                                onPressed: () {
+                                                  if (eq is ItemInventario &&
+                                                      (eq.nome ==
+                                                              "Catalisador ritualístico" ||
+                                                          eq.nome.contains(
+                                                            "(elemento)",
+                                                          ))) {
+                                                    if (eq.nome ==
+                                                        "Catalisador ritualístico") {
+                                                      mostrarDialogCatalisador(
+                                                        context: context,
+                                                        corDestaque:
+                                                            corDestaqueLocal,
+                                                        corTema: corTemaLocal,
+                                                        corTexto: corLetra,
+                                                        afinidadeAtual:
+                                                            afinidadeAtual,
+                                                        onConfirmar: (item) {
+                                                          _aplicarTagsOrigemItem(
+                                                            item,
+                                                          );
+                                                          setState(
+                                                            () => inventario
+                                                                .add(item),
+                                                          );
+                                                          atualizarFicha();
+                                                          _salvarSilencioso();
+                                                          _mostrarNotificacao(
+                                                            "Catalisador adicionado!",
+                                                          );
+                                                        },
+                                                      );
+                                                    } else {
+                                                      mostrarDialogElementoItem(
+                                                        context: context,
+                                                        itemBase: eq,
+                                                        corDestaque:
+                                                            corDestaqueLocal,
+                                                        corTema: corTemaLocal,
+                                                        corTexto: corLetra,
+                                                        afinidadeAtual:
+                                                            afinidadeAtual,
+                                                        onConfirmar: (item) {
+                                                          _aplicarTagsOrigemItem(
+                                                            item,
+                                                          );
+                                                          setState(
+                                                            () => inventario
+                                                                .add(item),
+                                                          );
+                                                          atualizarFicha();
+                                                          _salvarSilencioso();
+                                                          _mostrarNotificacao(
+                                                            "${item.nome} adicionado!",
+                                                          );
+                                                        },
+                                                      );
+                                                    }
+                                                  } else {
+                                                    if (eq is Arma) {
+                                                      setState(
+                                                        () => armas.add(
+                                                          Arma(
+                                                            nome: eq.nome,
+                                                            tipo: eq.tipo,
+                                                            dano: eq.dano,
+                                                            margemAmeaca:
+                                                                eq.margemAmeaca,
+                                                            multiplicadorCritico:
+                                                                eq.multiplicadorCritico,
+                                                            categoria:
+                                                                eq.categoria,
+                                                            espaco: eq.espaco,
+                                                            proficiencia:
+                                                                eq.proficiencia,
+                                                            empunhadura:
+                                                                eq.empunhadura,
+                                                            descricao:
+                                                                eq.descricao,
+                                                          ),
+                                                        ),
+                                                      );
+                                                      _salvarSilencioso();
+                                                      _mostrarNotificacao(
+                                                        "Arma adicionada!",
+                                                      );
+                                                    } else {
+                                                      _processarNovoItem(
+                                                        ItemInventario(
+                                                          nome: eq.nome,
+                                                          categoria:
+                                                              eq.categoria,
+                                                          espaco: eq.espaco,
+                                                          descricao:
+                                                              eq.descricao,
+                                                        ),
+                                                      );
+                                                    }
+                                                  }
+                                                },
+                                              ),
+                                              Icon(
+                                                Icons.expand_more,
+                                                color: corDestaqueLocal
+                                                    .withValues(alpha: 0.5),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              16,
+                                              0,
+                                              16,
+                                              16,
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.stretch,
+                                              children: [
+                                                Divider(
+                                                  color: corDestaqueLocal
+                                                      .withValues(alpha: 0.3),
+                                                  thickness: 1,
+                                                ),
+                                                const SizedBox(height: 8),
+                                                if (isArma) ...[
+                                                  Text(
+                                                    eq.descricao.isNotEmpty
+                                                        ? eq.descricao
+                                                        : "Nenhuma descrição fornecida.",
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                ] else ...[
+                                                  Text(
+                                                    tipoItem,
+                                                    style: const TextStyle(
+                                                      color: Colors.grey,
+                                                      fontStyle:
+                                                          FontStyle.italic,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    descLimpa,
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    subtitle: Text(
-                                      isArma
-                                          ? "Cat: ${eq.categoria} | Espaço: ${eq.espaco.toString().replaceAll('.0', '')} | Dano: ${eq.dano}"
-                                          : "Cat: ${eq.categoria} | Espaço: ${eq.espaco.toString().replaceAll('.0', '')} | ${eq.descricao}",
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    trailing: Icon(
-                                      Icons.add_circle,
-                                      color: corDestaqueLocal,
-                                    ),
-                                    onTap: () {
-                                      Navigator.pop(context);
-                                      // NOVA FORMA DE CHAMAR O INTERCEPTADOR (Usando a função importada)
-                                      if (eq is ItemInventario &&
-                                          (eq.nome ==
-                                                  "Catalisador ritualístico" ||
-                                              eq.nome.contains("(elemento)"))) {
-                                        if (eq.nome ==
-                                            "Catalisador ritualístico") {
-                                          mostrarDialogCatalisador(
-                                            context: context,
-                                            corDestaque: corDestaqueLocal,
-                                            corTema: corTemaLocal,
-                                            corTexto: corLetra,
-                                            afinidadeAtual: afinidadeAtual,
-                                            onConfirmar: (item) {
-                                              setState(
-                                                () => inventario.add(item),
-                                              );
-                                              atualizarFicha();
-                                              _salvarSilencioso();
-                                            },
-                                          );
-                                        } else {
-                                          mostrarDialogElementoItem(
-                                            context: context,
-                                            itemBase: eq,
-                                            corDestaque: corDestaqueLocal,
-                                            corTema: corTemaLocal,
-                                            corTexto: corLetra,
-                                            afinidadeAtual: afinidadeAtual,
-                                            onConfirmar: (item) {
-                                              setState(
-                                                () => inventario.add(item),
-                                              );
-                                              atualizarFicha();
-                                              _salvarSilencioso();
-                                            },
-                                          );
-                                        }
-                                      } else {
-                                        mostrarDialogConfigurarEquipamentoBase(
-                                          context: context,
-                                          equipamentoBase: eq,
-                                          corDestaque: corDestaqueLocal,
-                                          corTema: corTemaLocal,
-                                          corTexto: corLetra,
-                                          afinidadeAtual: afinidadeAtual,
-                                          onVoltar: () =>
-                                              _abrirCatalogoEquipamento(),
-                                          onAdicionar: (itemConfigurado) {
-                                            if (itemConfigurado is Arma) {
-                                              setState(
-                                                () =>
-                                                    armas.add(itemConfigurado),
-                                              );
-                                              _salvarSilencioso();
-                                            } else {
-                                              _processarNovoItem(
-                                                itemConfigurado,
-                                              );
-                                            }
-                                          },
-                                        );
-                                      }
-                                    },
                                   );
                                 },
                               ),
@@ -1728,7 +2208,9 @@ class _FichaAgenteState extends State<FichaAgente> {
                                 corTema: corTemaLocal,
                                 corTexto: corLetra,
                                 afinidadeAtual: afinidadeAtual,
-                                onVoltar: () => _abrirCatalogoEquipamento(),
+                                onVoltar: () => _abrirCatalogoEquipamento(
+                                  filtroInicial: filtroAtual,
+                                ),
                                 onConfirmar: (novoItem) {
                                   _processarNovoItem(novoItem);
                                 },
@@ -1758,10 +2240,15 @@ class _FichaAgenteState extends State<FichaAgente> {
                                 corTema: corTemaLocal,
                                 corTexto: corLetra,
                                 afinidadeAtual: afinidadeAtual,
-                                onVoltar: () => _abrirCatalogoEquipamento(),
+                                onVoltar: () => _abrirCatalogoEquipamento(
+                                  filtroInicial: filtroAtual,
+                                ),
                                 onConfirmar: (novaArma) {
                                   setState(() => armas.add(novaArma));
                                   _salvarSilencioso();
+                                  _mostrarNotificacao(
+                                    "Arma criada e adicionada!",
+                                  );
                                 },
                               );
                             },
@@ -1779,9 +2266,28 @@ class _FichaAgenteState extends State<FichaAgente> {
     );
   }
 
+  void _aplicarTagsOrigemItem(ItemInventario item) {
+    // RESOLVE O CRASH: Destranca a lista imutável transformando-a numa lista normal!
+    item.modificacoes = List.from(item.modificacoes);
+
+    // Engenheiro: Verifica se é o item escolhido na Origem
+    if (origemAtual == 'engenheiro' && poderesEscolhidos.contains("Engenheiro_${item.nome}")) {
+      if (!item.modificacoes.contains("Ferramenta Favorita")) item.modificacoes.add("Ferramenta Favorita");
+    }
+    // Blaster: Verifica se é um Explosivo de Dano
+    if (origemAtual == 'blaster' && item.descricao.toLowerCase().contains("explosivo")) {
+      if (item.descricao.toLowerCase().contains("dano") || item.descricao.toLowerCase().contains("d6") || item.descricao.toLowerCase().contains("d8")) {
+        if (!item.modificacoes.contains("Explosão Solidária")) item.modificacoes.add("Explosão Solidária");
+      }
+    }
+  }
+  
   void _processarNovoItem(ItemInventario novoItem) {
-    if (novoItem.nome.toLowerCase().contains("vestimenta")) {
-      mostrarDialogEscolherPericiaVestimenta(
+    _aplicarTagsOrigemItem(novoItem);
+    String nomeLower = novoItem.nome.toLowerCase();
+    if (nomeLower.contains("vestimenta") || nomeLower.contains("utensílio")) {
+      bool isVestimenta = nomeLower.contains("vestimenta");
+      mostrarDialogEscolherPericiaAprimoramento(
         context: context,
         itemBase: novoItem,
         listaPericias: listaPericias,
@@ -1789,18 +2295,578 @@ class _FichaAgenteState extends State<FichaAgente> {
         corTema: corFundoAfinidade,
         corTexto: corTextoAfinidade,
         afinidadeAtual: afinidadeAtual,
+        isVestimenta: isVestimenta,
         onConfirmar: (itemConfigurado) {
           setState(() {
             inventario.add(itemConfigurado);
             atualizarFicha();
           });
           _salvarSilencioso();
+          _mostrarNotificacao(
+            "${isVestimenta ? 'Vestimenta' : 'Utensílio'} adicionado(a)!",
+          );
         },
       );
     } else {
       setState(() => inventario.add(novoItem));
       _salvarSilencioso();
+      _mostrarNotificacao("Item adicionado!");
     }
+  }
+
+  // ================== DIALOGS ESPECÍFICOS DE ORIGENS ==================
+
+  void _mostrarDialogPoderCultista() {
+    String busca = "";
+    String filtroParanormal = "Conhecimento";
+
+    Color corTemaLocal = corFundoAfinidade;
+    Color corLetra = corTextoAfinidade;
+    Color corDestaqueLocal = corDestaque;
+
+    List<String> categoriasParanormais = [
+      "Conhecimento",
+      "Energia",
+      "Morte",
+      "Sangue",
+    ];
+
+    showDialog(
+      context: context,
+      barrierDismissible:
+          false, // Obriga a escolher um poder ou cancelar a origem
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            List<Poder> listaAtiva = [];
+            if (filtroParanormal == "Conhecimento") {
+              listaAtiva = catalogoPoderesConhecimento;
+            } else if (filtroParanormal == "Energia") {
+              listaAtiva = catalogoPoderesEnergia;
+            } else if (filtroParanormal == "Morte") {
+              listaAtiva = catalogoPoderesMorte;
+            } else if (filtroParanormal == "Sangue") {
+              listaAtiva = catalogoPoderesSangue;
+            }
+
+            List<Poder> filtrados = listaAtiva.where((p) {
+              if (busca.isNotEmpty &&
+                  !p.nome.toLowerCase().contains(busca.toLowerCase())) {
+                return false;
+              }
+              // Oculta poderes que o jogador já tem
+              if (poderesEscolhidos.contains(p.nome)) return false;
+              return true;
+            }).toList();
+
+            return Dialog(
+              backgroundColor: const Color(0xFF1A1A1A),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: corDestaqueLocal.withValues(alpha: 0.3),
+                ),
+              ),
+              insetPadding: const EdgeInsets.all(16),
+              child: Container(
+                width: double.maxFinite,
+                height: MediaQuery.of(context).size.height * 0.85,
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.bolt, color: corDestaqueLocal, size: 28),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            "PODER DO CULTISTA",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: corDestaqueLocal,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      "A origem Cultista Arrependido fornece um poder paranormal grátis. Escolha o seu abaixo:",
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      decoration: EstiloParanormal.customInputDeco(
+                        "Pesquisar poder...",
+                        corDestaqueLocal,
+                        Icons.search,
+                      ),
+                      onChanged: (val) => setDialogState(() => busca = val),
+                    ),
+                    const SizedBox(height: 12),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: categoriasParanormais.map((cat) {
+                          Color corElemento;
+                          switch (cat) {
+                            case 'Sangue':
+                              corElemento = const Color(0xFF990000);
+                              break;
+                            case 'Energia':
+                              corElemento = const Color(0xFF9900FF);
+                              break;
+                            case 'Conhecimento':
+                              corElemento = const Color(0xFFFFB300);
+                              break;
+                            case 'Morte':
+                            default:
+                              corElemento = Colors.black;
+                              break;
+                          }
+
+                          Color corTxtSelecionado =
+                              (cat == 'Conhecimento' || cat == 'Morte')
+                              ? Colors.black
+                              : Colors.white;
+                          if (cat == 'Morte') {
+                            corTxtSelecionado = Colors.white;
+                          }
+
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: ChoiceChip(
+                              label: Text(
+                                cat,
+                                style: TextStyle(
+                                  color: filtroParanormal == cat
+                                      ? corTxtSelecionado
+                                      : corElemento,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              selected: filtroParanormal == cat,
+                              onSelected: (val) =>
+                                  setDialogState(() => filtroParanormal = cat),
+                              selectedColor: corElemento,
+                              backgroundColor: const Color(0xFF0D0D0D),
+                              side: BorderSide(
+                                color: filtroParanormal == cat
+                                    ? (cat == 'Morte'
+                                          ? Colors.white54
+                                          : corElemento)
+                                    : Colors.grey.shade900,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade800),
+                        ),
+                        child: filtrados.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  "Nenhum poder encontrado.",
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: filtrados.length,
+                                itemBuilder: (context, index) {
+                                  var p = filtrados[index];
+
+                                  Color corTitulo = Colors.white;
+                                  if (filtroParanormal == 'Sangue') {
+                                    corTitulo = const Color(0xFF990000);
+                                  } else if (filtroParanormal == 'Energia') {
+                                    corTitulo = const Color(0xFF9900FF);
+                                  } else if (filtroParanormal ==
+                                      'Conhecimento') {
+                                    corTitulo = const Color(0xFFFFB300);
+                                  }
+
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      border: Border(
+                                        bottom: BorderSide(
+                                          color: Colors.grey.shade900,
+                                        ),
+                                      ),
+                                    ),
+                                    child: ListTile(
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 8,
+                                          ),
+                                      title: Text(
+                                        p.nome,
+                                        style: TextStyle(
+                                          color: corTitulo,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      subtitle: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            p.descricao,
+                                            style: const TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          if (p.preRequisitos != "Nenhum") ...[
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              "Pré-req: ${p.preRequisitos}",
+                                              style: TextStyle(
+                                                color: corDestaqueLocal,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      trailing: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: corTemaLocal,
+                                          foregroundColor: corLetra,
+                                          side: afinidadeAtual == 'Morte'
+                                              ? const BorderSide(
+                                                  color: Colors.white54,
+                                                )
+                                              : null,
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            origemAtual =
+                                                'cultista_arrependido';
+                                            poderesEscolhidos.add(p.nome);
+                                            atualizarFicha();
+                                          });
+                                          _salvarSilencioso();
+                                          Navigator.pop(context);
+                                          _mostrarNotificacao(
+                                            "Origem e Poder aplicados!",
+                                          );
+                                        },
+                                        child: const Text(
+                                          "ESCOLHER",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: const BorderSide(color: Colors.grey),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        "CANCELAR",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogOperario() {
+    List<Arma> armasValidas = catalogoArmasOrdem
+        .where(
+          (a) => a.proficiencia == 'Simples' || a.proficiencia == 'Táticas',
+        )
+        .toList();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: Text(
+            "Ferramenta de Trabalho",
+            style: TextStyle(color: corDestaque),
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: armasValidas.length,
+              itemBuilder: (ctx, i) {
+                var arma = armasValidas[i];
+                return ListTile(
+                  title: Text(
+                    arma.nome,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  onTap: () {
+                    // CORREÇÃO: A arma já nasce com uma lista mutável contendo a modificação
+                    Arma novaArma = Arma(
+                      nome: arma.nome,
+                      tipo: arma.tipo,
+                      dano: arma.dano,
+                      margemAmeaca: arma.margemAmeaca,
+                      multiplicadorCritico: arma.multiplicadorCritico,
+                      categoria: arma.categoria,
+                      espaco: arma.espaco,
+                      proficiencia: arma.proficiencia,
+                      empunhadura: arma.empunhadura,
+                      descricao: arma.descricao,
+                      modificacoes: ["Ferramenta de Trabalho"],
+                    );
+
+                    setState(() {
+                      origemAtual = 'operario';
+                      armas.add(novaArma);
+                      atualizarFicha();
+                    });
+
+                    _salvarSilencioso();
+                    Navigator.pop(context);
+                    _mostrarNotificacao(
+                      "Origem aplicada e Ferramenta adicionada!",
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                "Cancelar",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogExperimento() {
+    List<String> idsFisicos = [
+      'acrobacia',
+      'atletismo',
+      'crime',
+      'fortitude',
+      'furtividade',
+      'iniciativa',
+      'luta',
+      'pilotagem',
+      'pontaria',
+      'reflexos',
+    ];
+    List<Pericia> periciasValidas = listaPericias
+        .where((p) => idsFisicos.contains(p.id))
+        .toList();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: Text(
+            "Mutação (Experimento)",
+            style: TextStyle(color: corDestaque),
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: periciasValidas.length,
+              itemBuilder: (ctx, i) {
+                var p = periciasValidas[i];
+                return ListTile(
+                  title: Text(
+                    p.nome,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  onTap: () {
+                    setState(() {
+                      origemAtual = 'experimento';
+                      poderesEscolhidos.add("Experimento_${p.id}");
+                      atualizarFicha();
+                    });
+                    _salvarSilencioso();
+                    Navigator.pop(context);
+                    _mostrarNotificacao("Origem Experimento aplicada!");
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                "Cancelar",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogProfetizado() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: Text(
+            "Premonição (Profetizado)",
+            style: TextStyle(color: corDestaque),
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: listaPericias.length,
+              itemBuilder: (ctx, i) {
+                var p = listaPericias[i];
+                return ListTile(
+                  title: Text(
+                    p.nome,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  onTap: () {
+                    setState(() {
+                      origemAtual = 'profetizado';
+                      poderesEscolhidos.add("Profetizado_${p.id}");
+                      var pericia = listaPericias.firstWhere(
+                        (per) => per.id == p.id,
+                      );
+                      if (pericia.treino < 5) pericia.treino = 5;
+                      pericia.daOrigem = true;
+
+                      var vontade = listaPericias.firstWhere(
+                        (v) => v.id == 'vontade',
+                      );
+                      if (vontade.treino < 5) vontade.treino = 5;
+                      vontade.daOrigem = true;
+                      atualizarFicha();
+                    });
+                    _salvarSilencioso();
+                    Navigator.pop(context);
+                    _mostrarNotificacao("Origem Profetizado aplicada!");
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                "Cancelar",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogEngenheiro() {
+    // Filtra itens normais que tenham categoria maior que zero (I, II, III, etc)
+    List<dynamic> itensValidos = catalogoItensOrdem
+        .where((item) => item.categoria != '0')
+        .toList();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: Text(
+            "Ferramenta Favorita (Engenheiro)",
+            style: TextStyle(color: corDestaque),
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: itensValidos.length,
+              itemBuilder: (ctx, i) {
+                var item = itensValidos[i] as ItemInventario;
+                return ListTile(
+                  title: Text(
+                    item.nome,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  subtitle: Text(
+                    "Categoria: ${item.categoria}",
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                  onTap: () {
+                    setState(() {
+                      origemAtual = 'engenheiro';
+                      poderesEscolhidos.add("Engenheiro_${item.nome}");
+                      atualizarFicha();
+                    });
+                    _salvarSilencioso();
+                    Navigator.pop(context);
+                    _mostrarNotificacao("Origem Engenheiro aplicada!");
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                "Cancelar",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void atualizarFicha({bool isInitialLoad = false}) {
@@ -1808,6 +2874,39 @@ class _FichaAgenteState extends State<FichaAgente> {
       if (nex < 50 && afinidadeAtual != null) {
         afinidadeAtual = null;
       }
+
+      // Limpa bônus de origem e resistências
+      bonusOrigem.clear();
+      resistencias.clear();
+
+      if (origemAtual == 'diplomata') bonusOrigem['diplomacia'] = 2;
+      if (origemAtual == 'profetizado') bonusOrigem['vontade'] = 2;
+      if (origemAtual == 'colegial' &&
+          poderesEscolhidos.contains("Colegial_Perto") &&
+          !poderesEscolhidos.contains("Colegial_Morto")) {
+        for (var p in listaPericias) {
+          bonusOrigem[p.id] = 2;
+        }
+      }
+      // Revoltado Sozinho (+1 em todas as perícias)
+      if (origemAtual == 'revoltado' &&
+          poderesEscolhidos.contains("Revoltado_Sozinho")) {
+        for (var p in listaPericias) {
+          bonusOrigem[p.id] = (bonusOrigem[p.id] ?? 0) + 1;
+        }
+      }
+
+      if (origemAtual == 'experimento') resistencias['Geral'] = 2;
+      if (origemAtual == 'teorico_da_conspiracao') {
+        resistencias['Mental'] = inte;
+      }
+
+      for (String pod in poderesEscolhidos) {
+        if (pod.startsWith("Experimento_")) {
+          bonusOrigem[pod.replaceAll("Experimento_", "")] = 2;
+        }
+      }
+
       var origemData = dadosOrigens[origemAtual];
       if (origemData != null) {
         habNome = origemData.nomeHabilidade;
@@ -1844,19 +2943,22 @@ class _FichaAgenteState extends State<FichaAgente> {
       var stats = dadosClasses[classeAtual];
       if (stats != null) {
         int nivel = (nex / 5).toInt();
+
         pvMax = stats.pvBase + (vig * nivel) + (stats.pvPorNivel * (nivel - 1));
         peMax = stats.peBase + (pre * nivel) + (stats.pePorNivel * (nivel - 1));
 
-        int sanidadePerdidaPorTranscender = 0;
-        int quantidadePoderesParanormais = 0;
+        if (origemAtual == 'colegial' &&
+            poderesEscolhidos.contains("Colegial_Morto")) {
+          peMax -= nivel; // Perde -1 PE por NEX se o amigo morrer
+        }
 
+        int quantidadePoderesParanormais = 0;
         List<Poder> todosParanormais = [
           ...catalogoPoderesConhecimento,
           ...catalogoPoderesEnergia,
           ...catalogoPoderesMorte,
           ...catalogoPoderesSangue,
         ];
-
         for (String nomePoderEscolhido in poderesEscolhidos) {
           String nomeBase = nomePoderEscolhido.replaceAll(" (Afinidade)", "");
           if (todosParanormais.any((p) => p.nome == nomeBase)) {
@@ -1864,12 +2966,28 @@ class _FichaAgenteState extends State<FichaAgente> {
           }
         }
 
-        sanidadePerdidaPorTranscender =
+        int sanidadeBase = stats.sanBase;
+        if (origemAtual == 'cultista_arrependido') {
+          sanidadeBase = (sanidadeBase / 2).floor();
+          if (quantidadePoderesParanormais > 0) quantidadePoderesParanormais--;
+        }
+
+        int sanidadePerdidaPorTranscender =
             quantidadePoderesParanormais * stats.sanPorNivel;
         sanMax =
-            stats.sanBase +
+            sanidadeBase +
             (stats.sanPorNivel * (nivel - 1)) -
             sanidadePerdidaPorTranscender;
+
+        if (origemAtual == 'desgarrado') pvMax += nivel;
+        if (origemAtual == 'vitima') sanMax += nivel;
+        if (origemAtual == 'mergulhador') pvMax += 5;
+        if (origemAtual == 'universitario') {
+          peMax += 1;
+          int nexImpares = (nivel / 2).floor();
+          if (nivel >= 3) peMax += nexImpares;
+        }
+
         if (sanMax < 0) sanMax = 0;
       } else {
         if (isInitialLoad && widget.agenteParaEditar == null) {
@@ -1880,16 +2998,53 @@ class _FichaAgenteState extends State<FichaAgente> {
       }
 
       int defItens = 0;
+      int bonusBloqueioBracadeira = 0;
+      bool usaProtecaoLeve = false;
+      bool usaProtecaoPesadaOuEscudo = false;
+
       for (var item in inventario.where((i) => i.equipado)) {
         String nomeLower = item.nome.toLowerCase();
         String descLower = item.descricao.toLowerCase();
 
+        if (descLower.contains("proteção pesada")) {
+          resistencias['Balístico'] = (resistencias['Balístico'] ?? 0) + 2;
+          resistencias['Corte'] = (resistencias['Corte'] ?? 0) + 2;
+          resistencias['Impacto'] = (resistencias['Impacto'] ?? 0) + 2;
+          resistencias['Perfuração'] = (resistencias['Perfuração'] ?? 0) + 2;
+        }
+        if (nomeLower.contains("traje hazmat")) {
+          resistencias['Químico'] = (resistencias['Químico'] ?? 0) + 10;
+        }
+        if (nomeLower.contains("traje espacial")) {
+          resistencias['Químico'] = (resistencias['Químico'] ?? 0) + 20;
+        }
+
         if (descLower.contains("proteção") || nomeLower.contains("escudo")) {
-          if (nomeLower.contains("leve")) defItens += 5;
-          if (nomeLower.contains("pesada")) defItens += 10;
-          if (nomeLower.contains("escudo")) defItens += 2;
+          if (nomeLower.contains("leve")) {
+            defItens += 5;
+            usaProtecaoLeve = true;
+          }
+          if (nomeLower.contains("pesada")) {
+            defItens += 10;
+            usaProtecaoPesadaOuEscudo = true;
+          }
+          if (nomeLower.contains("escudo")) {
+            defItens += 2;
+            usaProtecaoPesadaOuEscudo = true;
+          }
           if (item.modificacoes.contains("Reforçada")) defItens += 2;
         }
+
+        if (nomeLower.contains("braçadeira reforçada")) {
+          bonusBloqueioBracadeira += 2;
+        }
+      }
+
+      sofrePenalidadeProtecao = false;
+      if (usaProtecaoPesadaOuEscudo) {
+        sofrePenalidadeProtecao = true;
+      } else if (usaProtecaoLeve && classeAtual == 'ocultista') {
+        sofrePenalidadeProtecao = true;
       }
 
       int bReflexos = 0, bFortitude = 0;
@@ -1898,9 +3053,18 @@ class _FichaAgenteState extends State<FichaAgente> {
         if (p.id == 'fortitude') bFortitude = p.treino;
       }
 
-      defesa = 10 + agi + defItens;
+      // LÓGICA: Bônus de Defesa das Origens
+      int bonusDefesaOrigem = 0;
+      if (origemAtual == 'policial') bonusDefesaOrigem += 2;
+      if (origemAtual == 'ginasta') bonusDefesaOrigem += 2;
+      if (origemAtual == 'revoltado' &&
+          poderesEscolhidos.contains("Revoltado_Sozinho")) {
+        bonusDefesaOrigem += 1;
+      }
+
+      defesa = 10 + agi + defItens + bonusDefesaOrigem;
       esquiva = defesa + bReflexos;
-      bloqueio = bFortitude;
+      bloqueio = bFortitude + bonusBloqueioBracadeira;
 
       if (isInitialLoad && widget.agenteParaEditar == null) {
         pvAtual = pvMax;
@@ -1912,8 +3076,6 @@ class _FichaAgenteState extends State<FichaAgente> {
   }
 
   void _toggleEquiparItem(ItemInventario item) {
-    if (_modoVisualizacao) return;
-
     bool isVestimenta = item.nome.toLowerCase().contains("vestimenta");
     bool isProtecao = item.descricao.toLowerCase().contains("proteção");
     bool isEscudo = item.nome.toLowerCase().contains("escudo");
@@ -1928,7 +3090,6 @@ class _FichaAgenteState extends State<FichaAgente> {
         int limiteVestimentas = poderesEscolhidos.contains("Mochileiro")
             ? 3
             : 2;
-
         if (equipadas >= limiteVestimentas) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1941,7 +3102,6 @@ class _FichaAgenteState extends State<FichaAgente> {
           return;
         }
       }
-
       if (isProtecao) {
         if (isEscudo) {
           if (maosOcupadas + 1 > 2) {
@@ -1986,7 +3146,6 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
       }
     }
-
     setState(() {
       item.equipado = !item.equipado;
       atualizarFicha();
@@ -1994,8 +3153,6 @@ class _FichaAgenteState extends State<FichaAgente> {
   }
 
   void _toggleEquiparArma(Arma arma) {
-    if (_modoVisualizacao) return;
-
     if (!arma.equipado) {
       int custoMaos = arma.empunhadura == 'Duas Mãos' ? 2 : 1;
       if (maosOcupadas + custoMaos > 2) {
@@ -2010,7 +3167,6 @@ class _FichaAgenteState extends State<FichaAgente> {
         return;
       }
     }
-
     setState(() {
       arma.equipado = !arma.equipado;
       atualizarFicha();
@@ -2045,8 +3201,7 @@ class _FichaAgenteState extends State<FichaAgente> {
 
           SecaoFicha(
             titulo: "Detalhes",
-            corTema:
-                corFundoAfinidade, // CORREÇÃO: Usando a cor de fundo correta!
+            corTema: corFundoAfinidade,
             corTexto: corTextoAfinidade,
             isMorte: afinidadeAtual == 'Morte',
             filhos: [
@@ -2139,23 +3294,131 @@ class _FichaAgenteState extends State<FichaAgente> {
                 ],
               ),
               const SizedBox(height: 16),
-              DropdownFicha(
-                label: "NEX (%)",
-                value: nex.toString(),
-                options: List.generate(20, (i) => ((i + 1) * 5).toString()),
-                onChanged: block
-                    ? null
-                    : (val) {
-                        nex = int.parse(val!);
-                        atualizarFicha();
-                      },
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: DropdownFicha(
+                      label: "NEX (%)",
+                      value: nex.toString(),
+                      options: List.generate(
+                        20,
+                        (i) => i == 19 ? "99" : ((i + 1) * 5).toString(),
+                      ),
+                      onChanged: block
+                          ? null
+                          : (val) {
+                              nex = int.parse(val!);
+                              atualizarFicha();
+                            },
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 1,
+                    child: Container(
+                      height: 58,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0D0D0D),
+                        border: Border.all(color: Colors.grey.shade600),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            "PE / Turno",
+                            style: TextStyle(color: Colors.grey, fontSize: 10),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            limitePePorTurno.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 1,
+                    child: Container(
+                      height: 58,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0D0D0D),
+                        border: Border.all(color: Colors.grey.shade600),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            "Desl.",
+                            style: TextStyle(color: Colors.grey, fontSize: 10),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "${deslocamento}m",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "PROFICIÊNCIAS DA CLASSE:",
+                    style: TextStyle(
+                      color: corDestaque,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    classeAtual == 'combatente'
+                        ? "Armas simples, armas táticas e proteções leves."
+                        : classeAtual == 'especialista'
+                        ? "Armas simples e proteções leves."
+                        : classeAtual == 'ocultista'
+                        ? "Armas simples."
+                        : "Nenhuma.",
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  if (sofrePenalidadeProtecao)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        "⚠️ PENALIDADE: Usando proteção sem proficiência. Você sofre –2d20 em testes de Força e Agilidade.",
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ],
           ),
 
           SecaoFicha(
             titulo: "Atributos ${block ? '(Toque para Rolar)' : ''}",
-            corTema: corFundoAfinidade, // CORREÇÃO
+            corTema: corFundoAfinidade,
             corTexto: corTextoAfinidade,
             isMorte: afinidadeAtual == 'Morte',
             filhos: [
@@ -2224,7 +3487,7 @@ class _FichaAgenteState extends State<FichaAgente> {
 
           SecaoFicha(
             titulo: "Status",
-            corTema: corFundoAfinidade, // CORREÇÃO
+            corTema: corFundoAfinidade,
             corTexto: corTextoAfinidade,
             isMorte: afinidadeAtual == 'Morte',
             filhos: [
@@ -2275,9 +3538,46 @@ class _FichaAgenteState extends State<FichaAgente> {
             ],
           ),
 
+          if (resistencias.isNotEmpty)
+            SecaoFicha(
+              titulo: "Resistências",
+              corTema: corFundoAfinidade,
+              corTexto: corTextoAfinidade,
+              isMorte: afinidadeAtual == 'Morte',
+              filhos: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: resistencias.entries.map((e) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF151515),
+                        border: Border.all(
+                          color: corDestaque.withValues(alpha: 0.3),
+                        ),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        "${e.key}: ${e.value}",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+
           SecaoFicha(
             titulo: "Ataques (Armas Equipadas)",
-            corTema: corFundoAfinidade, // CORREÇÃO
+            corTema: corFundoAfinidade,
             corTexto: corTextoAfinidade,
             isMorte: afinidadeAtual == 'Morte',
             filhos: [
@@ -2300,14 +3600,28 @@ class _FichaAgenteState extends State<FichaAgente> {
                       ? ""
                       : "\n⚠️ Não proficiente: -2d20 no Ataque";
                   String modDano = "";
+
+                  int bonusDano = 0;
                   if (arma.tipo == 'Corpo a Corpo' ||
                       arma.tipo == 'Arremesso') {
-                    if (forc > 0) {
-                      modDano = "+$forc";
-                    } else if (forc < 0) {
-                      modDano = "$forc";
+                    bonusDano += forc;
+                    if (origemAtual == 'lutador') {
+                      bonusDano += 2; // LÓGICA: Lutador
+                    }
+                  } else if (arma.tipo == 'Fogo' || arma.tipo == 'Disparo') {
+                    if (origemAtual == 'militar') {
+                      bonusDano += 2; // LÓGICA: Militar
                     }
                   }
+                  if (bonusDano > 0) {
+                    modDano = "+$bonusDano";
+                  } else if (bonusDano < 0) {
+                    modDano = "$bonusDano";
+                  }
+                  if (arma.modificacoes.contains("Ferramenta de Trabalho")) {
+                    alertaProf += " | +1 no Ataque";
+                  }
+
                   return Container(
                     margin: const EdgeInsets.only(top: 8),
                     decoration: BoxDecoration(
@@ -2327,7 +3641,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Dano: ${arma.dano}$modDano | Crítico: ${arma.margemAmeaca}/x${arma.multiplicadorCritico} \nTipo: ${arma.tipo}$alertaProf",
+                            "Dano: ${arma.danoEfetivo}$modDano | Crítico: ${arma.margemAmeacaEfetiva}/x${arma.multiplicadorCritico} \nTipo: ${arma.tipo}$alertaProf",
                             style: TextStyle(
                               color: isProficiente
                                   ? Colors.grey
@@ -2354,7 +3668,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                               int d20 = Random().nextInt(20) + 1;
                               Color corD20 = Colors.white;
                               String msgCrit = "";
-
                               if (d20 == 20) {
                                 corD20 = Colors.amberAccent;
                                 msgCrit = "SUCESSO CRÍTICO!";
@@ -2362,7 +3675,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                                 corD20 = Colors.redAccent;
                                 msgCrit = "FALHA CRÍTICA!";
                               }
-
                               showDialog(
                                 context: context,
                                 builder: (context) => AlertDialog(
@@ -2401,7 +3713,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                                         const TextSpan(text: "\n\n"),
                                         TextSpan(
                                           text:
-                                              "Dano: ${arma.dano}$modDano\n$alertaProf",
+                                              "Dano: ${arma.danoEfetivo}$modDano\n$alertaProf",
                                         ),
                                       ],
                                     ),
@@ -2435,7 +3747,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       child: SecaoFicha(
         titulo: "Perícias",
-        corTema: corFundoAfinidade, // CORREÇÃO
+        corTema: corFundoAfinidade,
         corTexto: corTextoAfinidade,
         isMorte: afinidadeAtual == 'Morte',
         filhos: [
@@ -2447,17 +3759,25 @@ class _FichaAgenteState extends State<FichaAgente> {
               var pericia = listaPericias[index];
 
               int bonusExtra = 0;
-              var vestimentas = inventario.where(
-                (i) => i.equipado && i.periciaVinculada == pericia.id,
-              );
-              for (var v in vestimentas) {
-                int b = v.modificacoes.contains("Aprimorada") ? 5 : 2;
-                if (b > bonusExtra) {
-                  bonusExtra = b;
-                }
+              var aprimoramentos = inventario.where((i) {
+                bool isUtensilio = i.nome.toLowerCase().contains("utensílio");
+                return i.periciaVinculada == pericia.id &&
+                    (i.equipado || isUtensilio);
+              });
+
+              for (var v in aprimoramentos) {
+                bool temModAprimorado =
+                    v.modificacoes.contains("Aprimorado") ||
+                    v.modificacoes.contains("Aprimorada");
+                int b = temModAprimorado ? 5 : 2;
+                if (b > bonusExtra) bonusExtra = b;
               }
 
-              int totalBonus = pericia.treino + bonusExtra;
+              // --- LÓGICA: Adiciona o Bônus de Origens! ---
+              int bonusDaOrigemAplicado = bonusOrigem[pericia.id] ?? 0;
+              int bonusTotalExtras = bonusExtra + bonusDaOrigemAplicado;
+              int totalBonus = pericia.treino + bonusTotalExtras;
+
               bool isLocked =
                   pericia.daOrigem || periciasClasse.contains(pericia.id);
 
@@ -2491,11 +3811,11 @@ class _FichaAgenteState extends State<FichaAgente> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (bonusExtra > 0)
+                          if (bonusTotalExtras > 0)
                             Padding(
                               padding: const EdgeInsets.only(left: 4, right: 4),
                               child: Icon(
-                                Icons.checkroom,
+                                Icons.add_circle,
                                 color: corDoPainel,
                                 size: 14,
                               ),
@@ -2560,7 +3880,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                         border: Border.all(color: Colors.grey.shade800),
                       ),
                       child: Text(
-                        "+$bonusExtra",
+                        "+$bonusTotalExtras",
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -2613,7 +3933,7 @@ class _FichaAgenteState extends State<FichaAgente> {
           if (origemAtual != '--')
             SecaoFicha(
               titulo: "Habilidade de Origem: $habNome",
-              corTema: corFundoAfinidade, // CORREÇÃO
+              corTema: corFundoAfinidade,
               corTexto: corTextoAfinidade,
               isMorte: afinidadeAtual == 'Morte',
               filhos: [
@@ -2625,13 +3945,96 @@ class _FichaAgenteState extends State<FichaAgente> {
                     color: Colors.white,
                   ),
                 ),
+
+                // LÓGICA: Switches Exclusivos do Colegial!
+                if (origemAtual == 'colegial') ...[
+                  const SizedBox(height: 16),
+                  const Divider(color: Colors.grey),
+                  SwitchListTile(
+                    title: const Text(
+                      "Amigo Próximo (+2 Perícias)",
+                      style: TextStyle(color: Colors.white, fontSize: 13),
+                    ),
+                    value: poderesEscolhidos.contains("Colegial_Perto"),
+                    activeThumbColor: corDestaque,
+                    contentPadding: EdgeInsets.zero,
+                    onChanged:
+                        block || poderesEscolhidos.contains("Colegial_Morto")
+                        ? null
+                        : (val) {
+                            setState(() {
+                              if (val) {
+                                poderesEscolhidos.add("Colegial_Perto");
+                              } else {
+                                poderesEscolhidos.remove("Colegial_Perto");
+                              }
+                              atualizarFicha();
+                            });
+                            _salvarSilencioso();
+                          },
+                  ),
+                  SwitchListTile(
+                    title: const Text(
+                      "Amigo Morreu (-PE Max)",
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    value: poderesEscolhidos.contains("Colegial_Morto"),
+                    activeThumbColor: Colors.redAccent,
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: block
+                        ? null
+                        : (val) {
+                            setState(() {
+                              if (val) {
+                                poderesEscolhidos.add("Colegial_Morto");
+                                poderesEscolhidos.remove("Colegial_Perto");
+                              } else {
+                                poderesEscolhidos.remove("Colegial_Morto");
+                              }
+                              atualizarFicha();
+                            });
+                            _salvarSilencioso();
+                          },
+                  ),
+                ],
+                // LÓGICA: Switches Exclusivos do Revoltado!
+                if (origemAtual == 'revoltado') ...[
+                  const SizedBox(height: 16),
+                  const Divider(color: Colors.grey),
+                  SwitchListTile(
+                    title: const Text(
+                      "Sem Aliados Próximos (+1 Def, +1 Perícias, +1 PE)",
+                      style: TextStyle(color: Colors.white, fontSize: 13),
+                    ),
+                    value: poderesEscolhidos.contains("Revoltado_Sozinho"),
+                    activeThumbColor: corDestaque,
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: block
+                        ? null
+                        : (val) {
+                            setState(() {
+                              if (val) {
+                                poderesEscolhidos.add("Revoltado_Sozinho");
+                              } else {
+                                poderesEscolhidos.remove("Revoltado_Sozinho");
+                              }
+                              atualizarFicha();
+                            });
+                            _salvarSilencioso();
+                          },
+                  ),
+                ],
               ],
             ),
 
           if (afinidadeAtual != null)
             SecaoFicha(
               titulo: "Afinidade Elemental",
-              corTema: corFundoAfinidade, // CORREÇÃO
+              corTema: corFundoAfinidade,
               corTexto: corTextoAfinidade,
               isMorte: afinidadeAtual == 'Morte',
               filhos: [
@@ -2670,7 +4073,7 @@ class _FichaAgenteState extends State<FichaAgente> {
 
           SecaoFicha(
             titulo: "Poderes",
-            corTema: corFundoAfinidade, // CORREÇÃO
+            corTema: corFundoAfinidade,
             corTexto: corTextoAfinidade,
             isMorte: afinidadeAtual == 'Morte',
             filhos: [
@@ -2704,6 +4107,13 @@ class _FichaAgenteState extends State<FichaAgente> {
                 itemCount: poderesEscolhidos.length,
                 itemBuilder: (context, index) {
                   String nomePoder = poderesEscolhidos[index];
+                  // Oculta as tags matemáticas de Origem da tela de poderes visuais
+                  if (nomePoder.startsWith("Experimento_") ||
+                      nomePoder.startsWith("Profetizado_") ||
+                      nomePoder.startsWith("Colegial_")) {
+                    return const SizedBox.shrink();
+                  }
+
                   String nomeBase = nomePoder;
                   if (nomePoder.startsWith("Perito (")) nomeBase = "Perito";
                   if (nomePoder.endsWith(" (Afinidade)")) {
@@ -2720,7 +4130,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                     ...catalogoPoderesMorte,
                     ...catalogoPoderesSangue,
                   ];
-
                   Poder p = todosPoderes.firstWhere(
                     (pod) => pod.nome == nomeBase,
                     orElse: () => Poder(
@@ -2980,12 +4389,21 @@ class _FichaAgenteState extends State<FichaAgente> {
                     ? ""
                     : "\n⚠️ Não proficiente: -2d20 no Ataque";
                 String modDano = "";
+
+                int bonusDano = 0;
                 if (arma.tipo == 'Corpo a Corpo' || arma.tipo == 'Arremesso') {
-                  if (forc > 0) {
-                    modDano = "+$forc";
-                  } else if (forc < 0) {
-                    modDano = "$forc";
-                  }
+                  bonusDano += forc;
+                  if (origemAtual == 'lutador') bonusDano += 2;
+                } else if (arma.tipo == 'Fogo' || arma.tipo == 'Disparo') {
+                  if (origemAtual == 'militar') bonusDano += 2;
+                }
+                if (bonusDano > 0) {
+                  modDano = "+$bonusDano";
+                } else if (bonusDano < 0) {
+                  modDano = "$bonusDano";
+                }
+                if (arma.modificacoes.contains("Ferramenta de Trabalho")) {
+                  alertaProf += " | +1 no Ataque";
                 }
 
                 return Container(
@@ -3037,6 +4455,23 @@ class _FichaAgenteState extends State<FichaAgente> {
                           ],
                         ),
                       ),
+                      trailing: SizedBox(
+                        width: 100,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Checkbox(
+                              value: arma.equipado,
+                              activeColor: corDestaque,
+                              onChanged: (val) => _toggleEquiparArma(arma),
+                            ),
+                            Icon(
+                              Icons.expand_more,
+                              color: corDestaque.withValues(alpha: 0.5),
+                            ),
+                          ],
+                        ),
+                      ),
                       children: [
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -3058,7 +4493,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                "Dano: ${arma.dano}$modDano | Crítico: ${arma.margemAmeaca}/x${arma.multiplicadorCritico}$alertaProf",
+                                "Dano: ${arma.danoEfetivo}$modDano | Crítico: ${arma.margemAmeacaEfetiva}/x${arma.multiplicadorCritico}$alertaProf",
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 14,
@@ -3124,32 +4559,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                                             ),
                                           ),
                                         ),
-                                      const SizedBox(width: 8),
-                                      ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: arma.equipado
-                                              ? corFundoAfinidade
-                                              : Colors.grey.shade800,
-                                          foregroundColor: arma.equipado
-                                              ? corTextoAfinidade
-                                              : Colors.white,
-                                          side:
-                                              arma.equipado &&
-                                                  afinidadeAtual == 'Morte'
-                                              ? const BorderSide(
-                                                  color: Colors.white54,
-                                                )
-                                              : null,
-                                        ),
-                                        onPressed: block
-                                            ? null
-                                            : () => _toggleEquiparArma(arma),
-                                        child: Text(
-                                          arma.equipado
-                                              ? "Desequipar"
-                                              : "Equipar",
-                                        ),
-                                      ),
                                     ],
                                   ),
                                 ],
@@ -3171,7 +4580,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                     item.nome.toLowerCase().contains("vestimenta") ||
                     item.nome.toLowerCase().contains("escudo");
 
-                // Extrai o tipo do item da descrição para ficar charmoso (ex: "Item Operacional. Medicamento.")
                 String tipoItem = item.descricao.split('.').first;
                 String descLimpa = item.descricao
                     .replaceFirst("$tipoItem.", "")
@@ -3227,6 +4635,29 @@ class _FichaAgenteState extends State<FichaAgente> {
                           ],
                         ),
                       ),
+                      trailing: isEquipavel
+                          ? SizedBox(
+                              width: 100,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Checkbox(
+                                    value: item.equipado,
+                                    activeColor: corDestaque,
+                                    onChanged: (val) =>
+                                        _toggleEquiparItem(item),
+                                  ),
+                                  Icon(
+                                    Icons.expand_more,
+                                    color: corDestaque.withValues(alpha: 0.5),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : Icon(
+                              Icons.expand_more,
+                              color: corDestaque.withValues(alpha: 0.5),
+                            ),
                       children: [
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -3318,34 +4749,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                                             ),
                                           ),
                                         ),
-                                      if (isEquipavel) ...[
-                                        const SizedBox(width: 8),
-                                        ElevatedButton(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: item.equipado
-                                                ? corFundoAfinidade
-                                                : Colors.grey.shade800,
-                                            foregroundColor: item.equipado
-                                                ? corTextoAfinidade
-                                                : Colors.white,
-                                            side:
-                                                item.equipado &&
-                                                    afinidadeAtual == 'Morte'
-                                                ? const BorderSide(
-                                                    color: Colors.white54,
-                                                  )
-                                                : null,
-                                          ),
-                                          onPressed: block
-                                              ? null
-                                              : () => _toggleEquiparItem(item),
-                                          child: Text(
-                                            item.equipado
-                                                ? "Desequipar"
-                                                : "Usar",
-                                          ),
-                                        ),
-                                      ],
                                     ],
                                   ),
                                 ],
@@ -3364,6 +4767,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       ),
     );
   }
+
   // =========================================================================
   // WIDGETS AUXILIARES E FUNÇÕES DE BARRA FLUTUANTE
   // =========================================================================
@@ -3452,7 +4856,6 @@ class _FichaAgenteState extends State<FichaAgente> {
   Widget build(BuildContext context) {
     bool block = _modoVisualizacao;
     Color corDoPainel = corDestaque;
-
     Widget conteudoDaAba;
     switch (_abaAtual) {
       case 0:
@@ -3522,4 +4925,6 @@ class _FichaAgenteState extends State<FichaAgente> {
         )
         .toList();
   }
+
+  // ================== DIALOGS ESPECÍFICOS DE ORIGENS ==================
 }

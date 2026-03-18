@@ -6,21 +6,21 @@ import 'dados/poderes.dart';
 
 // Função para colocar tudo em ordem alfabética
 void ordenarCatalogos() {
-  catalogoItensOrdem.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));
-  catalogoArmasOrdem.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));
-  catalogoPoderesGerais.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));
-  catalogoPoderesCombatente.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));
-  catalogoPoderesEspecialista.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));
-  catalogoPoderesOcultista.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));
-  catalogoPoderesSangue.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));
-  catalogoPoderesMorte.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));  
-  catalogoPoderesEnergia.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));
-  catalogoPoderesConhecimento.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));
+  catalogoItensOrdem.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()),);
+  catalogoArmasOrdem.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()),);
+  catalogoPoderesGerais.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()),);
+  catalogoPoderesCombatente.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()),);
+  catalogoPoderesEspecialista.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()),);
+  catalogoPoderesOcultista.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()),);
+  catalogoPoderesSangue.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()),);
+  catalogoPoderesMorte.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()),);
+  catalogoPoderesEnergia.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()),);
+  catalogoPoderesConhecimento.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()),);
 }
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   ordenarCatalogos();
 
   runApp(const OrdoRealitasApp());

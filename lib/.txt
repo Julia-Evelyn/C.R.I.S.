@@ -6,27 +6,74 @@ Modificação / Efeito
 - Instrumental: O acessório funciona como um kit de perícia.
 
 ----------------------------------------------------------------
-
+Perícias que precisam de kit:
+- Enganação
+- Crime
+- Medicina 
+- Tecnologia
 ====================================================================
 
 Falta fazer:
 
-- Add popup quando ganhar poder novo, atributo e melhoria de perícia
-- Lógica das melhorias de itens e Armas 
-- Lógica em cada poder de origem
-- Lógica de cada poder (geral, de classe e paranormal)
-- Criar trilha de cada classe
-- Adicionar todos os rituais
-- Add poder criar poder geral, paranormal, de classe e ritual personalizado
-- Fazer a área de detalhes do backstory do personagem (fazer opção de baixar versão pdf das anotações, 100% formatada e bonita pra enviar pro mestre)
-- Aba de perícias mostrar detalhe sobre cada perícia
-- Poder girar perícia na aba de perícias
-- Na área de ataques, mostrar listinha com ações diversas (investida, manobra, etc)
-- Add resto dos itens paranormais, armas e origens
-- Concertar sapoha de nex 100 q n existe na lore de ordem
-- Mostar pe/rodada e deslocamento
-- Limitar quantidade de atributos
-- Configurar maldições
-- Quando aumentar atributo de int, aparecer popup falando q pode escolher outra perícia
-- Permitir equipar, desequipar item no modo de visualização
+- Lógica das melhorias de itens e Armas ----- FEITO
+- Permitir equipar, desequipar item no modo de visualização ----- FEITO
 - Concertar de novo a poha do tema de morte e o padrão dos agentes ----- FEITO
+- Add resto dos itens paranormais, armas e origens ----- FEITO
+- Lógica em cada poder de origem ----- FEITO
+- Mostar pe/rodada e deslocamento ----- FEITO
+
+- Add popup quando ganhar poder novo, atributo e melhoria de perícia
+- Criar trilha de cada classe
+- Poder girar perícia na aba de perícias
+- Aba de perícias mostrar detalhe sobre cada perícia
+- Limitar quantidade de atributos
+- Quando aumentar atributo de int, aparecer popup falando q pode escolher outra perícia
+- Add poder criar poder geral, paranormal, de classe e ritual personalizado
+- Lógica de cada poder (geral, de classe e paranormal)
+- Adicionar todos os rituais
+- Na área de ataques, mostrar listinha com ações diversas (investida, manobra, etc)
+- Concertar sapoha de nex 100 q n existe na lore de ordem
+- Configurar maldições
+- Fazer a área de detalhes do backstory do personagem (fazer opção de baixar versão pdf das anotações, 100% formatada e bonita pra enviar pro mestre)
+
+========================================================================
+Origens com lógica:
+
+- Cultista Arrependido ---OK
+
+- Desgarrado ---OK
+
+- Lutador ---OK
+
+- Militar ---OK
+
+- Policial ---OK
+
+- Universitário ---OK
+
+- Vítima ---OK
+
+- MERGULHADOR ---OK
+
+- Magnata ---OK
+
+- Operário ---OK
+
+- Teórico da Conspiração ---OK
+
+- DIPLOMATA ---OK
+
+- COLEGIAL ---OK
+
+- EXPERIMENTO ---OK
+
+- PROFETIZADO ---OK
+
+- BLASTER ---OK
+
+- GINASTA ---OK
+
+- REVOLTADO ---OK
+
+- Engenheiro ---OK
+===================================================================

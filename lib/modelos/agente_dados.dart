@@ -29,32 +29,36 @@ class ItemInventario {
   });
 
   String get categoriaEfetiva {
-    int c = 0;
-    if (categoria == 'I') {
-      c = 1;
-    } else if (categoria == 'II') {
-      c = 2;
-    } else if (categoria == 'III') {
-      c = 3;
-    } else if (categoria == 'IV') {
-      c = 4;
-      c += modificacoes.length;
-    }
-    if (c >= 4) return 'IV';
-    if (c == 3) return 'III';
-    if (c == 2) return 'II';
-    if (c == 1) return 'I';
-    return '0';
+    // Não conta a "Ferramenta Favorita" como uma modificação normal que aumenta o peso
+    int qtdMods = modificacoes.where((m) => m != "Ferramenta Favorita" && m != "Explosão Solidária").length;
+    
+    if (qtdMods == 0 && !modificacoes.contains("Ferramenta Favorita")) return categoria;
+
+    List<String> niveis = ["0", "I", "II", "III", "IV", "V", "VI", "VII"];
+    int indexAtual = niveis.indexOf(categoria);
+    
+    if (indexAtual == -1) return categoria;
+
+    int novoIndex = indexAtual + qtdMods;
+    
+    // Engenheiro (Reduz a categoria em 1)
+    if (modificacoes.contains("Ferramenta Favorita")) novoIndex -= 1;
+    if (novoIndex < 0) novoIndex = 0; // Trava no 0 para não existir categoria negativa
+    
+    if (novoIndex >= niveis.length) return niveis.last;
+
+    return niveis[novoIndex];
   }
 
   double get espacoEfetivo {
     double e = espaco;
-    if (modificacoes.contains("Discreta")) e -= 1.0;
+    if (modificacoes.contains("Discreta") ||
+        modificacoes.contains("Discreto")) {
+      e -= 1.0;
+    }
     if (modificacoes.contains("Blindada")) e += 1.0;
     if (modificacoes.contains("Reforçada")) e += 1.0;
 
-    // CORREÇÃO: Permite que a Mochila (peso -2) funcione livremente!
-    // Mas impede que um item normal fique com peso negativo por causa de "Discreta".
     if (espaco >= 0 && e < 0) return 0;
     return e;
   }
@@ -92,6 +96,7 @@ class Arma {
   bool equipado;
   String proficiencia;
   String empunhadura;
+  String descricao;
 
   Arma({
     required this.nome,
@@ -105,32 +110,105 @@ class Arma {
     this.equipado = false,
     this.proficiencia = 'Simples',
     this.empunhadura = 'Uma Mão',
+    this.descricao = "",
   });
 
   String get categoriaEfetiva {
-    int c = 0;
-    if (categoria == 'I') {
-      c = 1;
-    } else if (categoria == 'II') {
-      c = 2;
-    } else if (categoria == 'III') {
-      c = 3;
-    } else if (categoria == 'IV') {
-      c = 4;
-      c += modificacoes.length;
-    }
-    if (c >= 4) return 'IV';
-    if (c == 3) return 'III';
-    if (c == 2) return 'II';
-    if (c == 1) return 'I';
-    return '0';
+    int qtdMods = modificacoes.length;
+    if (qtdMods == 0) return categoria;
+
+    List<String> niveis = ["0", "I", "II", "III", "IV", "V", "VI", "VII"];
+    int indexAtual = niveis.indexOf(categoria);
+
+    if (indexAtual == -1) return categoria;
+
+    int novoIndex = indexAtual + qtdMods;
+    if (novoIndex >= niveis.length) return niveis.last;
+
+    return niveis[novoIndex];
   }
 
   double get espacoEfetivo {
     double e = espaco;
-    if (modificacoes.contains("Discreta")) e -= 1.0;
+    if (modificacoes.contains("Discreta") || modificacoes.contains("Discreto")) {
+      e -= 1.0;
+    }
     if (espaco >= 0 && e < 0) return 0;
     return e;
+  }
+
+  // --- MATEMÁTICA ATUALIZADA DO DANO ---
+  String get danoEfetivo {
+    if (!modificacoes.contains("Calibre Grosso") &&
+        !modificacoes.contains("Cruel") &&
+        !modificacoes.contains("Ferramenta de Trabalho")) {
+      return dano;
+    }
+
+    String d = dano.replaceAll(' ', '');
+    int dados = 1;
+    String resto = "";
+    int flat = 0;
+    bool parseSuccess = false;
+
+    try {
+      if (d.contains('d')) {
+        var parts = d.split('d');
+        dados = int.tryParse(parts[0]) ?? 1;
+
+        if (parts[1].contains('+')) {
+          var sub = parts[1].split('+');
+          resto = "d${sub[0]}";
+          flat = int.tryParse(sub[1]) ?? 0;
+        } else if (parts[1].contains('-')) {
+          var sub = parts[1].split('-');
+          resto = "d${sub[0]}";
+          flat = -(int.tryParse(sub[1]) ?? 0);
+        } else {
+          resto = "d${parts[1]}";
+        }
+        parseSuccess = true;
+      }
+    } catch (e) {
+      parseSuccess = false;
+    }
+
+    if (!parseSuccess) {
+      String res = dano;
+      if (modificacoes.contains("Calibre Grosso")) res += " (+1 dado)";
+      if (modificacoes.contains("Cruel")) res += " (+2 dano)";
+      if (modificacoes.contains("Ferramenta de Trabalho")) res += " (+1 dano)";
+      return res;
+    }
+
+    if (modificacoes.contains("Calibre Grosso")) dados += 1;
+    if (modificacoes.contains("Cruel")) flat += 2;
+    if (modificacoes.contains("Ferramenta de Trabalho")) {
+      flat += 1; // Bônus do Operário!
+    }
+
+    String result = "$dados$resto";
+    if (flat > 0) {
+      result += "+$flat";
+    } else if (flat < 0) {
+      result += "$flat";
+    }
+
+    return result;
+  }
+
+  // --- MATEMÁTICA ATUALIZADA DA MARGEM ---
+  int get margemAmeacaEfetiva {
+    int m = margemAmeaca;
+    if (modificacoes.contains("Perigosa") ||
+        modificacoes.contains("Mira Laser")) {
+      m -= 2;
+    }
+    if (modificacoes.contains("Ferramenta de Trabalho")) {
+      m -= 1; // Bônus do Operário!
+    }
+    if (m < 2) return 2;
+    return m;
   }
 
   Map<String, dynamic> toJson() => {
@@ -145,6 +223,7 @@ class Arma {
     'equipado': equipado,
     'proficiencia': proficiencia,
     'empunhadura': empunhadura,
+    'descricao': descricao,
   };
 
   factory Arma.fromJson(Map<String, dynamic> json) {
@@ -166,6 +245,7 @@ class Arma {
       equipado: json['equipado'] == true,
       proficiencia: json['proficiencia']?.toString() ?? 'Simples',
       empunhadura: json['empunhadura']?.toString() ?? 'Uma Mão',
+      descricao: json['descricao']?.toString() ?? "",
     );
   }
 }

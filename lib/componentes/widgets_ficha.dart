@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 class SecaoFicha extends StatelessWidget {
   final String titulo;
+  final Widget? tituloWidget; // <--- Adicionamos o opcional aqui!
   final List<Widget> filhos;
   final Color corTema;
   final Color corTexto;
@@ -10,6 +11,7 @@ class SecaoFicha extends StatelessWidget {
   const SecaoFicha({
     super.key,
     required this.titulo,
+    this.tituloWidget, // <--- Construtor
     required this.filhos,
     required this.corTema,
     required this.corTexto,
@@ -30,7 +32,8 @@ class SecaoFicha extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
+            // A MÁGICA: Se enviarmos o tituloWidget, ele é desenhado. Se não, desenha sua caixa colorida!
+            tituloWidget ?? Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: corTema,

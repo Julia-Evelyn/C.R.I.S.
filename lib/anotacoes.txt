@@ -24,10 +24,11 @@ Falta fazer:
 - Concertar sapoha de nex 100 q n existe na lore de ordem ----- FEITO
 - Aba de perícias mostrar detalhe sobre cada perícia ----- FEITO
 - Na área de ataques, mostrar listinha com ações diversas (investida, manobra, etc) ----- FEITO
+- Criar trilha de cada classe ----- FEITO
 
+- Configurar rolagem de teste e dano de armas
 - Perícia profissão add +1 categoria (I, II ou III dependendo do nível de treinamento) no limite
 - Add popup quando ganhar poder novo, atributo e melhoria de perícia
-- Criar trilha de cada classe
 - Poder girar perícia na aba de perícias
 - Limitar quantidade de atributos
 - Quando aumentar atributo de int, aparecer popup falando q pode escolher outra perícia

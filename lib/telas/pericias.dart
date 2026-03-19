@@ -2,8 +2,7 @@
 part of 'ficha_agente.dart';
 
 extension PericiasFicha on _FichaAgenteState {
-
-   Widget _buildAbaPericias(bool block, Color corDoPainel) {
+  Widget _buildAbaPericias(bool block, Color corDoPainel) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 150),
       child: SecaoFicha(
@@ -80,9 +79,9 @@ extension PericiasFicha on _FichaAgenteState {
                               ),
                             ),
                           ),
-                          // ====== ÍCONES DINÂMICOS ======
+                          // icon dinamico
                           if (bonusExtra >
-                              0) // Ícone de Cabide apenas para itens!
+                              0) // Ícone de Cabide apenas para itens
                             Padding(
                               padding: const EdgeInsets.only(left: 4, right: 2),
                               child: Icon(
@@ -92,7 +91,7 @@ extension PericiasFicha on _FichaAgenteState {
                               ),
                             ),
                           if (bonusDaOrigemAplicado >
-                              0) // Ícone de Mais para outros bônus!
+                              0) // Ícone de + para outros bônus
                             Padding(
                               padding: const EdgeInsets.only(left: 2, right: 4),
                               child: Icon(
@@ -101,7 +100,6 @@ extension PericiasFicha on _FichaAgenteState {
                                 size: 14,
                               ),
                             ),
-                          // ==============================
                         ],
                       ),
                     ),
@@ -111,6 +109,8 @@ extension PericiasFicha on _FichaAgenteState {
                         child: DropdownButton<int>(
                           value: pericia.treino,
                           isExpanded: true,
+                          alignment: Alignment
+                              .centerRight,
                           icon: const Icon(Icons.arrow_drop_down, size: 16),
                           style: const TextStyle(
                             fontSize: 13,
@@ -120,19 +120,24 @@ extension PericiasFicha on _FichaAgenteState {
                             if (!isLocked)
                               const DropdownMenuItem(
                                 value: 0,
-                                child: Text("Destreinado (+0)"),
+                                alignment: Alignment
+                                    .centerRight,
+                                child: Text("(+0)"),
                               ),
                             const DropdownMenuItem(
                               value: 5,
-                              child: Text("Treinado (+5)"),
+                              alignment: Alignment.centerRight,
+                              child: Text("(+5)"),
                             ),
                             const DropdownMenuItem(
                               value: 10,
-                              child: Text("Veterano (+10)"),
+                              alignment: Alignment.centerRight,
+                              child: Text("(+10)"),
                             ),
                             const DropdownMenuItem(
                               value: 15,
-                              child: Text("Expert (+15)"),
+                              alignment: Alignment.centerRight,
+                              child: Text("(+15)"),
                             ),
                           ],
                           onChanged: block
@@ -415,5 +420,4 @@ extension PericiasFicha on _FichaAgenteState {
         )
         .toList();
   }
-
 }

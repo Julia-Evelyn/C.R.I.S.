@@ -105,11 +105,25 @@ class _FichaAgenteState extends State<FichaAgente> {
     return baseDesl;
   }
 
+  // Cálculo de atributos
+  int get totalAtributosPermitidos {
+    int max = 9; // (5 atributos base 1) + 4 pontos de criação = 9
+    if (nex >= 20) max += 1;
+    if (nex >= 50) max += 1;
+    if (nex >= 80) max += 1;
+    if (nex >= 95) max += 1;
+    return max;
+  }
+
+  int get totalAtributosAtuais {
+    return agi + forc + inte + pre + vig;
+  }
+
   int get espacoMaximo {
     int base = forc == 0 ? 2 : forc * 5;
     if (poderesEscolhidos.contains("Mochileiro")) base += 5;
-    
-    if (trilhaAtual == 'tecnico' && nex >= 10) base += (inte * 5); 
+
+    if (trilhaAtual == 'tecnico' && nex >= 10) base += (inte * 5);
     return base;
   }
 
@@ -1297,7 +1311,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       if (trilhaAtual == 'operacoes_especiais' && nex >= 10) {
         bonusOrigem['iniciativa'] = (bonusOrigem['iniciativa'] ?? 0) + 5;
       }
-      
+
       // Lógica do Atirador de Elite (Dano em Armas de Fogo Longas) e Aniquilador
       // Estão programadas diretamente nos getters das armas quando equipadas (serão adicionadas no futuro)
 
@@ -1315,9 +1329,9 @@ class _FichaAgenteState extends State<FichaAgente> {
       // Lógica do Especialista: A Força do Saber
       if (trilhaAtual == 'bibliotecario' && nex >= 99) {
         // Intelecto aumenta em +1 (Considerado de forma passiva aqui para não alterar o atributo raiz editável)
-        peMax += inte + 1; 
+        peMax += inte + 1;
       }
-      
+
       // Lógica do Ocultista: Intuitivo
       if (trilhaAtual == 'intuitivo' && nex >= 65) {
         resistencias['Mental'] = 10;
@@ -1526,7 +1540,7 @@ class _FichaAgenteState extends State<FichaAgente> {
             ),
           ),
           const SizedBox(height: 16),
-          
+
           if (nex >= 50 && afinidadeAtual == null && !block)
             Center(
               child: BotaoAfinidadeAnimado(onPressed: _mostrarDialogAfinidade),
@@ -1822,11 +1836,43 @@ class _FichaAgenteState extends State<FichaAgente> {
           ),
 
           SecaoFicha(
-            titulo: "Atributos ${block ? '(Toque para Rolar)' : ''}",
+            titulo:
+                "Atributos ${block ? '(Toque para Rolar)' : ''}", // <--- Voltamos ao título original e seguro!
             corTema: corFundoAfinidade,
             corTexto: corTextoAfinidade,
             isMorte: afinidadeAtual == 'Morte',
             filhos: [
+              // ======== CONTADOR DE ATRIBUTOS AQUI ========
+              if (!block) // Só mostra o contador se o modo de edição estiver ativado
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Container(
+                    margin: const EdgeInsets.only(
+                      bottom: 16,
+                    ), // Espaçamento antes dos botões
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: totalAtributosAtuais > totalAtributosPermitidos
+                          ? Colors.redAccent
+                          : (totalAtributosAtuais < totalAtributosPermitidos
+                                ? Colors.orange
+                                : Colors.green),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      "Pontos Gastos: $totalAtributosAtuais / $totalAtributosPermitidos",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -2082,7 +2128,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                               Color corD20 = Colors.white;
                               String msgCrit = "";
                               if (d20 == 20) {
-                                corD20 = Colors.amberAccent;
+                                corD20 = const Color.fromARGB(255, 63, 152, 63);
                                 msgCrit = "SUCESSO CRÍTICO!";
                               } else if (d20 == 1) {
                                 corD20 = Colors.redAccent;

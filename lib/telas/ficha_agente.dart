@@ -9,9 +9,15 @@ import '../modelos/agente_dados.dart';
 import '../dados/base.dart';
 import '../dados/itens.dart';
 import '../dados/poderes.dart';
+import '../dados/trilhas.dart';
 import '../componentes/estilizacao.dart';
 import '../componentes/widgets_ficha.dart';
 import '../componentes/dialogs_ficha.dart';
+
+part 'origens.dart';
+part 'pericias.dart';
+part 'equipamentos.dart';
+part 'guia_combate.dart';
 
 class FichaAgente extends StatefulWidget {
   final AgenteDados? agenteParaEditar;
@@ -39,12 +45,10 @@ class _FichaAgenteState extends State<FichaAgente> {
   List<String> poderesEscolhidos = [];
   List<String> periciasClasse = [];
 
-  // === NOVAS VARIÁVEIS DE ESTADO ===
   Map<String, int> resistencias = {};
   Map<String, int> bonusOrigem = {};
-  // =================================
 
-  String classeAtual = '--', origemAtual = '--';
+  String classeAtual = '--', origemAtual = '--', trilhaAtual = '--';
   String? fotoPath;
   String? afinidadeAtual;
   int nex = 5, prestigio = 0, agi = 1, forc = 1, inte = 1, pre = 1, vig = 1;
@@ -104,6 +108,8 @@ class _FichaAgenteState extends State<FichaAgente> {
   int get espacoMaximo {
     int base = forc == 0 ? 2 : forc * 5;
     if (poderesEscolhidos.contains("Mochileiro")) base += 5;
+    
+    if (trilhaAtual == 'tecnico' && nex >= 10) base += (inte * 5); 
     return base;
   }
 
@@ -149,7 +155,7 @@ class _FichaAgenteState extends State<FichaAgente> {
     if (origemAtual == 'magnata') {
       if (prestigio >= 100) return "Ilimitado";
       if (prestigio >= 20) return "Alto";
-      return "Médio"; // Um nível acima do recruta sempre!
+      return "Médio"; // Um nível acima do recruta
     } else {
       if (prestigio >= 200) return "Ilimitado";
       if (prestigio >= 100) return "Alto";
@@ -253,6 +259,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       _nomeController.text = ag.nome;
       classeAtual = ag.classe;
       origemAtual = ag.origem;
+      trilhaAtual = ag.trilha;
       fotoPath = ag.fotoPath;
       afinidadeAtual = ag.afinidade;
       nex = ag.nex;
@@ -305,6 +312,7 @@ class _FichaAgenteState extends State<FichaAgente> {
           : _nomeController.text,
       classe: classeAtual,
       origem: origemAtual,
+      trilha: trilhaAtual,
       fotoPath: fotoPath,
       afinidade: afinidadeAtual,
       nex: nex,
@@ -912,317 +920,6 @@ class _FichaAgenteState extends State<FichaAgente> {
     );
   }
 
-  void _mostrarDialogOrigens() {
-    String busca = "";
-    String? origemExpandida;
-
-    Color corTemaLocal = corFundoAfinidade;
-    Color corLetra = corTextoAfinidade;
-    Color corDestaqueLocal = corDestaque;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            List<MapEntry<String, DadosOrigem>> filtrados = dadosOrigens.entries
-                .where((entry) {
-                  if (busca.isNotEmpty &&
-                      !entry.value.nome.toLowerCase().contains(
-                        busca.toLowerCase(),
-                      )) {
-                    return false;
-                  }
-                  return true;
-                })
-                .toList();
-            filtrados.sort((a, b) => a.value.nome.compareTo(b.value.nome));
-
-            return Dialog(
-              backgroundColor: const Color(0xFF1A1A1A),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: corDestaqueLocal.withValues(alpha: 0.3),
-                ),
-              ),
-              insetPadding: const EdgeInsets.all(16),
-              child: Container(
-                width: double.maxFinite,
-                height: MediaQuery.of(context).size.height * 0.85,
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.history_edu,
-                          color: corDestaqueLocal,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          "ORIGENS",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: corDestaqueLocal,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.grey),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      decoration: EstiloParanormal.customInputDeco(
-                        "Pesquisar origem...",
-                        corDestaqueLocal,
-                        Icons.search,
-                      ),
-                      onChanged: (val) => setDialogState(() => busca = val),
-                    ),
-                    const SizedBox(height: 16),
-
-                    if (busca.isEmpty) ...[
-                      ListTile(
-                        leading: const Icon(
-                          Icons.remove_circle_outline,
-                          color: Colors.redAccent,
-                        ),
-                        title: const Text(
-                          "Nenhuma Origem (--)",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        onTap: () {
-                          setState(() {
-                            origemAtual = '--';
-                            atualizarFicha();
-                          });
-                          _salvarSilencioso();
-                          Navigator.pop(context);
-                        },
-                      ),
-                      const Divider(color: Colors.grey),
-                    ],
-
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade800),
-                        ),
-                        child: filtrados.isEmpty
-                            ? const Center(
-                                child: Text(
-                                  "Nenhuma origem encontrada.",
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: Colors.grey),
-                                ),
-                              )
-                            : ListView.builder(
-                                itemCount: filtrados.length,
-                                itemBuilder: (context, index) {
-                                  var entry = filtrados[index];
-                                  DadosOrigem org = entry.value;
-                                  String keyOrigem = entry.key;
-                                  bool isExpanded =
-                                      origemExpandida == keyOrigem;
-                                  List<String> nomesPericias = org.pericias.map(
-                                    (id) {
-                                      try {
-                                        return listaPericias
-                                            .firstWhere((p) => p.id == id)
-                                            .nome;
-                                      } catch (e) {
-                                        return id;
-                                      }
-                                    },
-                                  ).toList();
-
-                                  return Container(
-                                    decoration: BoxDecoration(
-                                      border: Border(
-                                        bottom: BorderSide(
-                                          color: Colors.grey.shade900,
-                                        ),
-                                      ),
-                                      color: isExpanded
-                                          ? Colors.grey.shade900.withValues(
-                                              alpha: 0.5,
-                                            )
-                                          : Colors.transparent,
-                                    ),
-                                    child: Theme(
-                                      data: Theme.of(context).copyWith(
-                                        dividerColor: Colors.transparent,
-                                      ),
-                                      child: ExpansionTile(
-                                        title: Text(
-                                          org.nome,
-                                          style: TextStyle(
-                                            color: isExpanded
-                                                ? corDestaqueLocal
-                                                : Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        subtitle: Text(
-                                          isExpanded
-                                              ? "Perícias: ${nomesPericias.join(', ')}"
-                                              : org.nomeHabilidade,
-                                          style: const TextStyle(
-                                            color: Colors.grey,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                        iconColor: corDestaqueLocal,
-                                        collapsedIconColor: Colors.grey,
-                                        onExpansionChanged: (expanded) {
-                                          setDialogState(() {
-                                            origemExpandida = expanded
-                                                ? keyOrigem
-                                                : null;
-                                          });
-                                        },
-                                        children: [
-                                          Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                              16,
-                                              0,
-                                              16,
-                                              16,
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.stretch,
-                                              children: [
-                                                const Divider(
-                                                  color: Colors.grey,
-                                                ),
-                                                const SizedBox(height: 8),
-                                                Text(
-                                                  "Poder: ${org.nomeHabilidade}",
-                                                  style: TextStyle(
-                                                    color: corDestaqueLocal,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  org.descHabilidade,
-                                                  style: const TextStyle(
-                                                    color: Colors.white70,
-                                                    fontSize: 13,
-                                                    height: 1.4,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 16),
-                                                ElevatedButton(
-                                                  style: ElevatedButton.styleFrom(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          vertical: 12,
-                                                        ),
-                                                    backgroundColor:
-                                                        corTemaLocal,
-                                                    foregroundColor: corLetra,
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            8,
-                                                          ),
-                                                    ),
-                                                    side:
-                                                        afinidadeAtual ==
-                                                            'Morte'
-                                                        ? const BorderSide(
-                                                            color:
-                                                                Colors.white54,
-                                                          )
-                                                        : null,
-                                                  ),
-                                                  onPressed: () {
-                                                    // LIMPA TRIGGERS ANTIGOS DE ORIGEM AO TROCAR
-                                                    poderesEscolhidos
-                                                        .removeWhere(
-                                                          (p) =>
-                                                              p.startsWith(
-                                                                "Experimento_",
-                                                              ) ||
-                                                              p.startsWith(
-                                                                "Profetizado_",
-                                                              ) ||
-                                                              p.startsWith(
-                                                                "Colegial_",
-                                                              ),
-                                                        );
-
-                                                    // == INTERCEPTADORES DE ORIGEM ==
-                                                    if (keyOrigem ==
-                                                        'cultista_arrependido') {
-                                                      Navigator.pop(context);
-                                                      _mostrarDialogPoderCultista();
-                                                    } else if (keyOrigem ==
-                                                        'operario') {
-                                                      Navigator.pop(context);
-                                                      _mostrarDialogOperario();
-                                                    } else if (keyOrigem ==
-                                                        'experimento') {
-                                                      Navigator.pop(context);
-                                                      _mostrarDialogExperimento();
-                                                    } else if (keyOrigem ==
-                                                        'profetizado') {
-                                                      Navigator.pop(context);
-                                                      _mostrarDialogProfetizado();
-                                                    } else if (keyOrigem ==
-                                                        'engenheiro') {
-                                                      Navigator.pop(context);
-                                                      _mostrarDialogEngenheiro();
-                                                    } else {
-                                                      setState(() {
-                                                        origemAtual = keyOrigem;
-                                                        atualizarFicha();
-                                                      });
-                                                      _salvarSilencioso();
-                                                      Navigator.pop(context);
-                                                    }
-                                                  },
-                                                  child: const Text(
-                                                    "ESCOLHER ORIGEM",
-                                                    style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   void _abrirCatalogoPoderes() {
     String busca = "";
     String filtroPrincipal = "Gerais";
@@ -1562,1315 +1259,10 @@ class _FichaAgenteState extends State<FichaAgente> {
     );
   }
 
-  void _abrirCatalogoEquipamento({String filtroInicial = "Todos"}) {
-    String filtroAtual = filtroInicial;
-    List<String> subFiltrosAtivos = [];
-    String busca = "";
-    Color corTemaLocal = corFundoAfinidade;
-    Color corLetra = corTextoAfinidade;
-    Color corDestaqueLocal = corDestaque;
-
-    List<String> categorias = [
-      "Todos",
-      "Armas",
-      "Acessórios",
-      "Explosivos",
-      "Itens Operacionais",
-      "Munições",
-      "Proteções",
-      "Itens Paranormais",
-    ];
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            Widget buildFiltroArma(String label, List<String> opcoes) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4.0),
-                    child: Text(
-                      label.toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: opcoes.map((sub) {
-                      bool isSelected = subFiltrosAtivos.contains(sub);
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: FilterChip(
-                          label: Text(
-                            sub,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? Colors.black
-                                  : Colors.grey.shade400,
-                              fontSize: 11,
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                          selected: isSelected,
-                          selectedColor: Colors.grey.shade300,
-                          backgroundColor: const Color(0xFF151515),
-                          side: BorderSide(
-                            color: isSelected
-                                ? Colors.grey.shade300
-                                : Colors.grey.shade800,
-                          ),
-                          onSelected: (val) {
-                            setDialogState(() {
-                              if (isSelected) {
-                                subFiltrosAtivos.remove(sub);
-                              } else {
-                                subFiltrosAtivos.removeWhere(
-                                  (e) => opcoes.contains(e),
-                                );
-                                subFiltrosAtivos.add(sub);
-                              }
-                            });
-                          },
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              );
-            }
-
-            List<dynamic> todosEquipamentos = [
-              ...catalogoArmasOrdem,
-              ...catalogoItensOrdem,
-            ];
-            List<dynamic> filtrados = todosEquipamentos.where((eq) {
-              if (busca.isNotEmpty &&
-                  !eq.nome.toLowerCase().contains(busca.toLowerCase())) {
-                return false;
-              }
-              if (filtroAtual != "Todos") {
-                if (filtroAtual == "Armas") {
-                  if (eq is! Arma) return false;
-                  for (String sub in subFiltrosAtivos) {
-                    if (["Simples", "Táticas", "Pesadas"].contains(sub) &&
-                        eq.proficiencia != sub) {
-                      return false;
-                    }
-                    if (["Corpo a Corpo", "Fogo", "Disparo"].contains(sub) &&
-                        eq.tipo != sub) {
-                      return false;
-                    }
-                    if (["Leve", "Uma Mão", "Duas Mãos"].contains(sub) &&
-                        eq.empunhadura != sub) {
-                      return false;
-                    }
-                  }
-                } else {
-                  if (eq is Arma) return false;
-                  if (eq is ItemInventario) {
-                    if (filtroAtual == "Acessórios" &&
-                        (!eq.descricao.contains("Acessório") &&
-                            !eq.nome.contains("Vestimenta"))) {
-                      return false;
-                    }
-                    if (filtroAtual == "Explosivos" &&
-                        !eq.descricao.contains("Explosivo")) {
-                      return false;
-                    }
-                    if (filtroAtual == "Itens Operacionais" &&
-                        !eq.descricao.contains("Item Operacional")) {
-                      return false;
-                    }
-                    if (filtroAtual == "Munições" &&
-                        !eq.descricao.contains("Munição")) {
-                      return false;
-                    }
-                    if (filtroAtual == "Proteções" &&
-                        !eq.descricao.contains("Proteção")) {
-                      return false;
-                    }
-                    if (filtroAtual == "Itens Paranormais" &&
-                        !eq.descricao.contains("Item Paranormal")) {
-                      return false;
-                    }
-                  }
-                }
-              }
-              return true;
-            }).toList();
-
-            return Dialog(
-              backgroundColor: const Color(0xFF1A1A1A),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: corDestaqueLocal.withValues(alpha: 0.3),
-                ),
-              ),
-              insetPadding: const EdgeInsets.all(16),
-              child: Container(
-                width: double.maxFinite,
-                height: MediaQuery.of(context).size.height * 0.85,
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.inventory_2,
-                          color: corDestaqueLocal,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          "ARSENAL",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: corDestaqueLocal,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.grey),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      decoration: EstiloParanormal.customInputDeco(
-                        "Pesquisar equipamento...",
-                        corDestaqueLocal,
-                        Icons.search,
-                      ),
-                      onChanged: (val) => setDialogState(() => busca = val),
-                    ),
-                    const SizedBox(height: 12),
-
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: categorias
-                            .map(
-                              (cat) => Padding(
-                                padding: const EdgeInsets.only(right: 8.0),
-                                child: ChoiceChip(
-                                  label: Text(
-                                    cat,
-                                    style: TextStyle(
-                                      color: filtroAtual == cat
-                                          ? corLetra
-                                          : Colors.grey.shade400,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  selected: filtroAtual == cat,
-                                  onSelected: (val) => setDialogState(() {
-                                    filtroAtual = cat;
-                                    subFiltrosAtivos.clear();
-                                  }),
-                                  selectedColor: corTemaLocal,
-                                  backgroundColor: const Color(0xFF0D0D0D),
-                                  side: BorderSide(
-                                    color: filtroAtual == cat
-                                        ? corDestaqueLocal
-                                        : Colors.grey.shade800,
-                                  ),
-                                ),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    ),
-
-                    if (filtroAtual == "Armas") ...[
-                      const SizedBox(height: 16),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            buildFiltroArma("Proficiência", [
-                              "Simples",
-                              "Táticas",
-                              "Pesadas",
-                            ]),
-                            Container(
-                              height: 40,
-                              width: 1,
-                              color: Colors.grey.shade800,
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                            ),
-                            buildFiltroArma("Tipo", [
-                              "Corpo a Corpo",
-                              "Fogo",
-                              "Disparo",
-                            ]),
-                            Container(
-                              height: 40,
-                              width: 1,
-                              color: Colors.grey.shade800,
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                            ),
-                            buildFiltroArma("Empunhadura", [
-                              "Leve",
-                              "Uma Mão",
-                              "Duas Mãos",
-                            ]),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade800),
-                        ),
-                        child: filtrados.isEmpty
-                            ? const Center(
-                                child: Text(
-                                  "Equipamento não encontrado",
-                                  style: TextStyle(color: Colors.grey),
-                                ),
-                              )
-                            : ListView.builder(
-                                itemCount: filtrados.length,
-                                itemBuilder: (context, index) {
-                                  var eq = filtrados[index];
-                                  bool isArma = eq is Arma;
-                                  String tipoItem = "";
-                                  String descLimpa = "";
-                                  if (!isArma) {
-                                    tipoItem = eq.descricao.split('.').first;
-                                    descLimpa = eq.descricao
-                                        .replaceFirst("$tipoItem.", "")
-                                        .trim();
-                                    if (descLimpa.isEmpty) descLimpa = tipoItem;
-                                  }
-
-                                  return Container(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF151515),
-                                      border: Border.all(
-                                        color: Colors.grey.shade900,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Theme(
-                                      data: Theme.of(context).copyWith(
-                                        dividerColor: Colors.transparent,
-                                      ),
-                                      child: ExpansionTile(
-                                        iconColor: corDestaqueLocal,
-                                        collapsedIconColor: Colors.grey,
-                                        tilePadding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 4,
-                                        ),
-                                        title: isArma
-                                            ? RichText(
-                                                text: TextSpan(
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.white,
-                                                    fontSize: 16,
-                                                  ),
-                                                  children: [
-                                                    TextSpan(
-                                                      text: "${eq.nome}  ",
-                                                    ),
-                                                    TextSpan(
-                                                      text:
-                                                          "${eq.proficiencia} - ${eq.tipo} - ${eq.empunhadura}",
-                                                      style: const TextStyle(
-                                                        fontSize: 10,
-                                                        color: Colors.grey,
-                                                        fontStyle:
-                                                            FontStyle.italic,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              )
-                                            : Text(
-                                                eq.nome,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                        subtitle: RichText(
-                                          text: TextSpan(
-                                            style: TextStyle(
-                                              color: corDestaqueLocal,
-                                              fontSize: 13,
-                                            ),
-                                            children: isArma
-                                                ? [
-                                                    const TextSpan(
-                                                      text: "Categoria: ",
-                                                    ),
-                                                    TextSpan(
-                                                      text:
-                                                          "${eq.categoria}   ",
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                    const TextSpan(
-                                                      text: "Dano: ",
-                                                    ),
-                                                    TextSpan(
-                                                      text: "${eq.dano}   ",
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                    const TextSpan(
-                                                      text: "Crítico: ",
-                                                    ),
-                                                    TextSpan(
-                                                      text:
-                                                          "x${eq.multiplicadorCritico}   ",
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                    const TextSpan(
-                                                      text: "Espaços: ",
-                                                    ),
-                                                    TextSpan(
-                                                      text: eq.espaco
-                                                          .toString()
-                                                          .replaceAll('.0', ''),
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                  ]
-                                                : [
-                                                    const TextSpan(
-                                                      text: "Categoria: ",
-                                                    ),
-                                                    TextSpan(
-                                                      text:
-                                                          "${eq.categoria}   ",
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                    const TextSpan(
-                                                      text: "Espaços: ",
-                                                    ),
-                                                    TextSpan(
-                                                      text: eq.espaco
-                                                          .toString()
-                                                          .replaceAll('.0', ''),
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                  ],
-                                          ),
-                                        ),
-                                        trailing: SizedBox(
-                                          width: 90,
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.end,
-                                            children: [
-                                              IconButton(
-                                                icon: Icon(
-                                                  Icons.add_circle,
-                                                  color: corDestaqueLocal,
-                                                  size: 28,
-                                                ),
-                                                onPressed: () {
-                                                  if (eq is ItemInventario &&
-                                                      (eq.nome ==
-                                                              "Catalisador ritualístico" ||
-                                                          eq.nome.contains(
-                                                            "(elemento)",
-                                                          ))) {
-                                                    if (eq.nome ==
-                                                        "Catalisador ritualístico") {
-                                                      mostrarDialogCatalisador(
-                                                        context: context,
-                                                        corDestaque:
-                                                            corDestaqueLocal,
-                                                        corTema: corTemaLocal,
-                                                        corTexto: corLetra,
-                                                        afinidadeAtual:
-                                                            afinidadeAtual,
-                                                        onConfirmar: (item) {
-                                                          _aplicarTagsOrigemItem(
-                                                            item,
-                                                          );
-                                                          setState(
-                                                            () => inventario
-                                                                .add(item),
-                                                          );
-                                                          atualizarFicha();
-                                                          _salvarSilencioso();
-                                                          _mostrarNotificacao(
-                                                            "Catalisador adicionado!",
-                                                          );
-                                                        },
-                                                      );
-                                                    } else {
-                                                      mostrarDialogElementoItem(
-                                                        context: context,
-                                                        itemBase: eq,
-                                                        corDestaque:
-                                                            corDestaqueLocal,
-                                                        corTema: corTemaLocal,
-                                                        corTexto: corLetra,
-                                                        afinidadeAtual:
-                                                            afinidadeAtual,
-                                                        onConfirmar: (item) {
-                                                          _aplicarTagsOrigemItem(
-                                                            item,
-                                                          );
-                                                          setState(
-                                                            () => inventario
-                                                                .add(item),
-                                                          );
-                                                          atualizarFicha();
-                                                          _salvarSilencioso();
-                                                          _mostrarNotificacao(
-                                                            "${item.nome} adicionado!",
-                                                          );
-                                                        },
-                                                      );
-                                                    }
-                                                  } else {
-                                                    if (eq is Arma) {
-                                                      setState(
-                                                        () => armas.add(
-                                                          Arma(
-                                                            nome: eq.nome,
-                                                            tipo: eq.tipo,
-                                                            dano: eq.dano,
-                                                            margemAmeaca:
-                                                                eq.margemAmeaca,
-                                                            multiplicadorCritico:
-                                                                eq.multiplicadorCritico,
-                                                            categoria:
-                                                                eq.categoria,
-                                                            espaco: eq.espaco,
-                                                            proficiencia:
-                                                                eq.proficiencia,
-                                                            empunhadura:
-                                                                eq.empunhadura,
-                                                            descricao:
-                                                                eq.descricao,
-                                                          ),
-                                                        ),
-                                                      );
-                                                      _salvarSilencioso();
-                                                      _mostrarNotificacao(
-                                                        "Arma adicionada!",
-                                                      );
-                                                    } else {
-                                                      _processarNovoItem(
-                                                        ItemInventario(
-                                                          nome: eq.nome,
-                                                          categoria:
-                                                              eq.categoria,
-                                                          espaco: eq.espaco,
-                                                          descricao:
-                                                              eq.descricao,
-                                                        ),
-                                                      );
-                                                    }
-                                                  }
-                                                },
-                                              ),
-                                              Icon(
-                                                Icons.expand_more,
-                                                color: corDestaqueLocal
-                                                    .withValues(alpha: 0.5),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        children: [
-                                          Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                              16,
-                                              0,
-                                              16,
-                                              16,
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.stretch,
-                                              children: [
-                                                Divider(
-                                                  color: corDestaqueLocal
-                                                      .withValues(alpha: 0.3),
-                                                  thickness: 1,
-                                                ),
-                                                const SizedBox(height: 8),
-                                                if (isArma) ...[
-                                                  Text(
-                                                    eq.descricao.isNotEmpty
-                                                        ? eq.descricao
-                                                        : "Nenhuma descrição fornecida.",
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 14,
-                                                    ),
-                                                  ),
-                                                ] else ...[
-                                                  Text(
-                                                    tipoItem,
-                                                    style: const TextStyle(
-                                                      color: Colors.grey,
-                                                      fontStyle:
-                                                          FontStyle.italic,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  Text(
-                                                    descLimpa,
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 14,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.handyman, size: 18),
-                            label: const Text(
-                              "CRIAR ITEM",
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: BorderSide(color: Colors.grey.shade800),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                            ),
-                            onPressed: () {
-                              Navigator.pop(context);
-                              mostrarDialogCriacaoManual(
-                                context: context,
-                                isArma: false,
-                                corDestaque: corDestaqueLocal,
-                                corTema: corTemaLocal,
-                                corTexto: corLetra,
-                                afinidadeAtual: afinidadeAtual,
-                                onVoltar: () => _abrirCatalogoEquipamento(
-                                  filtroInicial: filtroAtual,
-                                ),
-                                onConfirmar: (novoItem) {
-                                  _processarNovoItem(novoItem);
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.colorize, size: 18),
-                            label: const Text(
-                              "CRIAR ARMA",
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: BorderSide(color: Colors.grey.shade800),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                            ),
-                            onPressed: () {
-                              Navigator.pop(context);
-                              mostrarDialogCriacaoManual(
-                                context: context,
-                                isArma: true,
-                                corDestaque: corDestaqueLocal,
-                                corTema: corTemaLocal,
-                                corTexto: corLetra,
-                                afinidadeAtual: afinidadeAtual,
-                                onVoltar: () => _abrirCatalogoEquipamento(
-                                  filtroInicial: filtroAtual,
-                                ),
-                                onConfirmar: (novaArma) {
-                                  setState(() => armas.add(novaArma));
-                                  _salvarSilencioso();
-                                  _mostrarNotificacao(
-                                    "Arma criada e adicionada!",
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _aplicarTagsOrigemItem(ItemInventario item) {
-    // RESOLVE O CRASH: Destranca a lista imutável transformando-a numa lista normal!
-    item.modificacoes = List.from(item.modificacoes);
-
-    // Engenheiro: Verifica se é o item escolhido na Origem
-    if (origemAtual == 'engenheiro' && poderesEscolhidos.contains("Engenheiro_${item.nome}")) {
-      if (!item.modificacoes.contains("Ferramenta Favorita")) item.modificacoes.add("Ferramenta Favorita");
-    }
-    // Blaster: Verifica se é um Explosivo de Dano
-    if (origemAtual == 'blaster' && item.descricao.toLowerCase().contains("explosivo")) {
-      if (item.descricao.toLowerCase().contains("dano") || item.descricao.toLowerCase().contains("d6") || item.descricao.toLowerCase().contains("d8")) {
-        if (!item.modificacoes.contains("Explosão Solidária")) item.modificacoes.add("Explosão Solidária");
-      }
-    }
-  }
-  
-  void _processarNovoItem(ItemInventario novoItem) {
-    _aplicarTagsOrigemItem(novoItem);
-    String nomeLower = novoItem.nome.toLowerCase();
-    if (nomeLower.contains("vestimenta") || nomeLower.contains("utensílio")) {
-      bool isVestimenta = nomeLower.contains("vestimenta");
-      mostrarDialogEscolherPericiaAprimoramento(
-        context: context,
-        itemBase: novoItem,
-        listaPericias: listaPericias,
-        corDestaque: corDestaque,
-        corTema: corFundoAfinidade,
-        corTexto: corTextoAfinidade,
-        afinidadeAtual: afinidadeAtual,
-        isVestimenta: isVestimenta,
-        onConfirmar: (itemConfigurado) {
-          setState(() {
-            inventario.add(itemConfigurado);
-            atualizarFicha();
-          });
-          _salvarSilencioso();
-          _mostrarNotificacao(
-            "${isVestimenta ? 'Vestimenta' : 'Utensílio'} adicionado(a)!",
-          );
-        },
-      );
-    } else {
-      setState(() => inventario.add(novoItem));
-      _salvarSilencioso();
-      _mostrarNotificacao("Item adicionado!");
-    }
-  }
-
-  // ================== DIALOGS ESPECÍFICOS DE ORIGENS ==================
-
-  void _mostrarDialogPoderCultista() {
-    String busca = "";
-    String filtroParanormal = "Conhecimento";
-
-    Color corTemaLocal = corFundoAfinidade;
-    Color corLetra = corTextoAfinidade;
-    Color corDestaqueLocal = corDestaque;
-
-    List<String> categoriasParanormais = [
-      "Conhecimento",
-      "Energia",
-      "Morte",
-      "Sangue",
-    ];
-
-    showDialog(
-      context: context,
-      barrierDismissible:
-          false, // Obriga a escolher um poder ou cancelar a origem
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            List<Poder> listaAtiva = [];
-            if (filtroParanormal == "Conhecimento") {
-              listaAtiva = catalogoPoderesConhecimento;
-            } else if (filtroParanormal == "Energia") {
-              listaAtiva = catalogoPoderesEnergia;
-            } else if (filtroParanormal == "Morte") {
-              listaAtiva = catalogoPoderesMorte;
-            } else if (filtroParanormal == "Sangue") {
-              listaAtiva = catalogoPoderesSangue;
-            }
-
-            List<Poder> filtrados = listaAtiva.where((p) {
-              if (busca.isNotEmpty &&
-                  !p.nome.toLowerCase().contains(busca.toLowerCase())) {
-                return false;
-              }
-              // Oculta poderes que o jogador já tem
-              if (poderesEscolhidos.contains(p.nome)) return false;
-              return true;
-            }).toList();
-
-            return Dialog(
-              backgroundColor: const Color(0xFF1A1A1A),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: corDestaqueLocal.withValues(alpha: 0.3),
-                ),
-              ),
-              insetPadding: const EdgeInsets.all(16),
-              child: Container(
-                width: double.maxFinite,
-                height: MediaQuery.of(context).size.height * 0.85,
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.bolt, color: corDestaqueLocal, size: 28),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            "PODER DO CULTISTA",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: corDestaqueLocal,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      "A origem Cultista Arrependido fornece um poder paranormal grátis. Escolha o seu abaixo:",
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      decoration: EstiloParanormal.customInputDeco(
-                        "Pesquisar poder...",
-                        corDestaqueLocal,
-                        Icons.search,
-                      ),
-                      onChanged: (val) => setDialogState(() => busca = val),
-                    ),
-                    const SizedBox(height: 12),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: categoriasParanormais.map((cat) {
-                          Color corElemento;
-                          switch (cat) {
-                            case 'Sangue':
-                              corElemento = const Color(0xFF990000);
-                              break;
-                            case 'Energia':
-                              corElemento = const Color(0xFF9900FF);
-                              break;
-                            case 'Conhecimento':
-                              corElemento = const Color(0xFFFFB300);
-                              break;
-                            case 'Morte':
-                            default:
-                              corElemento = Colors.black;
-                              break;
-                          }
-
-                          Color corTxtSelecionado =
-                              (cat == 'Conhecimento' || cat == 'Morte')
-                              ? Colors.black
-                              : Colors.white;
-                          if (cat == 'Morte') {
-                            corTxtSelecionado = Colors.white;
-                          }
-
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
-                            child: ChoiceChip(
-                              label: Text(
-                                cat,
-                                style: TextStyle(
-                                  color: filtroParanormal == cat
-                                      ? corTxtSelecionado
-                                      : corElemento,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              selected: filtroParanormal == cat,
-                              onSelected: (val) =>
-                                  setDialogState(() => filtroParanormal = cat),
-                              selectedColor: corElemento,
-                              backgroundColor: const Color(0xFF0D0D0D),
-                              side: BorderSide(
-                                color: filtroParanormal == cat
-                                    ? (cat == 'Morte'
-                                          ? Colors.white54
-                                          : corElemento)
-                                    : Colors.grey.shade900,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade800),
-                        ),
-                        child: filtrados.isEmpty
-                            ? const Center(
-                                child: Text(
-                                  "Nenhum poder encontrado.",
-                                  style: TextStyle(color: Colors.grey),
-                                ),
-                              )
-                            : ListView.builder(
-                                itemCount: filtrados.length,
-                                itemBuilder: (context, index) {
-                                  var p = filtrados[index];
-
-                                  Color corTitulo = Colors.white;
-                                  if (filtroParanormal == 'Sangue') {
-                                    corTitulo = const Color(0xFF990000);
-                                  } else if (filtroParanormal == 'Energia') {
-                                    corTitulo = const Color(0xFF9900FF);
-                                  } else if (filtroParanormal ==
-                                      'Conhecimento') {
-                                    corTitulo = const Color(0xFFFFB300);
-                                  }
-
-                                  return Container(
-                                    decoration: BoxDecoration(
-                                      border: Border(
-                                        bottom: BorderSide(
-                                          color: Colors.grey.shade900,
-                                        ),
-                                      ),
-                                    ),
-                                    child: ListTile(
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 8,
-                                          ),
-                                      title: Text(
-                                        p.nome,
-                                        style: TextStyle(
-                                          color: corTitulo,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      subtitle: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            p.descricao,
-                                            style: const TextStyle(
-                                              color: Colors.grey,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                          if (p.preRequisitos != "Nenhum") ...[
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              "Pré-req: ${p.preRequisitos}",
-                                              style: TextStyle(
-                                                color: corDestaqueLocal,
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                      trailing: ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: corTemaLocal,
-                                          foregroundColor: corLetra,
-                                          side: afinidadeAtual == 'Morte'
-                                              ? const BorderSide(
-                                                  color: Colors.white54,
-                                                )
-                                              : null,
-                                        ),
-                                        onPressed: () {
-                                          setState(() {
-                                            origemAtual =
-                                                'cultista_arrependido';
-                                            poderesEscolhidos.add(p.nome);
-                                            atualizarFicha();
-                                          });
-                                          _salvarSilencioso();
-                                          Navigator.pop(context);
-                                          _mostrarNotificacao(
-                                            "Origem e Poder aplicados!",
-                                          );
-                                        },
-                                        child: const Text(
-                                          "ESCOLHER",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: const BorderSide(color: Colors.grey),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        "CANCELAR",
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _mostrarDialogOperario() {
-    List<Arma> armasValidas = catalogoArmasOrdem
-        .where(
-          (a) => a.proficiencia == 'Simples' || a.proficiencia == 'Táticas',
-        )
-        .toList();
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1A1A1A),
-          title: Text(
-            "Ferramenta de Trabalho",
-            style: TextStyle(color: corDestaque),
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: armasValidas.length,
-              itemBuilder: (ctx, i) {
-                var arma = armasValidas[i];
-                return ListTile(
-                  title: Text(
-                    arma.nome,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  onTap: () {
-                    // CORREÇÃO: A arma já nasce com uma lista mutável contendo a modificação
-                    Arma novaArma = Arma(
-                      nome: arma.nome,
-                      tipo: arma.tipo,
-                      dano: arma.dano,
-                      margemAmeaca: arma.margemAmeaca,
-                      multiplicadorCritico: arma.multiplicadorCritico,
-                      categoria: arma.categoria,
-                      espaco: arma.espaco,
-                      proficiencia: arma.proficiencia,
-                      empunhadura: arma.empunhadura,
-                      descricao: arma.descricao,
-                      modificacoes: ["Ferramenta de Trabalho"],
-                    );
-
-                    setState(() {
-                      origemAtual = 'operario';
-                      armas.add(novaArma);
-                      atualizarFicha();
-                    });
-
-                    _salvarSilencioso();
-                    Navigator.pop(context);
-                    _mostrarNotificacao(
-                      "Origem aplicada e Ferramenta adicionada!",
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                "Cancelar",
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _mostrarDialogExperimento() {
-    List<String> idsFisicos = [
-      'acrobacia',
-      'atletismo',
-      'crime',
-      'fortitude',
-      'furtividade',
-      'iniciativa',
-      'luta',
-      'pilotagem',
-      'pontaria',
-      'reflexos',
-    ];
-    List<Pericia> periciasValidas = listaPericias
-        .where((p) => idsFisicos.contains(p.id))
-        .toList();
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1A1A1A),
-          title: Text(
-            "Mutação (Experimento)",
-            style: TextStyle(color: corDestaque),
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: periciasValidas.length,
-              itemBuilder: (ctx, i) {
-                var p = periciasValidas[i];
-                return ListTile(
-                  title: Text(
-                    p.nome,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  onTap: () {
-                    setState(() {
-                      origemAtual = 'experimento';
-                      poderesEscolhidos.add("Experimento_${p.id}");
-                      atualizarFicha();
-                    });
-                    _salvarSilencioso();
-                    Navigator.pop(context);
-                    _mostrarNotificacao("Origem Experimento aplicada!");
-                  },
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                "Cancelar",
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _mostrarDialogProfetizado() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1A1A1A),
-          title: Text(
-            "Premonição (Profetizado)",
-            style: TextStyle(color: corDestaque),
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: listaPericias.length,
-              itemBuilder: (ctx, i) {
-                var p = listaPericias[i];
-                return ListTile(
-                  title: Text(
-                    p.nome,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  onTap: () {
-                    setState(() {
-                      origemAtual = 'profetizado';
-                      poderesEscolhidos.add("Profetizado_${p.id}");
-                      var pericia = listaPericias.firstWhere(
-                        (per) => per.id == p.id,
-                      );
-                      if (pericia.treino < 5) pericia.treino = 5;
-                      pericia.daOrigem = true;
-
-                      var vontade = listaPericias.firstWhere(
-                        (v) => v.id == 'vontade',
-                      );
-                      if (vontade.treino < 5) vontade.treino = 5;
-                      vontade.daOrigem = true;
-                      atualizarFicha();
-                    });
-                    _salvarSilencioso();
-                    Navigator.pop(context);
-                    _mostrarNotificacao("Origem Profetizado aplicada!");
-                  },
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                "Cancelar",
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _mostrarDialogEngenheiro() {
-    // Filtra itens normais que tenham categoria maior que zero (I, II, III, etc)
-    List<dynamic> itensValidos = catalogoItensOrdem
-        .where((item) => item.categoria != '0')
-        .toList();
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1A1A1A),
-          title: Text(
-            "Ferramenta Favorita (Engenheiro)",
-            style: TextStyle(color: corDestaque),
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: itensValidos.length,
-              itemBuilder: (ctx, i) {
-                var item = itensValidos[i] as ItemInventario;
-                return ListTile(
-                  title: Text(
-                    item.nome,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  subtitle: Text(
-                    "Categoria: ${item.categoria}",
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                  onTap: () {
-                    setState(() {
-                      origemAtual = 'engenheiro';
-                      poderesEscolhidos.add("Engenheiro_${item.nome}");
-                      atualizarFicha();
-                    });
-                    _salvarSilencioso();
-                    Navigator.pop(context);
-                    _mostrarNotificacao("Origem Engenheiro aplicada!");
-                  },
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                "Cancelar",
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   void atualizarFicha({bool isInitialLoad = false}) {
     setState(() {
+      if (nex < 10 || classeAtual == '--') trilhaAtual = '--';
+
       if (nex < 50 && afinidadeAtual != null) {
         afinidadeAtual = null;
       }
@@ -2899,6 +1291,37 @@ class _FichaAgenteState extends State<FichaAgente> {
       if (origemAtual == 'experimento') resistencias['Geral'] = 2;
       if (origemAtual == 'teorico_da_conspiracao') {
         resistencias['Mental'] = inte;
+      }
+
+      // --- LÓGICA DE TRILHAS (BÔNUS PASSIVOS) ---
+      if (trilhaAtual == 'operacoes_especiais' && nex >= 10) {
+        bonusOrigem['iniciativa'] = (bonusOrigem['iniciativa'] ?? 0) + 5;
+      }
+      
+      // Lógica do Atirador de Elite (Dano em Armas de Fogo Longas) e Aniquilador
+      // Estão programadas diretamente nos getters das armas quando equipadas (serão adicionadas no futuro)
+
+      // Lógica do Especialista: Técnico
+      if (trilhaAtual == 'tecnico' && nex >= 10) {
+        // Inventário otimizado é calculado no Getter do espacoMaximo
+      }
+
+      // Lógica do Especialista: Gatuno
+      if (trilhaAtual == 'infiltrador' && nex >= 40) {
+        bonusOrigem['atletismo'] = (bonusOrigem['atletismo'] ?? 0) + 5;
+        bonusOrigem['crime'] = (bonusOrigem['crime'] ?? 0) + 5;
+      }
+
+      // Lógica do Especialista: A Força do Saber
+      if (trilhaAtual == 'bibliotecario' && nex >= 99) {
+        // Intelecto aumenta em +1 (Considerado de forma passiva aqui para não alterar o atributo raiz editável)
+        peMax += inte + 1; 
+      }
+      
+      // Lógica do Ocultista: Intuitivo
+      if (trilhaAtual == 'intuitivo' && nex >= 65) {
+        resistencias['Mental'] = 10;
+        resistencias['Paranormal'] = 10;
       }
 
       for (String pod in poderesEscolhidos) {
@@ -2988,6 +1411,15 @@ class _FichaAgenteState extends State<FichaAgente> {
           if (nivel >= 3) peMax += nexImpares;
         }
 
+        if (origemAtual == 'desgarrado') pvMax += nivel;
+        if (origemAtual == 'vitima') sanMax += nivel;
+        if (origemAtual == 'mergulhador') pvMax += 5;
+
+        // Tropa de Choque (+1 PV por NEX)
+        if (trilhaAtual == 'tropa_de_choque' && nex >= 10) {
+          pvMax += nivel;
+        }
+
         if (sanMax < 0) sanMax = 0;
       } else {
         if (isInitialLoad && widget.agenteParaEditar == null) {
@@ -3053,7 +1485,7 @@ class _FichaAgenteState extends State<FichaAgente> {
         if (p.id == 'fortitude') bFortitude = p.treino;
       }
 
-      // LÓGICA: Bônus de Defesa das Origens
+      // Bônus de Defesa das Origens
       int bonusDefesaOrigem = 0;
       if (origemAtual == 'policial') bonusDefesaOrigem += 2;
       if (origemAtual == 'ginasta') bonusDefesaOrigem += 2;
@@ -3075,112 +1507,12 @@ class _FichaAgenteState extends State<FichaAgente> {
     if (!isInitialLoad) _salvarSilencioso();
   }
 
-  void _toggleEquiparItem(ItemInventario item) {
-    bool isVestimenta = item.nome.toLowerCase().contains("vestimenta");
-    bool isProtecao = item.descricao.toLowerCase().contains("proteção");
-    bool isEscudo = item.nome.toLowerCase().contains("escudo");
-
-    if (!item.equipado) {
-      if (isVestimenta) {
-        int equipadas = inventario
-            .where(
-              (i) => i.equipado && i.nome.toLowerCase().contains("vestimenta"),
-            )
-            .length;
-        int limiteVestimentas = poderesEscolhidos.contains("Mochileiro")
-            ? 3
-            : 2;
-        if (equipadas >= limiteVestimentas) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                "Limite: Você só pode vestir $limiteVestimentas vestimentas ao mesmo tempo!",
-              ),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
-          return;
-        }
-      }
-      if (isProtecao) {
-        if (isEscudo) {
-          if (maosOcupadas + 1 > 2) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  "Limite: Você não tem mãos livres suficientes para equipar o Escudo!",
-                ),
-                backgroundColor: Colors.redAccent,
-              ),
-            );
-            return;
-          }
-          if (inventario.any(
-            (i) => i.equipado && i.nome.toLowerCase().contains("escudo"),
-          )) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("Limite: Você já tem um escudo equipado!"),
-                backgroundColor: Colors.redAccent,
-              ),
-            );
-            return;
-          }
-        } else {
-          if (inventario.any(
-            (i) =>
-                i.equipado &&
-                i.descricao.toLowerCase().contains("proteção") &&
-                !i.nome.toLowerCase().contains("escudo"),
-          )) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  "Limite: Você só pode usar 1 proteção por vez! (Mas pode usar 1 Escudo junto)",
-                ),
-                backgroundColor: Colors.redAccent,
-              ),
-            );
-            return;
-          }
-        }
-      }
-    }
-    setState(() {
-      item.equipado = !item.equipado;
-      atualizarFicha();
-    });
-  }
-
-  void _toggleEquiparArma(Arma arma) {
-    if (!arma.equipado) {
-      int custoMaos = arma.empunhadura == 'Duas Mãos' ? 2 : 1;
-      if (maosOcupadas + custoMaos > 2) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              "Limite: Você não tem mãos livres suficientes para empunhar essa arma!",
-            ),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-        return;
-      }
-    }
-    setState(() {
-      arma.equipado = !arma.equipado;
-      atualizarFicha();
-    });
-  }
-
-  // =========================================================================
-  // SISTEMA DE ABAS (FUNÇÕES DE CONSTRUÇÃO)
-  // =========================================================================
+  // SISTEMA DE ABAS
 
   Widget _buildAbaAtributos(bool block, Color corDoPainel) {
     List<Arma> armasEquipadas = armas.where((a) => a.equipado).toList();
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 150),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -3194,6 +1526,7 @@ class _FichaAgenteState extends State<FichaAgente> {
             ),
           ),
           const SizedBox(height: 16),
+          
           if (nex >= 50 && afinidadeAtual == null && !block)
             Center(
               child: BotaoAfinidadeAnimado(onPressed: _mostrarDialogAfinidade),
@@ -3293,6 +1626,78 @@ class _FichaAgenteState extends State<FichaAgente> {
                   ),
                 ],
               ),
+
+              // Opção trilhas
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: (block || nex < 10 || classeAtual == '--')
+                    ? null
+                    : () => _mostrarDialogTrilhas(),
+                child: Container(
+                  height: 58,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: (nex < 10 || classeAtual == '--')
+                        ? Colors.grey.shade900.withValues(alpha: 0.5)
+                        : const Color(0xFF0D0D0D),
+                    border: Border.all(
+                      color: (nex < 10 || classeAtual == '--')
+                          ? Colors.grey.shade800
+                          : Colors.grey.shade600,
+                    ),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              nex < 10
+                                  ? "Trilha (Requer NEX 10%)"
+                                  : "Trilha de Classe",
+                              style: TextStyle(
+                                color: (nex < 10 || classeAtual == '--')
+                                    ? Colors.grey.shade700
+                                    : Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              trilhaAtual == '--'
+                                  ? '--'
+                                  : (trilhasOrdem[trilhaAtual]?.nome ??
+                                            trilhaAtual)
+                                        .toUpperCase(),
+                              style: TextStyle(
+                                color: (nex < 10 || classeAtual == '--')
+                                    ? Colors.grey.shade600
+                                    : Colors.white,
+                                fontSize: 14,
+                                fontWeight: trilhaAtual != '--'
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.call_split,
+                        color: (nex < 10 || classeAtual == '--')
+                            ? Colors.grey.shade800
+                            : Colors.grey,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -3538,13 +1943,21 @@ class _FichaAgenteState extends State<FichaAgente> {
             ],
           ),
 
-          if (resistencias.isNotEmpty)
-            SecaoFicha(
-              titulo: "Resistências",
-              corTema: corFundoAfinidade,
-              corTexto: corTextoAfinidade,
-              isMorte: afinidadeAtual == 'Morte',
-              filhos: [
+          SecaoFicha(
+            titulo: "Resistências",
+            corTema: corFundoAfinidade,
+            corTexto: corTextoAfinidade,
+            isMorte: afinidadeAtual == 'Morte',
+            filhos: [
+              if (resistencias.isEmpty)
+                const Text(
+                  "Nenhuma resistência.",
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontStyle: FontStyle.italic,
+                  ),
+                )
+              else
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -3572,8 +1985,8 @@ class _FichaAgenteState extends State<FichaAgente> {
                     );
                   }).toList(),
                 ),
-              ],
-            ),
+            ],
+          ),
 
           SecaoFicha(
             titulo: "Ataques (Armas Equipadas)",
@@ -3737,188 +2150,27 @@ class _FichaAgenteState extends State<FichaAgente> {
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildAbaPericias(bool block, Color corDoPainel) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-      child: SecaoFicha(
-        titulo: "Perícias",
-        corTema: corFundoAfinidade,
-        corTexto: corTextoAfinidade,
-        isMorte: afinidadeAtual == 'Morte',
-        filhos: [
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: listaPericias.length,
-            itemBuilder: (context, index) {
-              var pericia = listaPericias[index];
-
-              int bonusExtra = 0;
-              var aprimoramentos = inventario.where((i) {
-                bool isUtensilio = i.nome.toLowerCase().contains("utensílio");
-                return i.periciaVinculada == pericia.id &&
-                    (i.equipado || isUtensilio);
-              });
-
-              for (var v in aprimoramentos) {
-                bool temModAprimorado =
-                    v.modificacoes.contains("Aprimorado") ||
-                    v.modificacoes.contains("Aprimorada");
-                int b = temModAprimorado ? 5 : 2;
-                if (b > bonusExtra) bonusExtra = b;
-              }
-
-              // --- LÓGICA: Adiciona o Bônus de Origens! ---
-              int bonusDaOrigemAplicado = bonusOrigem[pericia.id] ?? 0;
-              int bonusTotalExtras = bonusExtra + bonusDaOrigemAplicado;
-              int totalBonus = pericia.treino + bonusTotalExtras;
-
-              bool isLocked =
-                  pericia.daOrigem || periciasClasse.contains(pericia.id);
-
-              return Container(
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: Colors.grey.shade800),
-                  ),
-                  color: pericia.treino > 0
-                      ? corDoPainel.withValues(alpha: 0.1)
-                      : Colors.transparent,
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 4,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              "${pericia.nome} (${pericia.atributo})",
-                              style: TextStyle(
-                                color: pericia.treino > 0
-                                    ? Colors.white
-                                    : Colors.grey,
-                                fontWeight: pericia.treino > 0
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (bonusTotalExtras > 0)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 4, right: 4),
-                              child: Icon(
-                                Icons.add_circle,
-                                color: corDoPainel,
-                                size: 14,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      flex: 3,
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int>(
-                          value: pericia.treino,
-                          isExpanded: true,
-                          icon: const Icon(Icons.arrow_drop_down, size: 16),
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.white,
-                          ),
-                          items: [
-                            if (!isLocked)
-                              const DropdownMenuItem(
-                                value: 0,
-                                child: Text("Destreinado (+0)"),
-                              ),
-                            const DropdownMenuItem(
-                              value: 5,
-                              child: Text("Treinado (+5)"),
-                            ),
-                            const DropdownMenuItem(
-                              value: 10,
-                              child: Text("Veterano (+10)"),
-                            ),
-                            const DropdownMenuItem(
-                              value: 15,
-                              child: Text("Expert (+15)"),
-                            ),
-                          ],
-                          onChanged: block
-                              ? null
-                              : (val) {
-                                  setState(() {
-                                    pericia.treino = val!;
-                                    atualizarFicha();
-                                  });
-                                },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Text(
-                      "+",
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
-                    ),
-                    const SizedBox(width: 4),
-                    Container(
-                      width: 35,
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1A1A1A),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: Colors.grey.shade800),
-                      ),
-                      child: Text(
-                        "+$bonusTotalExtras",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Text(
-                      "=",
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
-                    ),
-                    const SizedBox(width: 4),
-                    Container(
-                      width: 35,
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: corDoPainel.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: corDoPainel.withValues(alpha: 0.5),
-                        ),
-                      ),
-                      child: Text(
-                        "+$totalBonus",
-                        style: TextStyle(
-                          color: corDoPainel,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              backgroundColor: const Color(0xFF151515),
+              foregroundColor: corDestaque,
+              side: BorderSide(color: corDestaque.withValues(alpha: 0.3)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            icon: const Icon(Icons.help_outline),
+            label: const Text(
+              "GUIA RÁPIDO DE AÇÕES",
+              style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
+            ),
+            onPressed: () => _mostrarDialogAcoesCombate(),
           ),
+
+          // ==============================================================
         ],
       ),
     );
@@ -3926,10 +2178,66 @@ class _FichaAgenteState extends State<FichaAgente> {
 
   Widget _buildAbaHabilidades(bool block, Color corDoPainel) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 150),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Exibe trilha
+          if (trilhaAtual != '--' && trilhasOrdem.containsKey(trilhaAtual))
+            SecaoFicha(
+              titulo: "Trilha: ${trilhasOrdem[trilhaAtual]!.nome}",
+              corTema: corFundoAfinidade,
+              corTexto: corTextoAfinidade,
+              isMorte: afinidadeAtual == 'Morte',
+              filhos: [
+                Text(
+                  trilhasOrdem[trilhaAtual]!.descricao,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Divider(color: Colors.grey),
+                const SizedBox(height: 8),
+
+                // Mostra apenas as habilidades que o NEX atual permite
+                ...trilhasOrdem[trilhaAtual]!.habilidades.entries
+                    .where((e) => nex >= e.key)
+                    .map((e) {
+                      String nomeHab = e.value.keys.first;
+                      String descHab = e.value.values.first;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "NEX ${e.key}% - $nomeHab",
+                              style: TextStyle(
+                                color: corDestaque,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              descHab,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+              ],
+            ),
+
+          // =====================================
           if (origemAtual != '--')
             SecaoFicha(
               titulo: "Habilidade de Origem: $habNome",
@@ -3946,13 +2254,13 @@ class _FichaAgenteState extends State<FichaAgente> {
                   ),
                 ),
 
-                // LÓGICA: Switches Exclusivos do Colegial!
+                // Switches Exclusivos do Colegial
                 if (origemAtual == 'colegial') ...[
                   const SizedBox(height: 16),
                   const Divider(color: Colors.grey),
                   SwitchListTile(
                     title: const Text(
-                      "Amigo Próximo (+2 Perícias)",
+                      "Amigo está Próximo (+2 em Perícias)",
                       style: TextStyle(color: Colors.white, fontSize: 13),
                     ),
                     value: poderesEscolhidos.contains("Colegial_Perto"),
@@ -4001,7 +2309,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                           },
                   ),
                 ],
-                // LÓGICA: Switches Exclusivos do Revoltado!
+                // Switches Exclusivos do Revoltado
                 if (origemAtual == 'revoltado') ...[
                   const SizedBox(height: 16),
                   const Divider(color: Colors.grey),
@@ -4234,543 +2542,7 @@ class _FichaAgenteState extends State<FichaAgente> {
     );
   }
 
-  Widget _buildAbaInventario(bool block, Color corDoPainel) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SecaoFicha(
-            titulo: "Painel de Controle",
-            corTema: corFundoAfinidade,
-            corTexto: corTextoAfinidade,
-            isMorte: afinidadeAtual == 'Morte',
-            filhos: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  border: Border.all(color: corDestaque, width: 0.5),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Patente: ${patenteAtual.toUpperCase()}",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: corDestaque,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              "Crédito: $limiteCredito",
-                              style: const TextStyle(color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                        SizedBox(
-                          width: 75,
-                          child: TextFormField(
-                            initialValue: prestigio.toString(),
-                            enabled: !block,
-                            keyboardType: TextInputType.number,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: "PP",
-                              labelStyle: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
-                              ),
-                              contentPadding: EdgeInsets.symmetric(
-                                vertical: 8,
-                                horizontal: 8,
-                              ),
-                              border: OutlineInputBorder(),
-                              filled: true,
-                              fillColor: Color(0xFF1A1A1A),
-                            ),
-                            onChanged: (val) {
-                              prestigio = int.tryParse(val) ?? 0;
-                              atualizarFicha();
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Divider(color: Colors.grey),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: ["I", "II", "III", "IV"].map((cat) {
-                        int atual = usoCategoriaAtual[cat]!;
-                        int max = limitesCategoria[cat]!;
-                        bool excedeu = atual > max;
-                        return Column(
-                          children: [
-                            Text(
-                              "Cat $cat",
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
-                              ),
-                            ),
-                            Text(
-                              "$atual / $max",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: excedeu
-                                    ? Colors.redAccent
-                                    : Colors.white,
-                              ),
-                            ),
-                          ],
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "Espaço: ${espacoOcupado.toString().replaceAll('.0', '')} / $espacoMaximo",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: espacoOcupado > espacoMaximo
-                          ? Colors.redAccent
-                          : Colors.white,
-                    ),
-                  ),
-                  if (!block)
-                    ElevatedButton.icon(
-                      onPressed: () => _abrirCatalogoEquipamento(),
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text("Equipamento"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: corFundoAfinidade,
-                        foregroundColor: corTextoAfinidade,
-                        side: afinidadeAtual == 'Morte'
-                            ? const BorderSide(color: Colors.white54)
-                            : null,
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              if (inventario.isEmpty && armas.isEmpty)
-                const Text(
-                  "Inventário vazio.",
-                  style: TextStyle(color: Colors.grey),
-                ),
-
-              // ================= ARMAS EXPANSÍVEIS =================
-              ...armas.map((arma) {
-                int index = armas.indexOf(arma);
-                bool isProficiente =
-                    arma.proficiencia == 'Simples' ||
-                    (arma.proficiencia == 'Táticas' &&
-                        classeAtual == 'combatente');
-                String alertaProf = isProficiente
-                    ? ""
-                    : "\n⚠️ Não proficiente: -2d20 no Ataque";
-                String modDano = "";
-
-                int bonusDano = 0;
-                if (arma.tipo == 'Corpo a Corpo' || arma.tipo == 'Arremesso') {
-                  bonusDano += forc;
-                  if (origemAtual == 'lutador') bonusDano += 2;
-                } else if (arma.tipo == 'Fogo' || arma.tipo == 'Disparo') {
-                  if (origemAtual == 'militar') bonusDano += 2;
-                }
-                if (bonusDano > 0) {
-                  modDano = "+$bonusDano";
-                } else if (bonusDano < 0) {
-                  modDano = "$bonusDano";
-                }
-                if (arma.modificacoes.contains("Ferramenta de Trabalho")) {
-                  alertaProf += " | +1 no Ataque";
-                }
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF151515),
-                    border: Border.all(color: Colors.grey.shade900),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Theme(
-                    data: Theme.of(
-                      context,
-                    ).copyWith(dividerColor: Colors.transparent),
-                    child: ExpansionTile(
-                      iconColor: corDestaque,
-                      collapsedIconColor: Colors.grey,
-                      tilePadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      title: Text(
-                        arma.nome,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      subtitle: RichText(
-                        text: TextSpan(
-                          style: TextStyle(color: corDestaque, fontSize: 13),
-                          children: [
-                            const TextSpan(text: "Categoria: "),
-                            TextSpan(
-                              text: "${arma.categoriaEfetiva}   ",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const TextSpan(text: "Espaços: "),
-                            TextSpan(
-                              text: arma.espacoEfetivo.toString().replaceAll(
-                                '.0',
-                                '',
-                              ),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      trailing: SizedBox(
-                        width: 100,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Checkbox(
-                              value: arma.equipado,
-                              activeColor: corDestaque,
-                              onChanged: (val) => _toggleEquiparArma(arma),
-                            ),
-                            Icon(
-                              Icons.expand_more,
-                              color: corDestaque.withValues(alpha: 0.5),
-                            ),
-                          ],
-                        ),
-                      ),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Divider(
-                                color: corDestaque.withValues(alpha: 0.3),
-                                thickness: 1,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                "Arma ${arma.tipo} • ${arma.proficiencia} • ${arma.empunhadura}",
-                                style: const TextStyle(
-                                  color: Colors.grey,
-                                  fontStyle: FontStyle.italic,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                "Dano: ${arma.danoEfetivo}$modDano | Crítico: ${arma.margemAmeacaEfetiva}/x${arma.multiplicadorCritico}$alertaProf",
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              if (arma.modificacoes.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    "Mods: ${arma.modificacoes.join(', ')}",
-                                    style: TextStyle(
-                                      color: corDestaque,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  if (!block)
-                                    TextButton(
-                                      onPressed: () {
-                                        setState(() => armas.removeAt(index));
-                                        _salvarSilencioso();
-                                      },
-                                      child: const Text(
-                                        "Remover",
-                                        style: TextStyle(
-                                          color: Colors.redAccent,
-                                        ),
-                                      ),
-                                    )
-                                  else
-                                    const SizedBox.shrink(),
-                                  Row(
-                                    children: [
-                                      if (!block)
-                                        TextButton(
-                                          onPressed: () =>
-                                              mostrarDialogModificarEquipamento(
-                                                context: context,
-                                                equipamento: arma,
-                                                corDestaque: corDestaque,
-                                                corTema: corFundoAfinidade,
-                                                corTexto: corTextoAfinidade,
-                                                afinidadeAtual: afinidadeAtual,
-                                                onAplicar: (mods) {
-                                                  setState(() {
-                                                    armas[index].modificacoes =
-                                                        List.from(mods);
-                                                    atualizarFicha();
-                                                  });
-                                                  _salvarSilencioso();
-                                                },
-                                              ),
-                                          child: const Text(
-                                            "Editar",
-                                            style: TextStyle(
-                                              color: Colors.green,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }),
-
-              // ================= ITENS EXPANSÍVEIS =================
-              ...inventario.map((item) {
-                int index = inventario.indexOf(item);
-                bool isEquipavel =
-                    item.descricao.toLowerCase().contains("proteção") ||
-                    item.nome.toLowerCase().contains("vestimenta") ||
-                    item.nome.toLowerCase().contains("escudo");
-
-                String tipoItem = item.descricao.split('.').first;
-                String descLimpa = item.descricao
-                    .replaceFirst("$tipoItem.", "")
-                    .trim();
-                if (descLimpa.isEmpty) descLimpa = tipoItem;
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF151515),
-                    border: Border.all(color: Colors.grey.shade900),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Theme(
-                    data: Theme.of(
-                      context,
-                    ).copyWith(dividerColor: Colors.transparent),
-                    child: ExpansionTile(
-                      iconColor: corDestaque,
-                      collapsedIconColor: Colors.grey,
-                      tilePadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      title: Text(
-                        item.nome,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      subtitle: RichText(
-                        text: TextSpan(
-                          style: TextStyle(color: corDestaque, fontSize: 13),
-                          children: [
-                            const TextSpan(text: "Categoria: "),
-                            TextSpan(
-                              text: "${item.categoriaEfetiva}   ",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const TextSpan(text: "Espaços: "),
-                            TextSpan(
-                              text: item.espacoEfetivo.toString().replaceAll(
-                                '.0',
-                                '',
-                              ),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      trailing: isEquipavel
-                          ? SizedBox(
-                              width: 100,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  Checkbox(
-                                    value: item.equipado,
-                                    activeColor: corDestaque,
-                                    onChanged: (val) =>
-                                        _toggleEquiparItem(item),
-                                  ),
-                                  Icon(
-                                    Icons.expand_more,
-                                    color: corDestaque.withValues(alpha: 0.5),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : Icon(
-                              Icons.expand_more,
-                              color: corDestaque.withValues(alpha: 0.5),
-                            ),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Divider(
-                                color: corDestaque.withValues(alpha: 0.3),
-                                thickness: 1,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                tipoItem,
-                                style: const TextStyle(
-                                  color: Colors.grey,
-                                  fontStyle: FontStyle.italic,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                descLimpa,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                ),
-                              ),
-
-                              if (item.modificacoes.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    "Mods: ${item.modificacoes.join(', ')}",
-                                    style: TextStyle(
-                                      color: corDestaque,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  if (!block)
-                                    TextButton(
-                                      onPressed: () {
-                                        setState(
-                                          () => inventario.removeAt(index),
-                                        );
-                                        _salvarSilencioso();
-                                      },
-                                      child: const Text(
-                                        "Remover",
-                                        style: TextStyle(
-                                          color: Colors.redAccent,
-                                        ),
-                                      ),
-                                    )
-                                  else
-                                    const SizedBox.shrink(),
-                                  Row(
-                                    children: [
-                                      if (!block)
-                                        TextButton(
-                                          onPressed: () =>
-                                              mostrarDialogModificarEquipamento(
-                                                context: context,
-                                                equipamento: item,
-                                                corDestaque: corDestaque,
-                                                corTema: corFundoAfinidade,
-                                                corTexto: corTextoAfinidade,
-                                                afinidadeAtual: afinidadeAtual,
-                                                onAplicar: (mods) {
-                                                  setState(() {
-                                                    inventario[index]
-                                                            .modificacoes =
-                                                        List.from(mods);
-                                                    atualizarFicha();
-                                                  });
-                                                  _salvarSilencioso();
-                                                },
-                                              ),
-                                          child: const Text(
-                                            "Editar",
-                                            style: TextStyle(
-                                              color: Colors.green,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =========================================================================
-  // WIDGETS AUXILIARES E FUNÇÕES DE BARRA FLUTUANTE
-  // =========================================================================
+  // BARRA FLUTUANTE
 
   Widget _buildFloatingNavBar(bool block, Color corDoPainel) {
     return Container(
@@ -4916,15 +2688,4 @@ class _FichaAgenteState extends State<FichaAgente> {
       ),
     );
   }
-
-  void _inicializarPericias() {
-    listaPericias = periciasBase
-        .map(
-          (p) =>
-              Pericia(nome: p["nome"]!, atributo: p["atributo"]!, id: p["id"]!),
-        )
-        .toList();
-  }
-
-  // ================== DIALOGS ESPECÍFICOS DE ORIGENS ==================
 }

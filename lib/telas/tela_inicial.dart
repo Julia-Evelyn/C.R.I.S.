@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../modelos/agente_dados.dart';
+import '../dados/base.dart';
+import '../dados/trilhas.dart';
 import 'ficha_agente.dart';
 
 class TelaInicial extends StatefulWidget {
@@ -50,8 +52,7 @@ class _TelaInicialState extends State<TelaInicial> {
       case 'Energia':
         return const Color(0xFF9900FF);
       case 'Morte':
-        return Colors
-            .white54;
+        return Colors.white54;
       case 'Conhecimento':
         return const Color(0xFFFFB300);
       default:
@@ -202,7 +203,7 @@ class _TelaInicialState extends State<TelaInicial> {
                             ),
                             const SizedBox(width: 16),
 
-                            // 2. INFORMAÇÕES DO AGENTE
+                            // INFORMAÇÕES DO AGENTE
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,7 +221,31 @@ class _TelaInicialState extends State<TelaInicial> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    "${agente.classe.toUpperCase()} • ${agente.origem.toUpperCase()}",
+                                    () {
+                                      String textoClasse = agente.classe != '--'
+                                          ? agente.classe.toUpperCase()
+                                          : "SEM CLASSE";
+
+                                      String textoTrilha = "";
+                                      if (agente.trilha != '--' &&
+                                          trilhasOrdem.containsKey(
+                                            agente.trilha,
+                                          )) {
+                                        textoTrilha =
+                                            " • ${trilhasOrdem[agente.trilha]!.nome.toUpperCase()}";
+                                      }
+
+                                      String textoOrigem = "";
+                                      if (agente.origem != '--') {
+                                        String nomeOrigem =
+                                            dadosOrigens[agente.origem]?.nome ??
+                                            agente.origem;
+                                        textoOrigem =
+                                            " • ${nomeOrigem.toUpperCase()}";
+                                      }
+
+                                      return "$textoClasse$textoTrilha$textoOrigem";
+                                    }(),
                                     style: const TextStyle(
                                       color: Colors.grey,
                                       fontSize: 12,
@@ -228,7 +253,7 @@ class _TelaInicialState extends State<TelaInicial> {
                                   ),
                                   const SizedBox(height: 12),
 
-                                  // 3. BADGES DE NEX E PP
+                                  // NEX E PP
                                   Row(
                                     children: [
                                       _buildBadge(

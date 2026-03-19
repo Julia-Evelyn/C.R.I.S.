@@ -114,12 +114,14 @@ class Arma {
   });
 
   String get categoriaEfetiva {
-    int qtdMods = modificacoes.length;
+    // Filtra a lista para não contar a "Ferramenta de Trabalho" no aumento de categoria
+    int qtdMods = modificacoes.where((mod) => mod != "Ferramenta de Trabalho").length;
+    
     if (qtdMods == 0) return categoria;
 
     List<String> niveis = ["0", "I", "II", "III", "IV", "V", "VI", "VII"];
     int indexAtual = niveis.indexOf(categoria);
-
+    
     if (indexAtual == -1) return categoria;
 
     int novoIndex = indexAtual + qtdMods;
@@ -251,7 +253,7 @@ class Arma {
 }
 
 class AgenteDados {
-  String nome, classe, origem;
+  String nome, classe, origem, trilha;
   String? fotoPath;
   String? afinidade;
   int nex, prestigio, agi, forc, inte, pre, vig;
@@ -266,6 +268,7 @@ class AgenteDados {
     required this.nome,
     required this.classe,
     required this.origem,
+    this.trilha = '--',
     this.fotoPath,
     this.afinidade,
     required this.nex,
@@ -289,6 +292,7 @@ class AgenteDados {
     'nome': nome,
     'classe': classe,
     'origem': origem,
+    'trilha': trilha,
     'fotoPath': fotoPath,
     'afinidade': afinidade,
     'nex': nex,
@@ -310,8 +314,9 @@ class AgenteDados {
 
   factory AgenteDados.fromJson(Map<String, dynamic> json) => AgenteDados(
     nome: json['nome']?.toString() ?? 'Desconhecido',
-    classe: json['classe']?.toString() ?? 'combatente',
-    origem: json['origem']?.toString() ?? 'academico',
+    classe: json['classe']?.toString() ?? '--',
+    origem: json['origem']?.toString() ?? '--',
+    trilha: json['trilha']?.toString() ?? '--', 
     fotoPath: json['fotoPath']?.toString(),
     afinidade: json['afinidade']?.toString(),
     nex: json['nex'] != null ? (json['nex'] as num).toInt() : 5,

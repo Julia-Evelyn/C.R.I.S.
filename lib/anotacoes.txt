@@ -21,18 +21,19 @@ Falta fazer:
 - Add resto dos itens paranormais, armas e origens ----- FEITO
 - Lógica em cada poder de origem ----- FEITO
 - Mostar pe/rodada e deslocamento ----- FEITO
+- Concertar sapoha de nex 100 q n existe na lore de ordem ----- FEITO
+- Aba de perícias mostrar detalhe sobre cada perícia ----- FEITO
+- Na área de ataques, mostrar listinha com ações diversas (investida, manobra, etc) ----- FEITO
 
+- Perícia profissão add +1 categoria (I, II ou III dependendo do nível de treinamento) no limite
 - Add popup quando ganhar poder novo, atributo e melhoria de perícia
 - Criar trilha de cada classe
 - Poder girar perícia na aba de perícias
-- Aba de perícias mostrar detalhe sobre cada perícia
 - Limitar quantidade de atributos
 - Quando aumentar atributo de int, aparecer popup falando q pode escolher outra perícia
 - Add poder criar poder geral, paranormal, de classe e ritual personalizado
 - Lógica de cada poder (geral, de classe e paranormal)
 - Adicionar todos os rituais
-- Na área de ataques, mostrar listinha com ações diversas (investida, manobra, etc)
-- Concertar sapoha de nex 100 q n existe na lore de ordem
 - Configurar maldições
 - Fazer a área de detalhes do backstory do personagem (fazer opção de baixar versão pdf das anotações, 100% formatada e bonita pra enviar pro mestre)
 
@@ -40,40 +41,22 @@ Falta fazer:
 Origens com lógica:
 
 - Cultista Arrependido ---OK
-
 - Desgarrado ---OK
-
 - Lutador ---OK
-
 - Militar ---OK
-
 - Policial ---OK
-
 - Universitário ---OK
-
 - Vítima ---OK
-
 - MERGULHADOR ---OK
-
 - Magnata ---OK
-
 - Operário ---OK
-
 - Teórico da Conspiração ---OK
-
 - DIPLOMATA ---OK
-
 - COLEGIAL ---OK
-
 - EXPERIMENTO ---OK
-
 - PROFETIZADO ---OK
-
 - BLASTER ---OK
-
 - GINASTA ---OK
-
 - REVOLTADO ---OK
-
 - Engenheiro ---OK
 ===================================================================

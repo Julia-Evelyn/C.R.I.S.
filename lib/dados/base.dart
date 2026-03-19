@@ -277,7 +277,7 @@ final Map<String, DadosOrigem> dadosOrigens = {
     "Espírito Cívico",
     "Sempre que faz um teste para ajudar, você pode gastar 1 PE para aumentar o bônus concedido em +2.",
   ),
-  'teorico_conspiracao': DadosOrigem(
+  'teorico_da_conspiracao': DadosOrigem(
     "Teórico da Conspiração",
     ["investigacao", "ocultismo"],
     "Eu Já Sabia",

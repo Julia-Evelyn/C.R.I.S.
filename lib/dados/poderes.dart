@@ -3,12 +3,14 @@ class Poder {
   final String tipo;
   final String descricao;
   final String preRequisitos;
+  final int custoPE;
 
   Poder({
     required this.nome,
     required this.tipo,
     required this.descricao,
     this.preRequisitos = "Nenhum",
+    this.custoPE = 0,
   });
 }
 
@@ -53,7 +55,7 @@ final List<Poder> catalogoPoderesGerais = [
     nome: "Combater com Duas Armas",
     tipo: "Geral",
     descricao:
-        "Se estiver empunhando duas armas (e pelo menos uma for leve) e fizer a ação agredir, você pode fazer dois ataques, um com cada arma. Se fizer isso, sofre –O em todos os testes de ataque até o seu próximo turno.",
+        "Se estiver empunhando duas armas (e pelo menos uma for leve) e fizer a ação agredir, você pode fazer dois ataques, um com cada arma. Se fizer isso, sofre –1d20 em todos os testes de ataque até o seu próximo turno.",
     preRequisitos: "Agi 3, Treinado em Luta ou Pontaria",
   ),
   Poder(

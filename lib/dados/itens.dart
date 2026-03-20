@@ -600,24 +600,22 @@ List<Arma> catalogoArmasOrdem = [
   Arma(
     nome: "Bastão",
     categoria: "0",
-    dano: "1d6",
+    dano: "1d6/1d8",
     tipo: "Corpo a Corpo",
     espaco: 1,
     proficiencia: "Simples",
     empunhadura: "Uma Mão",
-    descricao:
-        "Um cilindro de madeira maciça. Você pode empunhar com as duas mãos para causar 1d8 de dano.",
+    descricao: "Um cilindro de madeira maciça. Você pode empunhar com as duas mãos para causar 1d8 de dano.", 
   ),
   Arma(
     nome: "Cajado",
     categoria: "0",
-    dano: "1d6",
+    dano: "1d6/1d6",
     tipo: "Corpo a Corpo",
     espaco: 2,
     proficiencia: "Simples",
     empunhadura: "Duas Mãos",
-    descricao:
-        "Haste longa. Arma ágil. Pode ser usada com Combater com Duas Armas para fazer ataques adicionais.",
+    descricao: "Haste longa. Arma ágil. Pode ser usada com Combater com Duas Armas para fazer ataques adicionais.",
   ),
   Arma(
     nome: "Faca",
@@ -659,20 +657,18 @@ List<Arma> catalogoArmasOrdem = [
     espaco: 1,
     proficiencia: "Simples",
     empunhadura: "Uma Mão",
-    descricao:
-        "Esta ferramenta comum pode ser usada como arma na falta de opções melhores.",
+    descricao: "Esta ferramenta comum pode ser usada como arma na falta de opções melhores.",
   ),
   Arma(
     nome: "Picareta",
     categoria: "0",
     dano: "1d6",
-    multiplicadorCritico: 3,
+    multiplicadorCritico: 4,
     tipo: "Corpo a Corpo",
     espaco: 1,
     proficiencia: "Simples",
     empunhadura: "Uma Mão",
-    descricao:
-        "Ferramenta de mineração empregada em combate na falta de armas apropriadas.",
+    descricao: "Ferramenta de mineração empregada em combate na falta de armas apropriadas.",
   ),
   Arma(
     nome: "Punhal",
@@ -683,8 +679,7 @@ List<Arma> catalogoArmasOrdem = [
     espaco: 1,
     proficiencia: "Simples",
     empunhadura: "Leve",
-    descricao:
-        "Faca de lâmina longa e pontiaguda, muito usada por cultistas. Arma ágil.",
+    descricao: "Faca de lâmina longa e pontiaguda, muito usada por cultistas. Arma ágil.",
   ),
   Arma(
     nome: "Arco",
@@ -703,11 +698,10 @@ List<Arma> catalogoArmasOrdem = [
     dano: "1d8",
     margemAmeaca: 19,
     tipo: "Disparo",
-    espaco: 1,
+    espaco: 2,
     proficiencia: "Simples",
     empunhadura: "Duas Mãos",
-    descricao:
-        "Arma da antiguidade. Exige uma ação de movimento para ser recarregada a cada disparo.",
+    descricao: "Arma da antiguidade. Exige uma ação de movimento para ser recarregada a cada disparo.",
   ),
   Arma(
     nome: "Estilingue",
@@ -717,14 +711,14 @@ List<Arma> catalogoArmasOrdem = [
     espaco: 1,
     proficiencia: "Simples",
     empunhadura: "Uma Mão",
-    descricao:
-        "Permite aplicar Força nas rolagens de dano. Pode lançar granadas em alcance longo.",
+    descricao: "Permite aplicar Força nas rolagens de dano. Pode lançar granadas em alcance longo.",
   ),
   Arma(
     nome: "Revólver",
-    categoria: "0",
+    categoria: "I",
     dano: "2d6",
     margemAmeaca: 19,
+    multiplicadorCritico: 3,
     tipo: "Fogo",
     espaco: 1,
     proficiencia: "Simples",
@@ -733,15 +727,15 @@ List<Arma> catalogoArmasOrdem = [
   ),
   Arma(
     nome: "Revólver Compacto",
-    categoria: "0",
-    dano: "1d6",
+    categoria: "I",
+    dano: "2d4",
     margemAmeaca: 19,
+    multiplicadorCritico: 3,
     tipo: "Fogo",
     espaco: 1,
     proficiencia: "Simples",
     empunhadura: "Leve",
-    descricao:
-        "Arma de baixo calibre projetada para ser escondida. Com treino em Crime, ocupa 0 espaço.",
+    descricao: "Arma de baixo calibre projetada para ser escondida. Com treino em Crime, ocupa 0 espaço.",
   ),
 
   // --- ARMAS TÁTICAS ---
@@ -753,12 +747,11 @@ List<Arma> catalogoArmasOrdem = [
     espaco: 1,
     proficiencia: "Táticas",
     empunhadura: "Uma Mão",
-    descricao:
-        "Arma ágil. Ao usar a ação Esquiva com ele, o bônus na Defesa aumenta em +1.",
+    descricao: "Arma ágil. Ao usar a ação Esquiva com ele, o bônus na Defesa aumenta em +1.",
   ),
   Arma(
     nome: "Corrente",
-    categoria: "I",
+    categoria: "0",
     dano: "1d8",
     tipo: "Corpo a Corpo",
     espaco: 1,
@@ -769,7 +762,7 @@ List<Arma> catalogoArmasOrdem = [
   Arma(
     nome: "Espada",
     categoria: "I",
-    dano: "1d8",
+    dano: "1d8/1d10",
     margemAmeaca: 19,
     tipo: "Corpo a Corpo",
     espaco: 1,
@@ -780,15 +773,13 @@ List<Arma> catalogoArmasOrdem = [
   Arma(
     nome: "Faca Tática",
     categoria: "I",
-    dano: "1d4",
+    dano: "1d6",
     margemAmeaca: 19,
-    multiplicadorCritico: 3,
     tipo: "Corpo a Corpo",
     espaco: 1,
     proficiencia: "Táticas",
     empunhadura: "Leve",
-    descricao:
-        "Arma ágil. Se usada para contra-atacar, dá +2 no ataque. No bloqueio, gaste 2 PE e sacrifique a faca para aumentar a RD em +20. Pode ser arremessada.",
+    descricao: "Arma ágil. Se usada para contra-atacar, dá +2 no ataque. No bloqueio, gaste 2 PE e sacrifique a faca para aumentar a RD em +20. Pode ser arremessada.",
   ),
   Arma(
     nome: "Florete",
@@ -803,15 +794,14 @@ List<Arma> catalogoArmasOrdem = [
   ),
   Arma(
     nome: "Gancho de Carne",
-    categoria: "I",
-    dano: "1d6",
-    multiplicadorCritico: 3,
+    categoria: "0",
+    dano: "1d4",
+    multiplicadorCritico: 4,
     tipo: "Corpo a Corpo",
     espaco: 1,
     proficiencia: "Táticas",
     empunhadura: "Uma Mão",
-    descricao:
-        "Pode ser amarrado a uma corda/corrente, aumentando o alcance para 4,5m e passando a ocupar 2 espaços.",
+    descricao: "Pode ser amarrado a uma corda/corrente, aumentando o alcance para 4,5m e passando a ocupar 2 espaços.",
   ),
   Arma(
     nome: "Machete",
@@ -826,7 +816,7 @@ List<Arma> catalogoArmasOrdem = [
   ),
   Arma(
     nome: "Nunchaku",
-    categoria: "I",
+    categoria: "0",
     dano: "1d8",
     tipo: "Corpo a Corpo",
     espaco: 1,
@@ -865,8 +855,7 @@ List<Arma> catalogoArmasOrdem = [
     espaco: 2,
     proficiencia: "Táticas",
     empunhadura: "Duas Mãos",
-    descricao:
-        "Arma ágil. Veteranos em Luta podem usá-la como arma de uma mão.",
+    descricao: "Arma ágil. Veteranos em Luta podem usá-la como arma de uma mão.",
   ),
   Arma(
     nome: "Marreta",
@@ -897,8 +886,7 @@ List<Arma> catalogoArmasOrdem = [
     espaco: 2,
     proficiencia: "Táticas",
     empunhadura: "Duas Mãos",
-    descricao:
-        "Sempre que rolar um 6 no dano, role um dado adicional. Impõe –1d20 no ataque. Ligar exige ação de movimento.",
+    descricao: "Sempre que rolar um 6 no dano, role um dado adicional. Impõe –1d20 no ataque. Ligar exige ação de movimento.",
   ),
   Arma(
     nome: "Arco Composto",
@@ -924,14 +912,13 @@ List<Arma> catalogoArmasOrdem = [
   ),
   Arma(
     nome: "Shuriken",
-    categoria: "0",
+    categoria: "I",
     dano: "1d4",
     tipo: "Disparo",
-    espaco: 1,
+    espaco: 0.5,
     proficiencia: "Táticas",
     empunhadura: "Leve",
-    descricao:
-        "Veteranos em Pontaria podem gastar 1 PE para fazer um ataque adicional no mesmo alvo. Ocupa 1 espaço por pacote.",
+    descricao: "Veteranos em Pontaria podem gastar 1 PE para fazer um ataque adicional no mesmo alvo. Ocupa 1 espaço por pacote.",
   ),
   Arma(
     nome: "Pistola",
@@ -947,14 +934,13 @@ List<Arma> catalogoArmasOrdem = [
   Arma(
     nome: "Pistola Pesada",
     categoria: "I",
-    dano: "2d6",
-    margemAmeaca: 19,
+    dano: "2d8",
+    margemAmeaca: 18,
     tipo: "Fogo",
     espaco: 1,
     proficiencia: "Táticas",
     empunhadura: "Uma Mão",
-    descricao:
-        "Impõe –1d20 no ataque. Empunhá-la com as duas mãos anula a penalidade.",
+    descricao: "Impõe –1d20 no ataque. Empunhá-la com as duas mãos anula a penalidade.",
   ),
   Arma(
     nome: "Submetralhadora",
@@ -981,15 +967,14 @@ List<Arma> catalogoArmasOrdem = [
   ),
   Arma(
     nome: "Espingarda de Cano Duplo",
-    categoria: "I",
+    categoria: "II",
     dano: "4d6",
     multiplicadorCritico: 3,
     tipo: "Fogo",
     espaco: 2,
     proficiencia: "Táticas",
     empunhadura: "Duas Mãos",
-    descricao:
-        "Exige movimento para recarregar. Pode disparar os dois canos juntos (–1d20 no ataque, mas o dano sobe para 6d6).",
+    descricao: "Exige movimento para recarregar. Pode disparar os dois canos juntos (–1d20 no ataque, mas o dano sobe para 6d6).",
   ),
   Arma(
     nome: "Fuzil de Assalto",
@@ -1025,8 +1010,7 @@ List<Arma> catalogoArmasOrdem = [
     espaco: 2,
     proficiencia: "Táticas",
     empunhadura: "Duas Mãos",
-    descricao:
-        "Veteranos em Pontaria que usarem a ação Mirar recebem +5 na margem de ameaça.",
+    descricao: "Veteranos em Pontaria que usarem a ação Mirar recebem +5 na margem de ameaça.",
   ),
 
   // --- ARMAS PESADAS ---
@@ -1038,8 +1022,7 @@ List<Arma> catalogoArmasOrdem = [
     espaco: 2,
     proficiencia: "Pesadas",
     empunhadura: "Duas Mãos",
-    descricao:
-        "Raio de 3m. Alvos na área (menos o atingido diretamente) fazem Reflexos DT Agi para reduzir o dano à metade. Exige movimento para recarregar.",
+    descricao: "Raio de 3m. Alvos na área (menos o atingido diretamente) fazem Reflexos DT Agi para reduzir o dano à metade. Exige movimento para recarregar.",
   ),
   Arma(
     nome: "Lança-chamas",
@@ -1049,8 +1032,7 @@ List<Arma> catalogoArmasOrdem = [
     espaco: 2,
     proficiencia: "Pesadas",
     empunhadura: "Duas Mãos",
-    descricao:
-        "Linha de 1,5m em alcance curto. Faça um único teste contra a Defesa de todos na área. Seres atingidos ficam em chamas.",
+    descricao: "Linha de 1,5m em alcance curto. Faça um único teste contra a Defesa de todos na área. Seres atingidos ficam em chamas.",
   ),
   Arma(
     nome: "Metralhadora",
@@ -1062,7 +1044,6 @@ List<Arma> catalogoArmasOrdem = [
     espaco: 2,
     proficiencia: "Pesadas",
     empunhadura: "Duas Mãos",
-    descricao:
-        "Arma automática. Exige Força 4+ ou ação de movimento para apoiar no tripé (se não, sofre –5 no ataque).",
+    descricao: "Arma automática. Exige Força 4+ ou ação de movimento para apoiar no tripé (se não, sofre –5 no ataque).",
   ),
 ];

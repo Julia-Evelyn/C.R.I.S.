@@ -5,12 +5,6 @@ Modificação / Efeito
 - Função adicional: Concede +2 a uma perícia adicional.
 - Instrumental: O acessório funciona como um kit de perícia.
 
-----------------------------------------------------------------
-Perícias que precisam de kit:
-- Enganação
-- Crime
-- Medicina 
-- Tecnologia
 ====================================================================
 
 Falta fazer:
@@ -25,12 +19,13 @@ Falta fazer:
 - Aba de perícias mostrar detalhe sobre cada perícia ----- FEITO
 - Na área de ataques, mostrar listinha com ações diversas (investida, manobra, etc) ----- FEITO
 - Criar trilha de cada classe ----- FEITO
+- Limitar quantidade de atributos +ou-FEITO
+- Poder girar perícia na aba de perícias ----- FEITO
+- Configurar rolagem de teste e dano de armas ----- FEITO
 
-- Configurar rolagem de teste e dano de armas
+- Concertar bug de n salvar vida q foi reduzida/aumentada
 - Perícia profissão add +1 categoria (I, II ou III dependendo do nível de treinamento) no limite
 - Add popup quando ganhar poder novo, atributo e melhoria de perícia
-- Poder girar perícia na aba de perícias
-- Limitar quantidade de atributos
 - Quando aumentar atributo de int, aparecer popup falando q pode escolher outra perícia
 - Add poder criar poder geral, paranormal, de classe e ritual personalizado
 - Lógica de cada poder (geral, de classe e paranormal)
@@ -39,25 +34,39 @@ Falta fazer:
 - Fazer a área de detalhes do backstory do personagem (fazer opção de baixar versão pdf das anotações, 100% formatada e bonita pra enviar pro mestre)
 
 ========================================================================
-Origens com lógica:
+TRILHAS QUE PRECISAM DE LÓGICA POR TRÁS:
 
-- Cultista Arrependido ---OK
-- Desgarrado ---OK
-- Lutador ---OK
-- Militar ---OK
-- Policial ---OK
-- Universitário ---OK
-- Vítima ---OK
-- MERGULHADOR ---OK
-- Magnata ---OK
-- Operário ---OK
-- Teórico da Conspiração ---OK
-- DIPLOMATA ---OK
-- COLEGIAL ---OK
-- EXPERIMENTO ---OK
-- PROFETIZADO ---OK
-- BLASTER ---OK
-- GINASTA ---OK
-- REVOLTADO ---OK
-- Engenheiro ---OK
-===================================================================
+
+
+
+
+
+
+- NEX 10% - Ser Amaldiçoado. Em suas veias corre uma maldição paranormal que aos poucos o está transformando em um monstro. Você se torna treinado em Ocultismo (se já for treinado, em vez disso recebe +2 nessa perícia). Escolha um elemento paranormal entre Sangue, Morte, Conhecimento ou Energia. Uma vez por dia, você precisa executar uma etapa ritualística desse elemento (por exemplo, beber sangue humano para Sangue, inalar cinzas de mortos para Morte, tatuar palavras que causam medo para Conhecimento ou receber choques de cabos elétricos para Energia). Se fizer isso, até o fim do dia você recebe os efeitos descritos a seguir, conforme o elemento escolhido. Caso contrário, você sofre de fome e sede nesse dia (OPRPG, p. 292). Por fim, se adquirir afinidade com um elemento, deverá escolher aquele selecionado para esta habilidade.
+
+- 
+
+
+ ANIQUILADOR:
+NEX 10% - A Favorita. Escolha uma arma para ser sua favorita, como katana ou fuzil de assalto. A categoria da arma escolhida é reduzida em I.
+NEX 40% - Técnica Secreta. A categoria da arma favorita passa a ser reduzida em II. Quando faz um ataque com ela, você pode gastar 2 PE para executar um dos efeitos abaixo como parte do ataque. Você pode adicionar mais efeitos gastando +2 PE por efeito adicional.
+ . Amplo. O ataque pode atingir um alvo adicional em seu alcance e adjacente ao original (use o mesmo teste de ataque para ambos).
+ . Destruidor. Aumenta o multiplicador de crítico da arma em +1. 
+NEX 65% - Técnica Sublime. Você adiciona os seguintes efeitos à lista de sua Técnica Secreta: 
+ . Letal. Aumenta a margem de ameaça em +2. Você pode escolher este efeito duas vezes para aumentar a margem de ameaça em +5.
+ . Perfurante. Ignora até 5 pontos de resistência a dano de qualquer tipo do alvo. 
+NEX 99% - Máquina de Matar. A categoria da arma favorita passa a ser reduzida em III, ela recebe +2 na margem de ameaça e seu dano aumenta em um dado do mesmo tipo.
+
+ GUERREIRO
+NEX 10% - Técnica Letal. Você recebe um aumento de +2 na margem de ameaça com todos os seus ataques corpo a corpo.
+
+ TROPA DE CHOQUE
+NEX 10% - Casca Grossa. Você recebe +1 PV para cada 5% de NEX e, quando faz um bloqueio, soma seu Vigor na resistência a dano recebida.
+NEX 99% - Inquebrável. Enquanto estiver machucado, você recebe +5 na Defesa e resistência a dano 5. Enquanto estiver morrendo, em vez do normal, você não fica indefeso e ainda pode realizar ações. Você ainda segue as regras de morte normalmente.
+
+ AGENTE SECRETO
+NEX 10% - Carteirada. Escolha uma perícia entre Diplomacia ou Enganação. Você recebe treinamento na perícia escolhida ou, se já for treinado, recebe +2 nela. Como parte do esforço conjunto da sua agência e da Ordem, no início de cada missão você recebe documentos que lhe fornecem privilégios jurídicos especiais. Esses documentos podem incluir a sua identidade verdadeira ou não, e podem ser individuais ou incluir os demais membros da sua equipe (conforme apropriado à missão). Os benefícios específicos desses documentos ficam a critério do mestre, mas em geral incluem acesso a locais restritos ou proibidos, permissão para portar armas de fogo e autoridade para assumir a jurisdição de investigações da polícia. Pessoas comuns não conseguem perceber que seus documentos são falsos, mas membros de agências de segurança ou indivíduos veteranos em Crime podem desconfiar de sua veracidade. Os documentos contam como itens operacionais que não ocupam espaço — mas cuidado para não perdê-los em locais onde novos não podemser fornecidos!
+NEX 40% - O Sorriso. Em seu trabalho como agente, você aprendeu que se manter contido com um sorriso “sincero” e palavras gentis são ferramentas muito eficientes em uma investigação. Você recebe +2 em Diplomacia e Enganação e, quando falha em um teste de uma dessas perícias, pode gastar 2 PE para repetir a rolagem (apenas uma vez por teste), mas deve aceitar o novo resultado, mesmo que seja pior que o primeiro. Por fim, uma vez por cena, você pode fazer um teste de Diplomacia para acalmar a si mesmo.
+
+ CAÇADOR
+NEX 10% - Rastrear o Paranormal. Você estudou criaturas paranormais o suficiente para saber como identificar seus sinais e seguir seus rastros. Você recebe treinamento em Sobrevivência ou, se já for treinado nesta perícia, recebe +2 nela. Além disso, pode usar essa perícia no lugar de Ocultismo para identificar criaturas e no lugar de Investigação e Percepção para perceber e encontrar rastros, pistas e criaturas que tenham traços paranormais.

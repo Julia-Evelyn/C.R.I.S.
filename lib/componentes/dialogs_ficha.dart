@@ -580,6 +580,7 @@ void mostrarDialogCriacaoManual({
                               espaco: espaco,
                               proficiencia: proficiencia,
                               empunhadura: empunhadura,
+                              descricao: '',
                             ),
                           );
                         } else {
@@ -617,6 +618,8 @@ void mostrarDialogModificarEquipamento({
   required Color corTema,
   required Color corTexto,
   required String? afinidadeAtual,
+  required int nex,
+  required String trilhaAtual,
   required Function(List<String>) onAplicar,
 }) {
   bool isArma = equipamento is Arma;
@@ -713,8 +716,44 @@ void mostrarDialogModificarEquipamento({
     builder: (context) {
       return StatefulBuilder(
         builder: (context, setDialogState) {
-          bool podeAdicionarMaisMods =
-              (getCatInt(catBase) + modsSelecionados.length) < 4;
+          // ======== A SUA LÓGICA DE CÁLCULO EM TEMPO REAL ========
+          int calcularCategoriaSimulada() {
+            int base = getCatInt(catBase);
+
+            // 1. Conta apenas modificações que realmente aumentam o peso
+            int modsAdicionais = modsSelecionados
+                .where(
+                  (m) =>
+                      m != "Arma Favorita" &&
+                      m != "Ferramenta de Trabalho" &&
+                      m != "Explosão Solidária",
+                )
+                .length;
+
+            // 2. Calcula os descontos de trilha
+            int reducaoTrilha = 0;
+            if (isArma &&
+                trilhaAtual == 'aniquilador' &&
+                modsSelecionados.contains("Arma Favorita")) {
+              if (nex >= 99) {
+                reducaoTrilha = 3;
+              } else if (nex >= 40) {
+                reducaoTrilha = 2;
+              } else if (nex >= 10) {
+                reducaoTrilha = 1;
+              }
+            }
+
+            // 3. Resultado final atual da arma na bancada
+            int total = base + modsAdicionais - reducaoTrilha;
+            if (total < 0) return 0;
+            return total;
+          }
+
+          // Se a categoria simulada já for 4 (IV) ou maior, trava os botões!
+          int categoriaAtualSimulada = calcularCategoriaSimulada();
+          bool podeAdicionarMaisMods = categoriaAtualSimulada < 4;
+          // =======================================================
 
           return Dialog(
             backgroundColor: const Color(0xFF1A1A1A),
@@ -813,7 +852,6 @@ void mostrarDialogModificarEquipamento({
                     }).toList(),
                   ),
 
-                  // TEXTOS DESCRITIVOS DAS MODIFICAÇÕES SELECIONADAS!
                   if (modsSelecionados.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     const Text(
@@ -834,6 +872,11 @@ void mostrarDialogModificarEquipamento({
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: modsSelecionados.map((mod) {
+                          if (mod == "Arma Favorita" ||
+                              mod == "Ferramenta de Trabalho") {
+                            return const SizedBox.shrink();
+                          }
+
                           String efeito =
                               descricoesMods[mod] ?? "Efeito aplicado à arma.";
                           return Padding(

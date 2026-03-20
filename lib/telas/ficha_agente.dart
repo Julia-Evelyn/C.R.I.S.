@@ -11,8 +11,8 @@ import '../dados/itens.dart';
 import '../dados/poderes.dart';
 import '../dados/trilhas.dart';
 import '../componentes/estilizacao.dart';
-import '../componentes/widgets_ficha.dart';
 import '../componentes/dialogs_ficha.dart';
+import '../componentes/widgets_ficha.dart';
 
 part 'origens.dart';
 part 'pericias.dart';
@@ -100,8 +100,8 @@ class _FichaAgenteState extends State<FichaAgente> {
 
   int get deslocamento {
     int baseDesl = 9;
-    // Ginasta
     if (origemAtual == 'ginasta') baseDesl += 3;
+    if (estaSobrecarregado) baseDesl -= 3; // penalidade de sobrecarga (-3m)
     return baseDesl;
   }
 
@@ -139,6 +139,8 @@ class _FichaAgenteState extends State<FichaAgente> {
     return espItens + espArmas;
   }
 
+  bool get estaSobrecarregado => espacoOcupado > espacoMaximo;
+
   int get maosOcupadas {
     int m = 0;
     for (var a in armas.where((a) => a.equipado)) {
@@ -164,7 +166,7 @@ class _FichaAgenteState extends State<FichaAgente> {
     return "Recruta";
   }
 
-  // --- LÓGICA: Limite de Crédito do Magnata ---
+  // Limite de Crédito do magnata
   String get limiteCredito {
     if (origemAtual == 'magnata') {
       if (prestigio >= 100) return "Ilimitado";
@@ -186,6 +188,16 @@ class _FichaAgenteState extends State<FichaAgente> {
     return {"I": 2, "II": 0, "III": 0, "IV": 0};
   }
 
+  // AUXILIAR DE REDUÇÃO DE CATEGORIA (ANIQUILADOR)
+  String _reduzirCategoriaString(String cat, int reducao) {
+    if (reducao <= 0 || cat == "0" || cat == "--") return cat;
+    List<String> ordem = ["0", "I", "II", "III", "IV", "V", "VI", "VII"]; // <--- Lista Aumentada
+    int idx = ordem.indexOf(cat.trim());
+    if (idx == -1) return cat;
+    int novoIdx = max(0, idx - reducao);
+    return ordem[novoIdx];
+  }
+
   Map<String, int> get usoCategoriaAtual {
     var uso = {"I": 0, "II": 0, "III": 0, "IV": 0};
     for (var item in inventario) {
@@ -194,8 +206,17 @@ class _FichaAgenteState extends State<FichaAgente> {
       }
     }
     for (var arma in armas) {
-      if (uso.containsKey(arma.categoriaEfetiva)) {
-        uso[arma.categoriaEfetiva] = uso[arma.categoriaEfetiva]! + 1;
+      String cat = arma.categoriaEfetiva;
+      // Lógica Passiva do Aniquilador no Limite de Itens
+      if (trilhaAtual == 'aniquilador' &&
+          arma.modificacoes.contains("Arma Favorita")) {
+        int reducao = 1;
+        if (nex >= 40) reducao = 2;
+        if (nex >= 99) reducao = 3;
+        cat = _reduzirCategoriaString(cat, reducao);
+      }
+      if (uso.containsKey(cat)) {
+        uso[cat] = uso[cat]! + 1;
       }
     }
     return uso;
@@ -457,6 +478,267 @@ class _FichaAgenteState extends State<FichaAgente> {
           ),
         ],
       ),
+    );
+  }
+
+  // função pra rolar o ataque
+  void _rolarAtaque(Arma arma, int bonusDanoFixo, bool isProficiente) {
+    if (!_modoVisualizacao) return;
+
+    // 1. Define Atributo e Perícia
+    String atributoUsado = arma.atributoPersonalizado.isNotEmpty 
+        ? arma.atributoPersonalizado 
+        : (arma.tipo == 'Corpo a Corpo' ? 'FOR' : 'AGI');
+    
+    String periciaUsada = arma.periciaPersonalizada.isNotEmpty
+        ? arma.periciaPersonalizada
+        : (arma.tipo == 'Corpo a Corpo' ? 'luta' : 'pontaria');
+
+    int valorAtrib = 1;
+    switch (atributoUsado) {
+      case 'AGI': valorAtrib = agi; break;
+      case 'FOR': valorAtrib = forc; break;
+      case 'INT': valorAtrib = inte; break;
+      case 'PRE': valorAtrib = pre; break;
+      case 'VIG': valorAtrib = vig; break;
+    }
+
+    // ==== LEITURA DE MODIFICAÇÕES EXTRAS (Ataque e Multiplicador) ====
+    // (Cruel, Perigosa, Calibre Grosso e Mira Laser já vêm calculados na arma!)
+    int modAtaque = 0;
+    int modMultExtra = 0;
+    List<String> dadosDanoExtra = [];
+
+    for (String mod in arma.modificacoes) {
+      String mLower = mod.toLowerCase();
+      // Bônus puros de acerto
+      if (mLower.contains("certeira") || mLower.contains("alongada")) modAtaque += 2;
+      if (mLower.contains("ferramenta de trabalho")) modAtaque += 1;
+      
+      // Multiplicador de Crítico
+      if (mLower.contains("letal") || mLower.contains("dum dum")) modMultExtra += 1;
+      
+      // Maldições (Dados extras)
+      if (mLower.contains("sanguinária") || mLower.contains("flamejante") || 
+          mLower.contains("vibrante") || mLower.contains("energética") || mLower.contains("erosiva")) {
+        dadosDanoExtra.add("1d6");
+      }
+    }
+
+    // ==== BÔNUS DE TRILHAS ====
+    int modMargemTrilha = 0;
+    bool aniquilador99 = false;
+
+    if (trilhaAtual == 'guerreiro' && nex >= 10 && arma.tipo == 'Corpo a Corpo') {
+      modMargemTrilha += 2; // Guerreiro 10%: Técnica Letal
+    }
+    if (trilhaAtual == 'aniquilador' && nex >= 99 && arma.modificacoes.contains("Arma Favorita")) {
+      modMargemTrilha += 2; // Aniquilador 99%: Máquina de Matar
+      aniquilador99 = true;
+    }
+    // ==========================
+
+    // 2. Calcula Bônus da Perícia
+    Pericia perObj = listaPericias.firstWhere((p) => p.id == periciaUsada, orElse: () => Pericia(id: '', nome: '', atributo: ''));
+    int bonusPericia = perObj.treino;
+    int bonusExtraItem = 0;
+    for (var v in inventario.where((i) => i.periciaVinculada == periciaUsada && i.equipado)) {
+      int b = (v.modificacoes.contains("Aprimorado") || v.modificacoes.contains("Aprimorada")) ? 5 : 2;
+      if (b > bonusExtraItem) bonusExtraItem = b;
+    }
+    int totalBonus = bonusPericia + (bonusOrigem[periciaUsada] ?? 0) + bonusExtraItem + modAtaque;
+
+    // 3. Lógica do D20 e Proficiência
+    int dadosExtras = isProficiente ? 0 : -2;
+    int qtdDados = valorAtrib + dadosExtras;
+    bool rolarPior = false;
+
+    if (qtdDados <= 0) {
+      qtdDados = 2 + qtdDados.abs();
+      rolarPior = true;
+    }
+
+    List<int> d20s = List.generate(qtdDados, (_) => Random().nextInt(20) + 1);
+    int d20Escolhido = rolarPior ? d20s.reduce(min) : d20s.reduce(max);
+    int resultadoAtaque = d20Escolhido + totalBonus;
+
+    // 4. Crítico
+    // Usa a margem que já vem mastigada da classe Arma e só aplica as Trilhas
+    int margemFinal = arma.margemAmeacaEfetiva - modMargemTrilha; 
+    int multFinal = arma.multiplicadorCritico + modMultExtra;
+    
+    bool isCrit = d20Escolhido >= margemFinal;
+    bool isFalhaCritica = d20Escolhido == 1;
+
+    // 5. Rolagem Dinâmica de Dano
+    int totalDano = 0;
+    List<int> rolagensDano = [];
+    int flatTotal = bonusDanoFixo; // O danoCruel e Ferramenta já estão na string base
+
+    // Limpa a string da arma e troca sinais de '-' por '+-' para separar corretamente!
+    String stringDanoLimpo = arma.danoEfetivo.replaceAll(' ', '').replaceAll('-', '+-');
+    var partes = stringDanoLimpo.split('+');
+    
+    // Processa Aniquilador 99% (+1 dado base do mesmo tipo)
+    if (aniquilador99 && partes.isNotEmpty && partes[0].contains('d')) {
+       var dp = partes[0].split('d');
+       if(dp.length == 2) {
+           int q = (int.tryParse(dp[0]) ?? 1) + 1; 
+           partes[0] = "${q}d${dp[1]}";
+       }
+    }
+    
+    partes.addAll(dadosDanoExtra); // Acopla os dados amaldiçoados
+
+    for (var parte in partes) {
+      parte = parte.trim();
+      if (parte.isEmpty) continue;
+      
+      if (parte.contains('d')) {
+        var dp = parte.split('d');
+        if (dp.length == 2) {
+          int qtd = int.tryParse(dp[0]) ?? 1;
+          int faces = int.tryParse(dp[1]) ?? 0;
+          
+          if (isCrit && !isFalhaCritica) qtd *= multFinal; // O famoso multiplicador
+          
+          for (int i = 0; i < qtd; i++) {
+            int r = Random().nextInt(faces) + 1;
+            rolagensDano.add(r);
+            totalDano += r;
+          }
+        }
+      } else {
+        flatTotal += int.tryParse(parte) ?? 0;
+      }
+    }
+    totalDano += flatTotal;
+    if (isFalhaCritica) totalDano = 0;
+
+    // 6. Desenhar a Interface do Resultado
+    Color corD20 = Colors.white;
+    String tituloCrit = "";
+    if (isCrit && !isFalhaCritica) { corD20 = Colors.amberAccent; tituloCrit = "\nSUCESSO CRÍTICO!\n"; }
+    if (isFalhaCritica) { corD20 = Colors.redAccent; tituloCrit = "\nFALHA CRÍTICA!\n"; }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: Text("Ataque: ${arma.nome}", textAlign: TextAlign.center, style: TextStyle(color: corDestaque, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text("Teste de ${perObj.nome.isEmpty ? periciaUsada.toUpperCase() : perObj.nome} ($atributoUsado)", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            const SizedBox(height: 12),
+            Text("Ataque: $resultadoAtaque", style: TextStyle(fontSize: 42, fontWeight: FontWeight.bold, color: corD20)),
+            Text("Dados (${rolarPior ? 'Pior de $qtdDados' : '${qtdDados}d20'}): [${d20s.join(', ')}]\nCálculo: $d20Escolhido (Dado) + $totalBonus (Bônus)", textAlign: TextAlign.center, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            Text(tituloCrit, style: TextStyle(color: corD20, fontWeight: FontWeight.bold, fontSize: 16)),
+            const Divider(color: Colors.grey),
+            const SizedBox(height: 8),
+            Text("Dano: $totalDano", style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.redAccent)),
+            Text("Dados: [${rolagensDano.join(', ')}]${flatTotal != 0 ? ' + $flatTotal' : ''}", style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            if (modAtaque > 0 || modMultExtra > 0 || dadosDanoExtra.isNotEmpty || modMargemTrilha > 0 || aniquilador99)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text("Bônus de Trilhas e Efeitos Ativos.", style: TextStyle(color: corDestaque, fontSize: 10, fontStyle: FontStyle.italic)),
+              )
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text("FECHAR", style: TextStyle(color: corDestaque))),
+        ],
+      ),
+    );
+  }
+  // ataque
+  void _mostrarDialogEditarAtaque(Arma arma) {
+    String attrAtual = arma.atributoPersonalizado.isEmpty
+        ? "Padrão"
+        : arma.atributoPersonalizado;
+    String periciaAtual = arma.periciaPersonalizada.isEmpty
+        ? "Padrão"
+        : arma.periciaPersonalizada;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1A1A1A),
+              title: Text(
+                "Editar Teste: ${arma.nome}",
+                style: TextStyle(color: corDestaque),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  DropdownFicha(
+                    label: "Atributo Base",
+                    value: attrAtual,
+                    options: const [
+                      "Padrão",
+                      "FOR",
+                      "AGI",
+                      "INT",
+                      "PRE",
+                      "VIG",
+                    ],
+                    onChanged: (val) => setDialogState(() => attrAtual = val!),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownFicha(
+                    label: "Perícia do Teste",
+                    value: periciaAtual,
+                    options: const [
+                      "Padrão",
+                      "luta",
+                      "pontaria",
+                      "ocultismo",
+                      "tecnologia",
+                      "crime",
+                      "sobrevivencia",
+                    ],
+                    onChanged: (val) =>
+                        setDialogState(() => periciaAtual = val!),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "Cancelar",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: corDestaque,
+                    foregroundColor: Colors.black,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      arma.atributoPersonalizado = attrAtual == "Padrão"
+                          ? ""
+                          : attrAtual;
+                      arma.periciaPersonalizada = periciaAtual == "Padrão"
+                          ? ""
+                          : periciaAtual;
+                      atualizarFicha();
+                    });
+                    _salvarSilencioso();
+                    Navigator.pop(context);
+                  },
+                  child: const Text("SALVAR"),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1307,7 +1589,7 @@ class _FichaAgenteState extends State<FichaAgente> {
         resistencias['Mental'] = inte;
       }
 
-      // --- LÓGICA DE TRILHAS (BÔNUS PASSIVOS) ---
+      // Bônus passivos de trilhas
       if (trilhaAtual == 'operacoes_especiais' && nex >= 10) {
         bonusOrigem['iniciativa'] = (bonusOrigem['iniciativa'] ?? 0) + 5;
       }
@@ -1509,18 +1791,137 @@ class _FichaAgenteState extends State<FichaAgente> {
       }
 
       defesa = 10 + agi + defItens + bonusDefesaOrigem;
+      if (estaSobrecarregado) defesa -= 5; // penalidade de sobrecarga (-5)
+
       esquiva = defesa + bReflexos;
       bloqueio = bFortitude + bonusBloqueioBracadeira;
+      // ==== TRILHAS: COMBATENTE & ESPECIALISTA ====
 
+      // Tropa de Choque
+      bloqueio = bFortitude + bonusBloqueioBracadeira;
+      if (trilhaAtual == 'tropa_de_choque' && nex >= 10) {
+        bloqueio += vig; // Casca Grossa (Soma Vigor no bloqueio)
+      }
+
+      bool isMachucado = pvMax > 0 && pvAtual <= (pvMax ~/ 2);
+      if (trilhaAtual == 'tropa_de_choque' && nex >= 99 && isMachucado) {
+        defesa += 5; // Inquebrável (+5 Defesa)
+        resistencias['Geral'] =
+            (resistencias['Geral'] ?? 0) + 5; // Inquebrável (RD 5)
+      }
+
+      // Caçador
+      if (trilhaAtual == 'cacador' && nex >= 10) {
+        if (!poderesEscolhidos.contains("Cacador_SetupFeito")) {
+          var p = listaPericias.firstWhere(
+            (e) => e.id == 'sobrevivencia',
+            orElse: () => Pericia(id: '', nome: '', atributo: ''),
+          );
+          if (p.id.isNotEmpty) {
+            if (p.treino == 0) {
+              p.treino = 5;
+            } else {
+              poderesEscolhidos.add("Cacador_Bonus_sobrevivencia");
+            }
+          }
+          poderesEscolhidos.add("Cacador_SetupFeito");
+        }
+        if (poderesEscolhidos.contains("Cacador_Bonus_sobrevivencia")) {
+          bonusOrigem['sobrevivencia'] =
+              (bonusOrigem['sobrevivencia'] ?? 0) + 2;
+        }
+      }
+
+      // Agente Secreto (Gatilho do Pop-up)
+      if (trilhaAtual == 'agente_secreto' && nex >= 10) {
+        if (!poderesEscolhidos.contains("AgenteSecreto_SetupFeito")) {
+          // Dispara o Pop-up com segurança no fim do ciclo de renderização
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _mostrarDialogAgenteSecreto();
+          });
+        }
+        // Bônus passivos (NEX 10% e 40%)
+        if (poderesEscolhidos.contains("AgenteSecreto_Bonus_diplomacia")) {
+          bonusOrigem['diplomacia'] = (bonusOrigem['diplomacia'] ?? 0) + 2;
+        }
+        if (poderesEscolhidos.contains("AgenteSecreto_Bonus_enganacao")) {
+          bonusOrigem['enganacao'] = (bonusOrigem['enganacao'] ?? 0) + 2;
+        }
+        if (nex >= 40) {
+          bonusOrigem['diplomacia'] = (bonusOrigem['diplomacia'] ?? 0) + 2;
+          bonusOrigem['enganacao'] = (bonusOrigem['enganacao'] ?? 0) + 2;
+        }
+      }
+      // ============================================
       if (isInitialLoad && widget.agenteParaEditar == null) {
         pvAtual = pvMax;
         peAtual = peMax;
         sanAtual = sanMax;
       }
     });
+
     if (!isInitialLoad) _salvarSilencioso();
   }
 
+  void _mostrarDialogAgenteSecreto() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: Text(
+          "Agente Secreto: Carteirada",
+          style: TextStyle(color: corDestaque),
+        ),
+        content: const Text(
+          "Sua agência lhe forneceu documentos e treinamento especial. Qual será o seu foco de infiltração?",
+          style: TextStyle(color: Colors.white),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => _concluirSetupAgenteSecreto('diplomacia'),
+            child: Text(
+              "DIPLOMACIA",
+              style: TextStyle(color: corDestaque, fontWeight: FontWeight.bold),
+            ),
+          ),
+          TextButton(
+            onPressed: () => _concluirSetupAgenteSecreto('enganacao'),
+            child: Text(
+              "ENGANAÇÃO",
+              style: TextStyle(color: corDestaque, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _concluirSetupAgenteSecreto(String periciaEscolhida) {
+    setState(() {
+      var p = listaPericias.firstWhere((e) => e.id == periciaEscolhida);
+      if (p.treino == 0) {
+        p.treino = 5;
+      } else {
+        poderesEscolhidos.add("AgenteSecreto_Bonus_$periciaEscolhida");
+      }
+
+      poderesEscolhidos.add("AgenteSecreto_SetupFeito");
+      inventario.add(
+        ItemInventario(
+          nome: "Documentos Especiais",
+          categoria: "0",
+          espaco: 0,
+          descricao:
+              "Permissão para portar armas de fogo, acesso a locais restritos e jurisdição policial.",
+        ),
+      );
+      atualizarFicha();
+    });
+    _salvarSilencioso();
+    Navigator.pop(context);
+    _mostrarNotificacao("Treinamento e Documentos recebidos!");
+  }
   // SISTEMA DE ABAS
 
   Widget _buildAbaAtributos(bool block, Color corDoPainel) {
@@ -1836,8 +2237,7 @@ class _FichaAgenteState extends State<FichaAgente> {
           ),
 
           SecaoFicha(
-            titulo:
-                "Atributos ${block ? '(Toque para Rolar)' : ''}", // <--- Voltamos ao título original e seguro!
+            titulo: "Atributos ${block ? '(Toque para Rolar)' : ''}",
             corTema: corFundoAfinidade,
             corTexto: corTextoAfinidade,
             isMorte: afinidadeAtual == 'Morte',
@@ -1873,6 +2273,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                   ),
                 ),
 
+              // ===========================================
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -1946,10 +2347,11 @@ class _FichaAgenteState extends State<FichaAgente> {
                 titulo: "PONTOS DE VIDA (PV)",
                 atual: pvAtual,
                 maximo: pvMax,
-                cor: Colors.red,
+                // Deixa vermelho escuro se estiver "Machucado"
+                cor: (pvMax > 0 && pvAtual <= pvMax ~/ 2) ? Colors.red.shade900 : Colors.red,
                 onChanged: (val) {
                   setState(() => pvAtual = val.clamp(0, pvMax));
-                  _salvarSilencioso();
+                  atualizarFicha(); // atualizar a ficha para a Tropa de Choque 99% ligar a defesa
                 },
               ),
               const SizedBox(height: 16),
@@ -2123,72 +2525,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                       ),
                       isThreeLine: true,
                       onTap: block
-                          ? () {
-                              int d20 = Random().nextInt(20) + 1;
-                              Color corD20 = Colors.white;
-                              String msgCrit = "";
-                              if (d20 == 20) {
-                                corD20 = const Color.fromARGB(255, 63, 152, 63);
-                                msgCrit = "SUCESSO CRÍTICO!";
-                              } else if (d20 == 1) {
-                                corD20 = Colors.redAccent;
-                                msgCrit = "FALHA CRÍTICA!";
-                              }
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  backgroundColor: const Color(0xFF1A1A1A),
-                                  title: Text(
-                                    "Ataque: ${arma.nome}",
-                                    style: TextStyle(color: corDestaque),
-                                  ),
-                                  content: RichText(
-                                    text: TextSpan(
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 16,
-                                        fontFamily: 'sans-serif',
-                                      ),
-                                      children: [
-                                        const TextSpan(
-                                          text: "Teste de Ataque (d20):\n",
-                                        ),
-                                        TextSpan(
-                                          text: "$d20",
-                                          style: TextStyle(
-                                            color: corD20,
-                                            fontSize: 48,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        if (msgCrit.isNotEmpty)
-                                          TextSpan(
-                                            text: "\n$msgCrit\n",
-                                            style: TextStyle(
-                                              color: corD20,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        const TextSpan(text: "\n\n"),
-                                        TextSpan(
-                                          text:
-                                              "Dano: ${arma.danoEfetivo}$modDano\n$alertaProf",
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: Text(
-                                        "OK",
-                                        style: TextStyle(color: corDestaque),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
+                          ? () => _rolarAtaque(arma, bonusDano, isProficiente)
                           : null,
                     ),
                   );
@@ -2215,8 +2552,6 @@ class _FichaAgenteState extends State<FichaAgente> {
             ),
             onPressed: () => _mostrarDialogAcoesCombate(),
           ),
-
-          // ==============================================================
         ],
       ),
     );
@@ -2582,13 +2917,13 @@ class _FichaAgenteState extends State<FichaAgente> {
   Widget _buildAbaRituais(bool block, Color corDoPainel) {
     return const Center(
       child: Text(
-        "Grimório e Rituais serão implementados em breve...",
+        "Grimório e Rituais (não) serão implementados em breve...",
         style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
       ),
     );
   }
 
-  // BARRA FLUTUANTE
+  // navbar q flutua
 
   Widget _buildFloatingNavBar(bool block, Color corDoPainel) {
     return Container(

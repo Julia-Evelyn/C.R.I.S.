@@ -29,22 +29,21 @@ class ItemInventario {
   });
 
   String get categoriaEfetiva {
-    // Não conta a "Ferramenta Favorita" como uma modificação normal que aumenta o peso
-    int qtdMods = modificacoes.where((m) => m != "Ferramenta Favorita" && m != "Explosão Solidária").length;
+    // Não conta a "Arma Favorita" nem outras tags de origem no aumento de categoria
+    int qtdMods = modificacoes.where((m) => 
+        !m.contains("Ferramenta Favorita") && 
+        !m.contains("Explosão Solidária") && 
+        !m.contains("Arma Favorita")
+    ).length;
     
-    if (qtdMods == 0 && !modificacoes.contains("Ferramenta Favorita")) return categoria;
+    if (qtdMods == 0) return categoria;
 
     List<String> niveis = ["0", "I", "II", "III", "IV", "V", "VI", "VII"];
-    int indexAtual = niveis.indexOf(categoria);
+    int indexAtual = niveis.indexOf(categoria.trim());
     
     if (indexAtual == -1) return categoria;
 
     int novoIndex = indexAtual + qtdMods;
-    
-    // Engenheiro (Reduz a categoria em 1)
-    if (modificacoes.contains("Ferramenta Favorita")) novoIndex -= 1;
-    if (novoIndex < 0) novoIndex = 0; // Trava no 0 para não existir categoria negativa
-    
     if (novoIndex >= niveis.length) return niveis.last;
 
     return niveis[novoIndex];
@@ -88,39 +87,45 @@ class ItemInventario {
   }
 }
 
-class Arma {
-  String nome, dano, tipo, categoria;
-  int margemAmeaca, multiplicadorCritico;
-  double espaco;
-  List<String> modificacoes;
-  bool equipado;
+class Arma extends ItemInventario {
+  String tipo;
+  String dano;
+  int margemAmeaca;
+  int multiplicadorCritico;
   String proficiencia;
   String empunhadura;
-  String descricao;
+  String atributoPersonalizado; 
+  String periciaPersonalizada;
 
   Arma({
-    required this.nome,
+    required super.nome,
+    required this.tipo,
     required this.dano,
-    this.tipo = 'Corpo a Corpo',
     this.margemAmeaca = 20,
-    this.multiplicadorCritico = 2,
-    this.categoria = '0',
-    this.espaco = 1.0,
-    this.modificacoes = const [],
-    this.equipado = false,
-    this.proficiencia = 'Simples',
-    this.empunhadura = 'Uma Mão',
-    this.descricao = "",
+    this.multiplicadorCritico = 2, 
+    required super.categoria,
+    required super.espaco,
+    required this.proficiencia,
+    required this.empunhadura,
+    required super.descricao,
+    super.modificacoes,
+    super.equipado,
+    this.atributoPersonalizado = '',
+    this.periciaPersonalizada = '',
   });
 
+  @override
   String get categoriaEfetiva {
-    // Filtra a lista para não contar a "Ferramenta de Trabalho" no aumento de categoria
-    int qtdMods = modificacoes.where((mod) => mod != "Ferramenta de Trabalho").length;
+    // Filtra a lista para não contar a "Ferramenta de Trabalho" e a "Arma Favorita"
+    int qtdMods = modificacoes.where((mod) => 
+        !mod.contains("Ferramenta de Trabalho") && 
+        !mod.contains("Arma Favorita")
+    ).length;
     
     if (qtdMods == 0) return categoria;
 
     List<String> niveis = ["0", "I", "II", "III", "IV", "V", "VI", "VII"];
-    int indexAtual = niveis.indexOf(categoria);
+    int indexAtual = niveis.indexOf(categoria.trim());
     
     if (indexAtual == -1) return categoria;
 
@@ -130,6 +135,7 @@ class Arma {
     return niveis[novoIndex];
   }
 
+  @override
   double get espacoEfetivo {
     double e = espaco;
     if (modificacoes.contains("Discreta") || modificacoes.contains("Discreto")) {
@@ -213,41 +219,39 @@ class Arma {
     return m;
   }
 
-  Map<String, dynamic> toJson() => {
-    'nome': nome,
-    'dano': dano,
-    'tipo': tipo,
-    'margem': margemAmeaca,
-    'mult': multiplicadorCritico,
-    'categoria': categoria,
-    'espaco': espaco,
-    'modificacoes': modificacoes,
-    'equipado': equipado,
-    'proficiencia': proficiencia,
-    'empunhadura': empunhadura,
-    'descricao': descricao,
-  };
+  @override
+  Map<String, dynamic> toJson() {
+    var map = super.toJson();
+    map.addAll({
+      'tipo': tipo,
+      'dano': dano,
+      'margemAmeaca': margemAmeaca,
+      'multiplicadorCritico': multiplicadorCritico,
+      'proficiencia': proficiencia,
+      'empunhadura': empunhadura,
+      'atributoPersonalizado': atributoPersonalizado,
+      'periciaPersonalizada': periciaPersonalizada,
+    });
+    return map;
+  }
 
   factory Arma.fromJson(Map<String, dynamic> json) {
     return Arma(
-      nome: json['nome']?.toString() ?? 'Arma Desconhecida',
-      dano: json['dano']?.toString() ?? '1d4',
-      tipo: json['tipo']?.toString() ?? 'Corpo a Corpo',
-      margemAmeaca: json['margem'] != null
-          ? (json['margem'] as num).toInt()
-          : 20,
-      multiplicadorCritico: json['mult'] != null
-          ? (json['mult'] as num).toInt()
-          : 2,
-      categoria: json['categoria']?.toString() ?? '0',
-      espaco: json['espaco'] != null ? (json['espaco'] as num).toDouble() : 1.0,
-      modificacoes: json['modificacoes'] is List
-          ? List<String>.from(json['modificacoes'])
-          : <String>[],
-      equipado: json['equipado'] == true,
-      proficiencia: json['proficiencia']?.toString() ?? 'Simples',
-      empunhadura: json['empunhadura']?.toString() ?? 'Uma Mão',
-      descricao: json['descricao']?.toString() ?? "",
+      nome: json['nome'] ?? '',
+      tipo: json['tipo'] ?? '',
+      dano: json['dano'] ?? '',
+      margemAmeaca: json['margemAmeaca'] ?? 20,
+      multiplicadorCritico: json['multiplicadorCritico'] ?? 2,
+      categoria: json['categoria'] ?? '',
+      espaco: (json['espaco'] ?? 1).toDouble(),
+      proficiencia: json['proficiencia'] ?? '',
+      empunhadura: json['empunhadura'] ?? '',
+      descricao: json['descricao'] ?? '',
+      modificacoes: List<String>.from(json['modificacoes'] ?? []),
+      equipado: json['equipado'] ?? false,
+      
+      atributoPersonalizado: json['atributoPersonalizado'] ?? '', 
+      periciaPersonalizada: json['periciaPersonalizada'] ?? '',
     );
   }
 }

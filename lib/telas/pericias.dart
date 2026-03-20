@@ -40,11 +40,34 @@ extension PericiasFicha on _FichaAgenteState {
               bool isLocked =
                   pericia.daOrigem || periciasClasse.contains(pericia.id);
 
+              bool sofreCarga = [
+                'acrobacia',
+                'crime',
+                'furtividade',
+              ].contains(pericia.id);
+              bool precisaKit = [
+                'enganacao',
+                'crime',
+                'medicina',
+                'tecnologia',
+              ].contains(pericia.id);
+
+              // Lógica de UX: Deixa o aviso vermelho se estiver penalizado
+              bool temPenalidadeCarga = sofreCarga && estaSobrecarregado;
+              bool temPenalidadeKit =
+                  precisaKit &&
+                  !inventario.any(
+                    (i) => i.nome.toLowerCase().contains(
+                      "kit de ${pericia.nome.toLowerCase()}",
+                    ),
+                  );
+
               return Container(
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(color: Colors.grey.shade800),
                   ),
+                  // CORREÇÃO: Volta a ficar com a cor do tema se for treinada, mesmo que seja perícia de classe/origem!
                   color: pericia.treino > 0
                       ? corDoPainel.withValues(alpha: 0.1)
                       : Colors.transparent,
@@ -56,50 +79,81 @@ extension PericiasFicha on _FichaAgenteState {
                       flex: 4,
                       child: Row(
                         children: [
+                          // ================= D20 ICON =================
+                          GestureDetector(
+                            // CORREÇÃO: Agora só verifica se está no modo visualização (block). Pode rolar à vontade!
+                            onTap: block
+                                ? () => _rolarPericia(pericia, totalBonus)
+                                : null,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: Image.asset(
+                                'assets/d20_icon.png',
+                                width: 20,
+                                height: 20,
+                                // Fica com a cor do tema se estiver no modo de rolar dados, senão fica cinza para indicar edição
+                                color: block
+                                    ? corDoPainel
+                                    : Colors.grey.shade600,
+                              ),
+                            ),
+                          ),
+
+                          // ============================================
                           Expanded(
                             child: GestureDetector(
                               onTap: () =>
                                   _mostrarDialogDescricaoPericia(pericia),
-                              child: Text(
-                                "${pericia.nome} (${pericia.atributo})",
-                                style: TextStyle(
-                                  color: pericia.treino > 0
-                                      ? Colors.white
-                                      : Colors.grey,
-                                  fontWeight: pericia.treino > 0
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                  decoration: TextDecoration.underline,
-                                  decorationColor: pericia.treino > 0
-                                      ? Colors.white54
-                                      : Colors.grey.shade800,
-                                  decorationStyle: TextDecorationStyle.dotted,
-                                ),
+                              child: RichText(
                                 overflow: TextOverflow.ellipsis,
+                                text: TextSpan(
+                                  style: TextStyle(
+                                    color: pericia.treino > 0
+                                        ? Colors.white
+                                        : Colors.grey,
+                                    fontWeight: pericia.treino > 0
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: pericia.treino > 0
+                                        ? Colors.white54
+                                        : Colors.grey.shade800,
+                                    decorationStyle: TextDecorationStyle.dotted,
+                                    fontSize: 14,
+                                  ),
+                                  children: [
+                                    TextSpan(text: "${pericia.nome} "),
+                                    if (sofreCarga)
+                                      TextSpan(
+                                        text: "+",
+                                        style: TextStyle(
+                                          color: temPenalidadeCarga
+                                              ? Colors.redAccent
+                                              : corDoPainel,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    if (precisaKit)
+                                      TextSpan(
+                                        text: "*",
+                                        style: TextStyle(
+                                          color: temPenalidadeKit
+                                              ? Colors.redAccent
+                                              : corDoPainel,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    TextSpan(
+                                      text: " (${pericia.atributo})",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.normal,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                          // icon dinamico
-                          if (bonusExtra >
-                              0) // Ícone de Cabide apenas para itens
-                            Padding(
-                              padding: const EdgeInsets.only(left: 4, right: 2),
-                              child: Icon(
-                                Icons.checkroom,
-                                color: corDoPainel,
-                                size: 14,
-                              ),
-                            ),
-                          if (bonusDaOrigemAplicado >
-                              0) // Ícone de + para outros bônus
-                            Padding(
-                              padding: const EdgeInsets.only(left: 2, right: 4),
-                              child: Icon(
-                                Icons.add_circle,
-                                color: corDoPainel,
-                                size: 14,
-                              ),
-                            ),
                         ],
                       ),
                     ),
@@ -109,19 +163,17 @@ extension PericiasFicha on _FichaAgenteState {
                         child: DropdownButton<int>(
                           value: pericia.treino,
                           isExpanded: true,
-                          alignment: Alignment
-                              .centerRight,
+                          alignment: Alignment.centerRight,
                           icon: const Icon(Icons.arrow_drop_down, size: 16),
                           style: const TextStyle(
                             fontSize: 13,
                             color: Colors.white,
                           ),
                           items: [
-                            if (!isLocked)
+                            if (!isLocked || pericia.treino == 0)
                               const DropdownMenuItem(
                                 value: 0,
-                                alignment: Alignment
-                                    .centerRight,
+                                alignment: Alignment.centerRight,
                                 child: Text("(+0)"),
                               ),
                             const DropdownMenuItem(
@@ -406,6 +458,129 @@ extension PericiasFicha on _FichaAgenteState {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text("Fechar", style: TextStyle(color: Colors.grey)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _rolarPericia(Pericia pericia, int bonusTotal) {
+    if (!_modoVisualizacao) return;
+
+    int valorAtrib = 1;
+    switch (pericia.atributo) {
+      case 'AGI':
+        valorAtrib = agi;
+        break;
+      case 'FOR':
+        valorAtrib = forc;
+        break;
+      case 'INT':
+        valorAtrib = inte;
+        break;
+      case 'PRE':
+        valorAtrib = pre;
+        break;
+      case 'VIG':
+        valorAtrib = vig;
+        break;
+    }
+
+    int penalidadeCarga = 0;
+    if (estaSobrecarregado &&
+        ['acrobacia', 'crime', 'furtividade'].contains(pericia.id)) {
+      penalidadeCarga = 5;
+    }
+
+    int penalidadeKit = 0;
+    if (['enganacao', 'crime', 'medicina', 'tecnologia'].contains(pericia.id)) {
+      bool temKit = inventario.any(
+        (i) => i.nome.toLowerCase().contains(
+          "kit de ${pericia.nome.toLowerCase()}",
+        ),
+      );
+      if (!temKit) penalidadeKit = 5;
+    }
+
+    int qtdDados = valorAtrib == 0 ? 2 : valorAtrib;
+    List<int> resultados = List.generate(
+      qtdDados,
+      (_) => Random().nextInt(20) + 1,
+    );
+    int d20Escolhido = valorAtrib == 0
+        ? resultados.reduce(min)
+        : resultados.reduce(max);
+
+    int resultadoFinal =
+        d20Escolhido + bonusTotal - penalidadeCarga - penalidadeKit;
+
+    Color corDoPopUp = corDestaque;
+    String mensagemCritico = "";
+    Color corNumero = Colors.white;
+
+    if (d20Escolhido == 20 && valorAtrib > 0) {
+      mensagemCritico = "SUCESSO CRÍTICO no Dado!";
+      corNumero = const Color.fromARGB(255, 63, 152, 63);
+    } else if (d20Escolhido == 1) {
+      mensagemCritico = "FALHA CRÍTICA no Dado!";
+      corNumero = Colors.redAccent;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: Text(
+          "Teste de ${pericia.nome}",
+          textAlign: TextAlign.center,
+          style: TextStyle(color: corDoPopUp),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              "Dados (${valorAtrib == 0 ? 'Pior de 2' : '${valorAtrib}d20'}): ${resultados.join(', ')}",
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Total: $resultadoFinal",
+              style: TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                color: corNumero,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              "Dado Base: $d20Escolhido\nBônus: +$bonusTotal"
+              "${penalidadeCarga > 0 ? '\nCarga (Sobrecarga): -$penalidadeCarga' : ''}"
+              "${penalidadeKit > 0 ? '\nCondição (Sem Kit): -$penalidadeKit' : ''}",
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                height: 1.4,
+              ),
+            ),
+            if (mensagemCritico.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text(
+                mensagemCritico,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: corNumero,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("OK", style: TextStyle(color: corDoPopUp)),
           ),
         ],
       ),

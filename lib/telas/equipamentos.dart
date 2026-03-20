@@ -2,7 +2,6 @@
 part of 'ficha_agente.dart';
 
 extension _EquipamentosFicha on _FichaAgenteState {
-
   Widget _buildAbaInventario(bool block, Color corDoPainel) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 150),
@@ -148,8 +147,10 @@ extension _EquipamentosFicha on _FichaAgenteState {
                 ),
 
               // ================= ARMAS EXPANSÍVEIS =================
-              ...armas.map((arma) {
-                int index = armas.indexOf(arma);
+              ...armas.asMap().entries.map((entry) {
+                int index = entry.key;
+                var arma = entry.value;
+
                 bool isProficiente =
                     arma.proficiencia == 'Simples' ||
                     (arma.proficiencia == 'Táticas' &&
@@ -200,17 +201,22 @@ extension _EquipamentosFicha on _FichaAgenteState {
                           color: Colors.white,
                         ),
                       ),
+
                       subtitle: RichText(
                         text: TextSpan(
                           style: TextStyle(color: corDestaque, fontSize: 13),
                           children: [
                             const TextSpan(text: "Categoria: "),
+
+                            // trilha do aniquilador
                             TextSpan(
-                              text: "${arma.categoriaEfetiva}   ",
+                              text:
+                                  "${(trilhaAtual == 'aniquilador' && arma.modificacoes.contains('Arma Favorita')) ? _reduzirCategoriaString(arma.categoriaEfetiva, nex >= 99 ? 3 : (nex >= 40 ? 2 : 1)) : arma.categoriaEfetiva}   ",
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
+
                             const TextSpan(text: "Espaços: "),
                             TextSpan(
                               text: arma.espacoEfetivo.toString().replaceAll(
@@ -224,6 +230,7 @@ extension _EquipamentosFicha on _FichaAgenteState {
                           ],
                         ),
                       ),
+
                       trailing: SizedBox(
                         width: 100,
                         child: Row(
@@ -302,7 +309,61 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                     const SizedBox.shrink(),
                                   Row(
                                     children: [
-                                      if (!block)
+                                      if (!block) ...[
+                                        TextButton(
+                                          onPressed: () =>
+                                              _mostrarDialogEditarAtaque(arma),
+                                          child: const Text(
+                                            "Editar Teste",
+                                            style: TextStyle(
+                                              color: Colors.blueAccent,
+                                            ),
+                                          ),
+                                        ),
+                                        // ====== BOTÃO EXCLUSIVO ANIQUILADOR ======
+                                        if (!block &&
+                                            trilhaAtual == 'aniquilador' &&
+                                            nex >= 10 &&
+                                            !arma.modificacoes.contains(
+                                              "Arma Favorita",
+                                            ))
+                                          TextButton(
+                                            onPressed: () {
+                                              setState(() {
+                                                // 1. Varre as armas destrancando as listas e removendo a tag antiga
+                                                for (var a in armas) {
+                                                  a.modificacoes =
+                                                      List<String>.from(
+                                                        a.modificacoes,
+                                                      ); // Destranca a lista
+                                                  a.modificacoes.remove(
+                                                    "Arma Favorita",
+                                                  );
+                                                }
+                                                // 2. Destranca a lista da arma atual e adiciona a tag
+                                                arma.modificacoes =
+                                                    List<String>.from(
+                                                      arma.modificacoes,
+                                                    );
+                                                arma.modificacoes.add(
+                                                  "Arma Favorita",
+                                                );
+
+                                                atualizarFicha();
+                                              });
+                                              _salvarSilencioso();
+                                              _mostrarNotificacao(
+                                                "Arma Favorita definida!",
+                                              );
+                                            },
+                                            child: const Text(
+                                              "Tornar Favorita",
+                                              style: TextStyle(
+                                                color: Colors.orangeAccent,
+                                              ),
+                                            ),
+                                          ),
+
                                         TextButton(
                                           onPressed: () =>
                                               mostrarDialogModificarEquipamento(
@@ -312,6 +373,8 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                                 corTema: corFundoAfinidade,
                                                 corTexto: corTextoAfinidade,
                                                 afinidadeAtual: afinidadeAtual,
+                                                nex: nex,
+                                                trilhaAtual: trilhaAtual,
                                                 onAplicar: (mods) {
                                                   setState(() {
                                                     armas[index].modificacoes =
@@ -328,6 +391,7 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                             ),
                                           ),
                                         ),
+                                      ],
                                     ],
                                   ),
                                 ],
@@ -342,8 +406,10 @@ extension _EquipamentosFicha on _FichaAgenteState {
               }),
 
               // ================= ITENS EXPANSÍVEIS =================
-              ...inventario.map((item) {
-                int index = inventario.indexOf(item);
+              ...inventario.asMap().entries.map((entry) {
+                int index = entry.key;
+                var item = entry.value;
+
                 bool isEquipavel =
                     item.descricao.toLowerCase().contains("proteção") ||
                     item.nome.toLowerCase().contains("vestimenta") ||
@@ -501,6 +567,8 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                                 corTema: corFundoAfinidade,
                                                 corTexto: corTextoAfinidade,
                                                 afinidadeAtual: afinidadeAtual,
+                                                nex: nex,
+                                                trilhaAtual: trilhaAtual,
                                                 onAplicar: (mods) {
                                                   setState(() {
                                                     inventario[index]
@@ -1264,9 +1332,30 @@ extension _EquipamentosFicha on _FichaAgenteState {
     }
   }
 
-   void _processarNovoItem(ItemInventario novoItem) {
+  void _processarNovoItem(ItemInventario novoItem) {
+    // 1. Bloqueio de Carga Absoluta (Dobro do limite)
+    if (espacoOcupado + novoItem.espacoEfetivo > espacoMaximo * 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "LIMITE ABSOLUTO! Você não tem força para carregar mais esse item.",
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
     _aplicarTagsOrigemItem(novoItem);
     String nomeLower = novoItem.nome.toLowerCase();
+
+    // Interceptador de Kits de Perícia
+    if (nomeLower == "kit de perícia" || nomeLower == "kit") {
+      _mostrarDialogEscolherKit(novoItem);
+      return;
+    }
+
+    // Processamento normal de Vestimentas
     if (nomeLower.contains("vestimenta") || nomeLower.contains("utensílio")) {
       bool isVestimenta = nomeLower.contains("vestimenta");
       mostrarDialogEscolherPericiaAprimoramento(
@@ -1294,6 +1383,76 @@ extension _EquipamentosFicha on _FichaAgenteState {
       _salvarSilencioso();
       _mostrarNotificacao("Item adicionado!");
     }
+  }
+
+  // Dialog de Seleção do Kit
+  void _mostrarDialogEscolherKit(ItemInventario itemBase) {
+    String kitEscolhido = 'Medicina';
+
+    final listaKits = ['Crime', 'Enganação', 'Medicina', 'Tecnologia'];
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1A1A1A),
+              title: Text(
+                "Especialidade do Kit",
+                style: TextStyle(color: corDestaque),
+              ),
+              content: RadioGroup<String>(
+                groupValue: kitEscolhido,
+                onChanged: (val) {
+                  setDialogState(() => kitEscolhido = val!);
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: listaKits.map((kit) {
+                    return RadioListTile<String>(
+                      title: Text(
+                        kit,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      value: kit,
+                      activeColor: corDestaque,
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "Cancelar",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: corFundoAfinidade,
+                    foregroundColor: corTextoAfinidade,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      itemBase.nome = "Kit de $kitEscolhido";
+                      inventario.add(itemBase);
+                      atualizarFicha();
+                    });
+                    _salvarSilencioso();
+                    Navigator.pop(context);
+                    _mostrarNotificacao("${itemBase.nome} adicionado!");
+                  },
+                  child: const Text("Confirmar"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void _toggleEquiparItem(ItemInventario item) {
@@ -1393,5 +1552,4 @@ extension _EquipamentosFicha on _FichaAgenteState {
       atualizarFicha();
     });
   }
-
 }

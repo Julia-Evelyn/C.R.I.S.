@@ -30,17 +30,20 @@ class ItemInventario {
 
   String get categoriaEfetiva {
     // Não conta a "Arma Favorita" nem outras tags de origem no aumento de categoria
-    int qtdMods = modificacoes.where((m) => 
-        !m.contains("Ferramenta Favorita") && 
-        !m.contains("Explosão Solidária") && 
-        !m.contains("Arma Favorita")
-    ).length;
-    
+    int qtdMods = modificacoes
+        .where(
+          (m) =>
+              !m.contains("Ferramenta Favorita") &&
+              !m.contains("Explosão Solidária") &&
+              !m.contains("Arma Favorita"),
+        )
+        .length;
+
     if (qtdMods == 0) return categoria;
 
     List<String> niveis = ["0", "I", "II", "III", "IV", "V", "VI", "VII"];
     int indexAtual = niveis.indexOf(categoria.trim());
-    
+
     if (indexAtual == -1) return categoria;
 
     int novoIndex = indexAtual + qtdMods;
@@ -94,7 +97,7 @@ class Arma extends ItemInventario {
   int multiplicadorCritico;
   String proficiencia;
   String empunhadura;
-  String atributoPersonalizado; 
+  String atributoPersonalizado;
   String periciaPersonalizada;
 
   Arma({
@@ -102,7 +105,7 @@ class Arma extends ItemInventario {
     required this.tipo,
     required this.dano,
     this.margemAmeaca = 20,
-    this.multiplicadorCritico = 2, 
+    this.multiplicadorCritico = 2,
     required super.categoria,
     required super.espaco,
     required this.proficiencia,
@@ -117,16 +120,19 @@ class Arma extends ItemInventario {
   @override
   String get categoriaEfetiva {
     // Filtra a lista para não contar a "Ferramenta de Trabalho" e a "Arma Favorita"
-    int qtdMods = modificacoes.where((mod) => 
-        !mod.contains("Ferramenta de Trabalho") && 
-        !mod.contains("Arma Favorita")
-    ).length;
-    
+    int qtdMods = modificacoes
+        .where(
+          (mod) =>
+              !mod.contains("Ferramenta de Trabalho") &&
+              !mod.contains("Arma Favorita"),
+        )
+        .length;
+
     if (qtdMods == 0) return categoria;
 
     List<String> niveis = ["0", "I", "II", "III", "IV", "V", "VI", "VII"];
     int indexAtual = niveis.indexOf(categoria.trim());
-    
+
     if (indexAtual == -1) return categoria;
 
     int novoIndex = indexAtual + qtdMods;
@@ -138,7 +144,8 @@ class Arma extends ItemInventario {
   @override
   double get espacoEfetivo {
     double e = espaco;
-    if (modificacoes.contains("Discreta") || modificacoes.contains("Discreto")) {
+    if (modificacoes.contains("Discreta") ||
+        modificacoes.contains("Discreto")) {
       e -= 1.0;
     }
     if (espaco >= 0 && e < 0) return 0;
@@ -249,11 +256,44 @@ class Arma extends ItemInventario {
       descricao: json['descricao'] ?? '',
       modificacoes: List<String>.from(json['modificacoes'] ?? []),
       equipado: json['equipado'] ?? false,
-      
-      atributoPersonalizado: json['atributoPersonalizado'] ?? '', 
+
+      atributoPersonalizado: json['atributoPersonalizado'] ?? '',
       periciaPersonalizada: json['periciaPersonalizada'] ?? '',
     );
   }
+}
+
+// CORREÇÃO: CLASSE PODER FICA AQUI PARA SER RECONHECIDA NO AGENTE DADOS
+class Poder {
+  final String nome;
+  final String tipo;
+  final String descricao;
+  final String preRequisitos;
+  final int custoPE;
+
+  Poder({
+    required this.nome,
+    required this.tipo,
+    required this.descricao,
+    this.preRequisitos = "Nenhum",
+    this.custoPE = 0,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'nome': nome,
+    'tipo': tipo,
+    'descricao': descricao,
+    'preRequisitos': preRequisitos,
+    'custoPE': custoPE,
+  };
+
+  factory Poder.fromJson(Map<String, dynamic> json) => Poder(
+    nome: json['nome'] ?? '',
+    tipo: json['tipo'] ?? '',
+    descricao: json['descricao'] ?? '',
+    preRequisitos: json['preRequisitos'] ?? 'Nenhum',
+    custoPE: json['custoPE'] ?? 0,
+  );
 }
 
 class AgenteDados {
@@ -265,7 +305,9 @@ class AgenteDados {
   Map<String, int> pericias;
   List<ItemInventario> inventario;
   List<Arma> armas;
-  List<String> poderes;
+
+  List<Poder> poderes; // <------ AGORA ACEITA List<Poder>
+
   List<String> periciasClasse;
 
   AgenteDados({
@@ -312,7 +354,11 @@ class AgenteDados {
     'pericias': pericias,
     'inventario': inventario.map((i) => i.toJson()).toList(),
     'armas': armas.map((a) => a.toJson()).toList(),
-    'poderes': poderes,
+
+    'poderes': poderes
+        .map((p) => p.toJson())
+        .toList(), // <------ AGORA SALVA OS PODERES
+
     'periciasClasse': periciasClasse,
   };
 
@@ -320,7 +366,7 @@ class AgenteDados {
     nome: json['nome']?.toString() ?? 'Desconhecido',
     classe: json['classe']?.toString() ?? '--',
     origem: json['origem']?.toString() ?? '--',
-    trilha: json['trilha']?.toString() ?? '--', 
+    trilha: json['trilha']?.toString() ?? '--',
     fotoPath: json['fotoPath']?.toString(),
     afinidade: json['afinidade']?.toString(),
     nex: json['nex'] != null ? (json['nex'] as num).toInt() : 5,
@@ -348,9 +394,23 @@ class AgenteDados {
     armas: json['armas'] != null
         ? (json['armas'] as List).map((a) => Arma.fromJson(a)).toList()
         : <Arma>[],
-    poderes: json['poderes'] is List
-        ? List<String>.from(json['poderes'])
-        : <String>[],
+
+    // <------ CÓDIGO DE COMPATIBILIDADE ATUALIZADO AQUI
+    poderes: json['poderes'] != null
+        ? (json['poderes'] as List).map((p) {
+            if (p is Map<String, dynamic>) {
+              return Poder.fromJson(p);
+            } else if (p is String) {
+              return Poder(
+                nome: p,
+                tipo: "Legado",
+                descricao: "Poder antigo. Re-adicione para ver o custo.",
+              );
+            }
+            return Poder(nome: "Erro", tipo: "Erro", descricao: "");
+          }).toList()
+        : <Poder>[],
+
     periciasClasse: json['periciasClasse'] is List
         ? List<String>.from(json['periciasClasse'])
         : <String>[],

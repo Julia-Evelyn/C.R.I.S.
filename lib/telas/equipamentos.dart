@@ -208,7 +208,6 @@ extension _EquipamentosFicha on _FichaAgenteState {
                           children: [
                             const TextSpan(text: "Categoria: "),
 
-                            // trilha do aniquilador
                             TextSpan(
                               text:
                                   "${(trilhaAtual == 'aniquilador' && arma.modificacoes.contains('Arma Favorita')) ? _reduzirCategoriaString(arma.categoriaEfetiva, nex >= 99 ? 3 : (nex >= 40 ? 2 : 1)) : arma.categoriaEfetiva}   ",
@@ -320,7 +319,6 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                             ),
                                           ),
                                         ),
-                                        // ====== BOTÃO EXCLUSIVO ANIQUILADOR ======
                                         if (!block &&
                                             trilhaAtual == 'aniquilador' &&
                                             nex >= 10 &&
@@ -330,17 +328,15 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                           TextButton(
                                             onPressed: () {
                                               setState(() {
-                                                // 1. Varre as armas destrancando as listas e removendo a tag antiga
                                                 for (var a in armas) {
                                                   a.modificacoes =
                                                       List<String>.from(
                                                         a.modificacoes,
-                                                      ); // Destranca a lista
+                                                      );
                                                   a.modificacoes.remove(
                                                     "Arma Favorita",
                                                   );
                                                 }
-                                                // 2. Destranca a lista da arma atual e adiciona a tag
                                                 arma.modificacoes =
                                                     List<String>.from(
                                                       arma.modificacoes,
@@ -1314,7 +1310,7 @@ extension _EquipamentosFicha on _FichaAgenteState {
 
     // Engenheiro: Verifica se é o item escolhido na Origem
     if (origemAtual == 'engenheiro' &&
-        poderesEscolhidos.contains("Engenheiro_${item.nome}")) {
+        poderesEscolhidos.any((p) => p.nome == "Engenheiro_${item.nome}")) {
       if (!item.modificacoes.contains("Ferramenta Favorita")) {
         item.modificacoes.add("Ferramenta Favorita");
       }
@@ -1467,9 +1463,8 @@ extension _EquipamentosFicha on _FichaAgenteState {
               (i) => i.equipado && i.nome.toLowerCase().contains("vestimenta"),
             )
             .length;
-        int limiteVestimentas = poderesEscolhidos.contains("Mochileiro")
-            ? 3
-            : 2;
+        int limiteVestimentas =
+            poderesEscolhidos.any((p) => p.nome == "Mochileiro") ? 3 : 2;
         if (equipadas >= limiteVestimentas) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

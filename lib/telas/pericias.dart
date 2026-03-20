@@ -62,12 +62,16 @@ extension PericiasFicha on _FichaAgenteState {
                     ),
                   );
 
+              // Lógica dos Ícones de Bônus
+              bool temBonusGeral = bonusDaOrigemAplicado > 0;
+              bool temVestimenta = aprimoramentos.isNotEmpty;
+
               return Container(
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(color: Colors.grey.shade800),
                   ),
-                  // CORREÇÃO: Volta a ficar com a cor do tema se for treinada, mesmo que seja perícia de classe/origem!
+                  // Volta a ficar com a cor do tema se for treinada, mesmo que seja perícia de classe/origem!
                   color: pericia.treino > 0
                       ? corDoPainel.withValues(alpha: 0.1)
                       : Colors.transparent,
@@ -79,9 +83,9 @@ extension PericiasFicha on _FichaAgenteState {
                       flex: 4,
                       child: Row(
                         children: [
-                          // ================= D20 ICON =================
+                          // ================= D20 ICON RESTAURADO =================
                           GestureDetector(
-                            // CORREÇÃO: Agora só verifica se está no modo visualização (block). Pode rolar à vontade!
+                            // Agora só verifica se está no modo visualização (block). Pode rolar à vontade!
                             onTap: block
                                 ? () => _rolarPericia(pericia, totalBonus)
                                 : null,
@@ -99,59 +103,85 @@ extension PericiasFicha on _FichaAgenteState {
                             ),
                           ),
 
-                          // ============================================
+                          // ================= NOME E ÍCONES ============================
                           Expanded(
-                            child: GestureDetector(
-                              onTap: () =>
-                                  _mostrarDialogDescricaoPericia(pericia),
-                              child: RichText(
-                                overflow: TextOverflow.ellipsis,
-                                text: TextSpan(
-                                  style: TextStyle(
-                                    color: pericia.treino > 0
-                                        ? Colors.white
-                                        : Colors.grey,
-                                    fontWeight: pericia.treino > 0
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                    decoration: TextDecoration.underline,
-                                    decorationColor: pericia.treino > 0
-                                        ? Colors.white54
-                                        : Colors.grey.shade800,
-                                    decorationStyle: TextDecorationStyle.dotted,
-                                    fontSize: 14,
-                                  ),
-                                  children: [
-                                    TextSpan(text: "${pericia.nome} "),
-                                    if (sofreCarga)
-                                      TextSpan(
-                                        text: "+",
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: GestureDetector(
+                                    onTap: () =>
+                                        _mostrarDialogDescricaoPericia(pericia),
+                                    child: RichText(
+                                      overflow: TextOverflow.ellipsis,
+                                      text: TextSpan(
                                         style: TextStyle(
-                                          color: temPenalidadeCarga
-                                              ? Colors.redAccent
-                                              : corDoPainel,
-                                          fontWeight: FontWeight.bold,
+                                          color: pericia.treino > 0
+                                              ? Colors.white
+                                              : Colors.grey,
+                                          fontWeight: pericia.treino > 0
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                          decoration: TextDecoration.underline,
+                                          decorationColor: pericia.treino > 0
+                                              ? Colors.white54
+                                              : Colors.grey.shade800,
+                                          decorationStyle:
+                                              TextDecorationStyle.dotted,
+                                          fontSize: 14,
                                         ),
-                                      ),
-                                    if (precisaKit)
-                                      TextSpan(
-                                        text: "*",
-                                        style: TextStyle(
-                                          color: temPenalidadeKit
-                                              ? Colors.redAccent
-                                              : corDoPainel,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    TextSpan(
-                                      text: " (${pericia.atributo})",
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.normal,
+                                        children: [
+                                          TextSpan(text: "${pericia.nome} "),
+                                          if (sofreCarga)
+                                            TextSpan(
+                                              text: "+",
+                                              style: TextStyle(
+                                                color: temPenalidadeCarga
+                                                    ? Colors.redAccent
+                                                    : corDoPainel,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          if (precisaKit)
+                                            TextSpan(
+                                              text: "*",
+                                              style: TextStyle(
+                                                color: temPenalidadeKit
+                                                    ? Colors.redAccent
+                                                    : corDoPainel,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          TextSpan(
+                                            text: " (${pericia.atributo})",
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.normal,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
+                                // Ícones de Bônus Reposicionados Aqui (Seguros)
+                                if (temVestimenta)
+                                  Padding(
+                                    padding: EdgeInsets.only(left: 4.0),
+                                    child: Icon(
+                                      Icons.checkroom,
+                                      color: corDoPainel,
+                                      size: 16,
+                                    ),
+                                  ),
+                                if (temBonusGeral)
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 4.0),
+                                    child: Icon(
+                                      Icons.add_circle,
+                                      color: corDoPainel,
+                                      size: 16,
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ],
@@ -467,52 +497,44 @@ extension PericiasFicha on _FichaAgenteState {
   void _rolarPericia(Pericia pericia, int bonusTotal) {
     if (!_modoVisualizacao) return;
 
+    // 1. Monstruoso 40% (Conhecimento muda a Enganação para Intelecto)
+    String atribUsado = pericia.atributo;
+    if (trilhaAtual == 'monstruoso' && afinidadeAtual == 'Conhecimento' && nex >= 40 && pericia.id == 'enganacao') {
+      atribUsado = 'INT';
+    }
+
     int valorAtrib = 1;
-    switch (pericia.atributo) {
-      case 'AGI':
-        valorAtrib = agi;
-        break;
-      case 'FOR':
-        valorAtrib = forc;
-        break;
-      case 'INT':
-        valorAtrib = inte;
-        break;
-      case 'PRE':
-        valorAtrib = pre;
-        break;
-      case 'VIG':
-        valorAtrib = vig;
-        break;
+    switch (atribUsado.toUpperCase()) {
+      case 'AGI': valorAtrib = efAgi; break; // Puxando do atributo Efetivo!
+      case 'FOR': valorAtrib = efFor; break;
+      case 'INT': valorAtrib = efInt; break;
+      case 'PRE': valorAtrib = efPre; break;
+      case 'VIG': valorAtrib = efVig; break;
     }
 
     int penalidadeCarga = 0;
-    if (estaSobrecarregado &&
-        ['acrobacia', 'crime', 'furtividade'].contains(pericia.id)) {
-      penalidadeCarga = 5;
-    }
+    if (estaSobrecarregado && ['acrobacia', 'crime', 'furtividade'].contains(pericia.id)) penalidadeCarga = 5;
 
     int penalidadeKit = 0;
     if (['enganacao', 'crime', 'medicina', 'tecnologia'].contains(pericia.id)) {
-      bool temKit = inventario.any(
-        (i) => i.nome.toLowerCase().contains(
-          "kit de ${pericia.nome.toLowerCase()}",
-        ),
-      );
+      bool temKit = inventario.any((i) => i.nome.toLowerCase().contains("kit de ${pericia.nome.toLowerCase()}"));
       if (!temKit) penalidadeKit = 5;
     }
 
-    int qtdDados = valorAtrib == 0 ? 2 : valorAtrib;
-    List<int> resultados = List.generate(
-      qtdDados,
-      (_) => Random().nextInt(20) + 1,
-    );
-    int d20Escolhido = valorAtrib == 0
-        ? resultados.reduce(min)
-        : resultados.reduce(max);
+    // 2. Aplica DADOS EXTRAS/REMOVIDOS do Monstruoso (O -1d20 ou +1d20)
+    int modDados = dadosExtrasPericias[pericia.id] ?? 0;
+    int qtdDados = valorAtrib + modDados;
+    
+    bool rolarPior = false;
+    if (qtdDados <= 0) {
+      qtdDados = 2 + qtdDados.abs();
+      rolarPior = true;
+    }
 
-    int resultadoFinal =
-        d20Escolhido + bonusTotal - penalidadeCarga - penalidadeKit;
+    List<int> resultados = List.generate(qtdDados, (_) => Random().nextInt(20) + 1);
+    int d20Escolhido = rolarPior ? resultados.reduce(min) : resultados.reduce(max);
+
+    int resultadoFinal = d20Escolhido + bonusTotal - penalidadeCarga - penalidadeKit;
 
     Color corDoPopUp = corDestaque;
     String mensagemCritico = "";
@@ -539,41 +561,30 @@ extension PericiasFicha on _FichaAgenteState {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              "Dados (${valorAtrib == 0 ? 'Pior de 2' : '${valorAtrib}d20'}): ${resultados.join(', ')}",
+              "Dados (${rolarPior ? 'Pior de $qtdDados' : '${qtdDados}d20'}): ${resultados.join(', ')}",
               style: const TextStyle(color: Colors.grey, fontSize: 13),
             ),
+            if (modDados != 0) 
+              Text(
+                "Modificador Monstruoso: ${modDados > 0 ? '+' : ''}${modDados}d20",
+                style: const TextStyle(color: Colors.orangeAccent, fontSize: 11, fontStyle: FontStyle.italic),
+              ),
             const SizedBox(height: 8),
             Text(
               "Total: $resultadoFinal",
-              style: TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
-                color: corNumero,
-              ),
+              style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: corNumero),
             ),
             const SizedBox(height: 12),
             Text(
               "Dado Base: $d20Escolhido\nBônus: +$bonusTotal"
-              "${penalidadeCarga > 0 ? '\nCarga (Sobrecarga): -$penalidadeCarga' : ''}"
-              "${penalidadeKit > 0 ? '\nCondição (Sem Kit): -$penalidadeKit' : ''}",
+              "${penalidadeCarga > 0 ? '\nCarga: -$penalidadeCarga' : ''}"
+              "${penalidadeKit > 0 ? '\nSem Kit: -$penalidadeKit' : ''}",
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-                height: 1.4,
-              ),
+              style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
             ),
             if (mensagemCritico.isNotEmpty) ...[
               const SizedBox(height: 16),
-              Text(
-                mensagemCritico,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: corNumero,
-                  letterSpacing: 1.2,
-                ),
-              ),
+              Text(mensagemCritico, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: corNumero, letterSpacing: 1.2)),
             ],
           ],
         ),
@@ -586,7 +597,7 @@ extension PericiasFicha on _FichaAgenteState {
       ),
     );
   }
-
+  
   void _inicializarPericias() {
     listaPericias = periciasBase
         .map(

@@ -1,18 +1,4 @@
-class Poder {
-  final String nome;
-  final String tipo;
-  final String descricao;
-  final String preRequisitos;
-  final int custoPE;
-
-  Poder({
-    required this.nome,
-    required this.tipo,
-    required this.descricao,
-    this.preRequisitos = "Nenhum",
-    this.custoPE = 0,
-  });
-}
+import '../modelos/agente_dados.dart'; // Importa a classe Poder que criamos no agente_dados.dart
 
 // PODERES GERAIS
 
@@ -89,7 +75,7 @@ final List<Poder> catalogoPoderesGerais = [
     nome: "Foco em Perícia",
     tipo: "Geral",
     descricao:
-        "Você se dedicou a estudar e treinar os vários pormenores de uma área de conhecimento específica. Escolha uma perícia (exceto Luta e Pontaria). Quando faz um teste dessa perícia, você rola +O. Você pode escolher este poder outras vezes para perícias diferentes.",
+        "Você se dedicou a estudar e treinar os vários pormenores de uma área de conhecimento específica. Escolha uma perícia (exceto Luta e Pontaria). Quando faz um teste dessa perícia, você rola +1d20. Você pode escolher este poder outras vezes para perícias diferentes.",
     preRequisitos: "Treinado na perícia escolhida",
   ),
   Poder(
@@ -117,7 +103,7 @@ final List<Poder> catalogoPoderesGerais = [
     nome: "Mentiroso Nato",
     tipo: "Geral",
     descricao:
-        "Você é um cara de pau, capaz de mentir descaradamente sem que ninguém perceba. Você recebe treinamento em Enganação ou, se já for treinado nesta perícia, recebe +2 nela. Além disso, a penalidade que você sofre por mentiras muito implausíveis diminui para –O.",
+        "Você é um cara de pau, capaz de mentir descaradamente sem que ninguém perceba. Você recebe treinamento em Enganação ou, se já for treinado nesta perícia, recebe +2 nela. Além disso, a penalidade que você sofre por mentiras muito implausíveis diminui para –1d20.",
     preRequisitos: "Pre 2",
   ),
   Poder(
@@ -140,6 +126,7 @@ final List<Poder> catalogoPoderesGerais = [
     descricao:
         "Você combina uma fé verdadeira com o conhecimento dos ritos e tradições de sua religião. Você recebe treinamento em Religião ou, se já for treinado nesta perícia, recebe +2 nela. Além disso, uma vez por cena, pode gastar 3 PE e uma ação completa para executar uma oração para um número de pessoas até o dobro de sua Presença. Até o fim da cena, todos os participantes dessa oração recebem resistência a dano mental 5.",
     preRequisitos: "Pre 2",
+    custoPE: 3,
   ),
   Poder(
     nome: "Parceiro",
@@ -209,6 +196,7 @@ final List<Poder> catalogoPoderesGerais = [
     descricao:
         "Seus reflexos são tão apurados que o permitem agir antes mesmo de você perceber as ameaças de forma consciente. Você recebe treinamento em Reflexos ou, se já for treinado nesta perícia, recebe +2 nela. Além disso, ao falhar em um teste de Percepção para evitar ficar desprevenido, você pode gastar 2 PE para rolar novamente o teste usando Reflexos.",
     preRequisitos: "Agi 2",
+    custoPE: 2,
   ),
   Poder(
     nome: "Saque Rápido",
@@ -302,12 +290,14 @@ final List<Poder> catalogoPoderesCombatente = [
     tipo: "Combatente",
     descricao:
         "Sempre que um ser sair voluntariamente de um espaço adjacente ao seu, você pode gastar uma reação e 1 PE para fazer um ataque corpo a corpo contra ele.",
+    custoPE: 1,
   ),
   Poder(
     nome: "Caminho para Forca",
     tipo: "Combatente",
     descricao:
         "Se for para alguém do seu grupo ser pego, que seja você. Quando usa a ação sacrifício em uma cena de perseguição (p. 90), você pode gastar 1 PE para fornecer +O extra (para um total de +2O) nos testes dos outros personagens e, quando usa a ação chamar atenção em uma cena de furtividade (p. 92), você pode gastar 1 PE para diminuir a visibilidade de todos os seus aliados próximos em –2 (em vez de –1).",
+    custoPE: 1,
   ),
   Poder(
     nome: "Ciente das Cicatrizes",
@@ -341,6 +331,7 @@ final List<Poder> catalogoPoderesCombatente = [
     descricao:
         "Quando usa a manobra quebrar ou ataca um objeto, você pode gastar 1 PE para causar dois dados de dano extra do mesmo tipo de sua arma.",
     preRequisitos: "For 2, Treinado em Luta",
+    custoPE: 1,
   ),
   Poder(
     nome: "Golpe Pesado",
@@ -353,6 +344,7 @@ final List<Poder> catalogoPoderesCombatente = [
     tipo: "Combatente",
     descricao:
         "Uma vez por cena, você pode gastar 2 PE para fazer uma ação de investigação adicional, mas deve usar Força ou Agilidade como atributo-base do teste.",
+    custoPE: 2,
   ),
   Poder(
     nome: "Instinto de Fuga",
@@ -379,6 +371,7 @@ final List<Poder> catalogoPoderesCombatente = [
     tipo: "Combatente",
     descricao:
         "Quando faz um teste de facilitar a investigação, você pode gastar 1 PE para usar Força ou Agilidade no lugar do atributo-base da perícia. Se passar no teste, o próximo aliado que usar seu bônus também recebe +1d20 no teste.",
+    custoPE: 1,
   ),
   Poder(
     nome: "Proteção Pesada",
@@ -405,6 +398,7 @@ final List<Poder> catalogoPoderesCombatente = [
     descricao:
         "Sempre que acerta um ataque com uma arma de fogo, pode fazer outro ataque com a mesma arma contra o mesmo alvo, pagando 2 PE por cada ataque já realizado no turno. Ou seja, pode fazer o primeiro ataque extra gastando 2 PE e, se acertar, pode fazer um segundo ataque extra gastando mais 4 PE e assim por diante, até errar um ataque ou atingir o limite de seus PE por rodada.",
     preRequisitos: "NEX 60%",
+    custoPE: 2,
   ),
   Poder(
     nome: "Sem Tempo, Irmão",
@@ -431,17 +425,20 @@ final List<Poder> catalogoPoderesCombatente = [
     tipo: "Combatente",
     descricao:
         "Você pode gastar uma ação padrão e 1 PE para disparar uma arma de fogo na direção de um ser no alcance da arma para forçá-lo a se proteger. Faça um teste de Pontaria contra a Vontade do alvo. Se vencer, até o início do seu próximo turno o alvo não pode sair do lugar onde está e sofre –5 em testes de ataque. A critério do mestre, o alvo recebe +5 no teste de Vontade se estiver em um lugar extremamente perigoso. Este é um efeito de medo.",
+    custoPE: 1,
   ),
   Poder(
     nome: "Valentão",
     tipo: "Combatente",
     descricao:
         "Em algum momento, a vida lhe ensinou que a brutalidade pode ser amedrontadora, e agora esse é seu principal idioma. Você pode usar Força no lugar de Presença para Intimidação. Além disso, uma vez por cena, pode gastar 1 PE para fazer um teste de Intimidação para assustar como uma ação livre.",
+    custoPE: 1,
   ),
   Poder(
     nome: "Ataque Especial",
     tipo: "Combatente",
     descricao: "Quando faz um ataque, você pode gastar 2 PE para receber +5 no teste de ataque ou na rolagem de dano. Conforme avança de NEX, você pode gastar +1 PE para receber mais bônus de +5. Você pode aplicar cada bônus de +5 em ataque ou dano.",
+    custoPE: 2,
   ),
 ];
 
@@ -472,6 +469,7 @@ final List<Poder> catalogoPoderesEspecialista = [
     descricao:
         "Quando faz um teste de perícia (exceto Luta e Pontaria), você pode gastar 2 PE para mudar o atributo-base da perícia para Int.",
     preRequisitos: "Int 2",
+    custoPE: 2,
   ),
   Poder(
     nome: "Contatos Oportunos",
@@ -486,6 +484,7 @@ final List<Poder> catalogoPoderesEspecialista = [
     descricao:
         "Você sabe como se disfarçar rapidamente, usando pequenos detalhes para alterar sua aparência. Quando faz um disfarce em si mesmo usando Enganação, você pode gastar 1 PE para se disfarçar como uma ação completa e sem necessidade de um kit de disfarces (se usar um kit, recebe +5 no teste).",
     preRequisitos: "Pre 2, Treinado em Enganação",
+    custoPE: 1,
   ),
   Poder(
     nome: "Esconderijo Desesperado",
@@ -526,6 +525,7 @@ final List<Poder> catalogoPoderesEspecialista = [
     descricao:
         "Quando faz um teste de Furtividade para esconder-se ou para executar uma ação discreta que envolva manipular um objeto, você pode gastar 2 PE para receber +1d20 nesse teste.",
     preRequisitos: "Treinado em Furtividade",
+    custoPE: 2,
   ),
   Poder(
     nome: "Mãos Rápidas",
@@ -533,6 +533,7 @@ final List<Poder> catalogoPoderesEspecialista = [
     descricao:
         "Ao fazer um teste de Crime, você pode pagar 1 PE para fazê-lo como uma ação livre.",
     preRequisitos: "Agi 3, Treinado em Crime",
+    custoPE: 1,
   ),
   Poder(
     nome: "Mochila de Utilidades",
@@ -546,18 +547,21 @@ final List<Poder> catalogoPoderesEspecialista = [
     descricao:
         "Você pode gastar 1 PE para ignorar a penalidade em deslocamento por terreno difícil e por escalar até o final do turno.",
     preRequisitos: "Treinado em Atletismo",
+    custoPE: 1,
   ),
   Poder(
     nome: "Na Trilha Certa",
     tipo: "Especialista",
     descricao:
-        "Sempre que tiver sucesso em um teste para procurar pistas, você pode gastar 1 PE para receber +O no próximo teste. Os custos e os bônus são cumulativos.",
+        "Sempre que tiver sucesso em um teste para procurar pistas, você pode gastar 1 PE para receber +1d20 no próximo teste. Os custos e os bônus são cumulativos.",
+    custoPE: 1,
   ),
   Poder(
     nome: "Nerd",
     tipo: "Especialista",
     descricao:
         "Você é um repositório de conhecimento útil. Uma vez por cena, pode gastar 2 PE para fazer um teste de Atualidades (DT 20). Se passar, recebe uma informação útil para essa cena (dica para pista, fraqueza de inimigo, etc.).",
+    custoPE: 2,
   ),
   Poder(
     nome: "Ninja Urbano",
@@ -570,6 +574,7 @@ final List<Poder> catalogoPoderesEspecialista = [
     tipo: "Especialista",
     descricao:
         "Uma vez por rodada, durante uma cena de investigação, você pode gastar 2 PE para fazer uma ação de procurar pistas adicional.",
+    custoPE: 2,
   ),
   Poder(
     nome: "Perito em Explosivos",
@@ -582,6 +587,7 @@ final List<Poder> catalogoPoderesEspecialista = [
     tipo: "Especialista",
     descricao:
         "Você pode usar Intelecto no lugar de Força para a ação criar obstáculos em uma perseguição. Além disso, uma vez por cena, pode gastar 2 PE para dispensar o teste e ser bem-sucedido nesta ação.",
+    custoPE: 2,
   ),
   Poder(
     nome: "Primeira Impressão",
@@ -595,6 +601,7 @@ final List<Poder> catalogoPoderesEspecialista = [
     descricao:
         "Sua mente está constantemente revivendo memórias do passado. Uma vez por cena, quando faz um teste de perícia baseada em Intelecto ou Presença, você pode gastar 2 PE para substituir esse teste por um teste de Intelecto com DT 15.",
     preRequisitos: "Int 1",
+    custoPE: 2,
   ),
   Poder(
     nome: "Resistir à Pressão",
@@ -602,16 +609,19 @@ final List<Poder> catalogoPoderesEspecialista = [
     descricao:
         "Uma vez por cena de investigação, você pode gastar 5 PE para coordenar os esforços de seus companheiros. A urgência da investigação aumenta em 1 rodada, e durante esta rodada adicional todos os personagens (incluindo você) recebem +2 em testes de perícia.",
     preRequisitos: "Treinado em Investigação",
+    custoPE: 5,
   ),
   Poder(
     nome: "Eclético",
     tipo: "Especialista",
     descricao: "Quando faz um teste de uma perícia, você pode gastar 2 PE para receber os benefícios de ser treinado nesta perícia.",
+    custoPE: 2,
   ),
   Poder(
     nome: "Perito",
     tipo: "Especialista",
     descricao: "Escolha duas perícias nas quais você é treinado (exceto Luta e Pontaria). Quando faz um teste de uma dessas perícias, você pode gastar 2 PE para somar +1d6 no resultado do teste. Conforme avança de NEX, o dado de bônus aumenta.",
+    custoPE: 2,
   ),
 ];
 
@@ -623,6 +633,7 @@ final List<Poder> catalogoPoderesOcultista = [
     tipo: "Ocultista",
     descricao:
         "Você pode gastar uma ação livre para esconder símbolos e sigilos que estejam desenhados ou gravados em objetos ou em sua pele, tornando-os invisíveis para outras pessoas além de você mesmo. Além disso, quando lança um ritual, pode gastar +2 PE para lançá-lo sem usar componentes ritualísticos e sem gesticular, usando apenas concentração. Outros seres só perceberão que você lançou um ritual se passarem num teste de Ocultismo (DT 25).",
+    custoPE: 2,
   ),
   Poder(
     nome: "Criar Selo",
@@ -635,6 +646,7 @@ final List<Poder> catalogoPoderesOcultista = [
     tipo: "Ocultista",
     descricao:
         "Você sabe abrir sua mente para os sussurros do Paranormal, vozes que lhe guiam às custas de sua Sanidade. Uma vez por cena, você pode gastar 2 PE e uma rodada para receber +2 em testes de perícia para investigação até o fim da cena. Entretanto, enquanto este poder estiver ativo, sempre que falha em um teste de perícia, você perde 1 ponto de Sanidade.",
+    custoPE: 2,
   ),
   Poder(
     nome: "Domínio Esotérico",
@@ -660,6 +672,7 @@ final List<Poder> catalogoPoderesOcultista = [
     tipo: "Ocultista",
     descricao:
         "Você sabe colidir pequenos objetos amaldiçoados para gerar distrações fortuitas em momentos de necessidade. Quando faz uma ação para atrapalhar a atenção de outro ser, você pode gastar 1 PE para usar Ocultismo em vez da perícia original. Se o alvo da sua distração for uma pessoa ou animal, você recebe +5 no teste.",
+    custoPE: 1,
   ),
   Poder(
     nome: "Ferramentas Paranormais",
@@ -679,6 +692,7 @@ final List<Poder> catalogoPoderesOcultista = [
     tipo: "Ocultista",
     descricao:
         "Uma vez por cena, você pode gastar 2 PE para fazer uma ação de investigação adicional.",
+    custoPE: 2,
   ),
   Poder(
     nome: "Identificação Paranormal",
@@ -711,12 +725,14 @@ final List<Poder> catalogoPoderesOcultista = [
     descricao:
         "Você está acostumado com sacrifícios dolorosos e aprendeu a transformar sua dor em impulso físico. Quando faz um teste de Acrobacia, Atletismo ou Furtividade, você pode gastar 1 PE para receber +1d6 no teste. Você só pode usar este poder se estiver com pelo menos 5 pontos de dano em seus PV.",
     preRequisitos: "Vig 2",
+    custoPE: 1,
   ),
   Poder(
     nome: "Nos Olhos do Monstro",
     tipo: "Ocultista",
     descricao:
         "Se estiver em uma cena envolvendo uma criatura paranormal, você pode gastar uma rodada e 3 PE para encarar essa criatura. Se fizer isso, você recebe +5 em testes contra a criatura (exceto testes de ataque) até o fim da cena.",
+    custoPE: 3,
   ),
   Poder(
     nome: "Olhar Sinistro",
@@ -743,6 +759,7 @@ final List<Poder> catalogoPoderesOcultista = [
     tipo: "Ocultista",
     descricao:
         "Você pode gastar 3 PE para ativar um sentido premonitório. Enquanto seu sentido estiver ativo, você tem um déjà vu do futuro próximo (equivalente a uma rodada). Você sabe com uma rodada de antecedência quando a urgência de uma investigação vai acabar e quais ações seus inimigos irão tomar. Para manter seu sentido ativado, você deve gastar 1 PE no início de cada rodada.",
+    custoPE: 3,
   ),
   Poder(
     nome: "Sincronia Paranormal",
@@ -750,6 +767,7 @@ final List<Poder> catalogoPoderesOcultista = [
     descricao:
         "Você pode gastar uma ação padrão e 2 PE para estabelecer uma sincronia mental com personagens em alcance médio. No início de cada rodada em que a sincronia estiver em efeito você pode distribuir uma quantidade de O de bônus igual à sua Presença entre os participantes. Manter a sincronia custa 1 PE no início de cada rodada.",
     preRequisitos: "Pre 2",
+    custoPE: 2,
   ),
   Poder(
     nome: "Tatuagem Ritualística",
@@ -762,6 +780,7 @@ final List<Poder> catalogoPoderesOcultista = [
     tipo: "Ocultista",
     descricao:
         "Você pode gastar 1 PE e uma ação completa traçando um símbolo paranormal no chão. Enquanto estiver dentro desse símbolo, você recebe +2 em testes de Ocultismo e de resistência e a DT para resistir aos seus rituais aumenta em +2. O símbolo dura até o fim da cena.",
+    custoPE: 1,
   ),
 ];
 
@@ -774,6 +793,7 @@ final List<Poder> catalogoPoderesConhecimento = [
     tipo: "Conhecimento",
     descricao:
         "Se estiver empunhando uma fonte de conhecimento escrito, você pode gastar 1 PE e uma ação completa para fazer uma pergunta a esta fonte. Se a resposta estiver armazenada, você a obtém. Se usar com a ação ler, o dado de bônus aumenta em um passo.\nAfinidade: rituais de Conhecimento tocados reduzem -1 PE.",
+    custoPE: 1,
   ),
   Poder(
     nome: "Apatia Herege",
@@ -781,6 +801,7 @@ final List<Poder> catalogoPoderesConhecimento = [
     descricao:
         "Quando faz um teste contra uma condição de medo, você pode gastar 2 PE para rolar o teste novamente. Você deve aceitar o segundo resultado.\nAfinidade: pode usar depois de saber o resultado e escolhe a melhor rolagem.",
     preRequisitos: "Conhecimento 1",
+    custoPE: 2,
   ),
   Poder(
     nome: "Aprender Ritual (Conhecimento)",
@@ -853,6 +874,7 @@ final List<Poder> catalogoPoderesEnergia = [
     descricao:
         "Quando usa a ação esquiva, você pode gastar 1 PE para receber +5 em Defesa.\nAfinidade: você também recebe +5 em Reflexo e não sofre dano em testes de Reflexo que reduziriam à metade.",
     preRequisitos: "Energia 1",
+    custoPE: 1,
   ),
   Poder(
     nome: "Causalidade Fortuita",
@@ -866,6 +888,7 @@ final List<Poder> catalogoPoderesEnergia = [
     descricao:
         "Você pode gastar uma ação completa e 2 PE para tocar um objeto elétrico e conversar com ele como se fosse senciente. O objeto tem atitude indiferente.\nAfinidade: você recebe +5 em Intelecto ou Presença com o item.",
     preRequisitos: "Energia 1",
+    custoPE: 2,
   ),
   Poder(
     nome: "Golpe de Sorte",
@@ -880,6 +903,7 @@ final List<Poder> catalogoPoderesEnergia = [
     descricao:
         "Quando outro ser em alcance curto faz um teste de perícia, você pode gastar 2 PE para fazê-lo rolar novamente um dos dados desse teste.\nAfinidade: o alvo rola novamente todos os dados que você escolher.",
     preRequisitos: "Energia 1",
+    custoPE: 2,
   ),
   Poder(
     nome: "Resistir a Energia",
@@ -891,7 +915,7 @@ final List<Poder> catalogoPoderesEnergia = [
     nome: "Valer-se do Caos",
     tipo: "Energia",
     descricao:
-        "Quando faz um teste, você pode receber +O. Se o teste falhar ou o dado extra for <= 5, perde 1d4 de Sanidade.\nAfinidade: você perde Sanidade se a falha for 1 ou 2 no dado extra.",
+        "Quando faz um teste, você pode receber +1d20. Se o teste falhar ou o dado extra for <= 5, perde 1d4 de Sanidade.\nAfinidade: você perde Sanidade se a falha for 1 ou 2 no dado extra.",
   ),
 ];
 
@@ -914,6 +938,7 @@ final List<Poder> catalogoPoderesMorte = [
     tipo: "Morte",
     descricao:
         "Gaste 2 PE e movimento para deixar alvo em alcance médio apavorado (Vontade reduz para abalado). Termina no fim da cena ou se mudar de alvo.\nAfinidade: DT aumenta em +5 e afeta quaisquer alvos escolhidos no alcance.",
+    custoPE: 2,
   ),
   Poder(
     nome: "Encarar a Morte",
@@ -952,6 +977,7 @@ final List<Poder> catalogoPoderesMorte = [
     descricao:
         "Uma vez por cena, no seu turno, gaste 3 PE para realizar uma ação padrão adicional.\nAfinidade: pode usar uma vez por turno.",
     preRequisitos: "Morte 2",
+    custoPE: 3,
   ),
 ];
 
@@ -975,6 +1001,7 @@ final List<Poder> catalogoPoderesSangue = [
     tipo: "Sangue",
     descricao:
         "Gaste movimento e 2 PE para produzir arma natural simples/leve (1d6 Sangue). Gaste 1 PE ao agredir para fazer ataque extra com ela.\nAfinidade: arma permanente e causa 1d10 Sangue.",
+    custoPE: 2,
   ),
   Poder(
     nome: "Espreitar da Besta",

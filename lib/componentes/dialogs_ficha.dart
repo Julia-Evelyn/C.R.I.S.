@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../modelos/agente_dados.dart';
 import 'estilizacao.dart';
 import 'widgets_ficha.dart';
@@ -1063,5 +1062,87 @@ void mostrarDialogConfigurarEquipamentoBase({
         ),
       );
     },
+  );
+}
+
+// CRIAR PODER PERSONALIZADO
+void mostrarDialogCriarPoder({
+  required BuildContext context,
+  required Color corDestaque,
+  required Color corTema,
+  required Color corTexto,
+  required Function(Poder) onConfirmar,
+}) {
+  String nome = "", desc = "", tipo = "Personalizado";
+  int custo = 0;
+
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: const Color(0xFF1A1A1A),
+      title: Text("Novo Poder", style: TextStyle(color: corDestaque)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              decoration: EstiloParanormal.customInputDeco(
+                "Nome do Poder",
+                corDestaque,
+                Icons.bolt,
+              ),
+              style: const TextStyle(color: Colors.white),
+              onChanged: (val) => nome = val,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              decoration: EstiloParanormal.customInputDeco(
+                "Custo em PE",
+                corDestaque,
+                Icons.bolt_outlined,
+              ),
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.white),
+              onChanged: (val) => custo = int.tryParse(val) ?? 0,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              decoration: EstiloParanormal.customInputDeco(
+                "Descrição",
+                corDestaque,
+                Icons.description,
+              ),
+              maxLines: 3,
+              style: const TextStyle(color: Colors.white),
+              onChanged: (val) => desc = val,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("CANCELAR", style: TextStyle(color: Colors.grey)),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: corTema,
+            foregroundColor: corTexto,
+          ),
+          onPressed: () {
+            if (nome.isNotEmpty) {
+              onConfirmar(
+                Poder(nome: nome, tipo: tipo, descricao: desc, custoPE: custo),
+              );
+              Navigator.pop(context);
+            }
+          },
+          child: const Text(
+            "CRIAR",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      ],
+    ),
   );
 }

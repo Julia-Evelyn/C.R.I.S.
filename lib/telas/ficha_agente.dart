@@ -42,7 +42,7 @@ class _FichaAgenteState extends State<FichaAgente> {
   List<ItemInventario> inventario = [];
   List<Arma> armas = [];
 
-  List<String> poderesEscolhidos = [];
+  List<Poder> poderesEscolhidos = []; // Agora utilizando List<Poder>
   List<String> periciasClasse = [];
 
   Map<String, int> resistencias = {};
@@ -52,6 +52,11 @@ class _FichaAgenteState extends State<FichaAgente> {
   String? fotoPath;
   String? afinidadeAtual;
   int nex = 5, prestigio = 0, agi = 1, forc = 1, inte = 1, pre = 1, vig = 1;
+  // ==========================================
+  // ATRIBUTOS EFETIVOS E PENALIDADES (MONSTRUOSO)
+  int efAgi = 1, efFor = 1, efInt = 1, efPre = 1, efVig = 1;
+  Map<String, int> dadosExtrasPericias = {};
+  // ==========================================
   int pvMax = 0, peMax = 0, sanMax = 0, pvAtual = 0, peAtual = 0, sanAtual = 0;
   int defesa = 10, esquiva = 10, bloqueio = 0;
   String habNome = "", habDesc = "";
@@ -91,7 +96,7 @@ class _FichaAgenteState extends State<FichaAgente> {
 
     // Revoltado Sozinho
     if (origemAtual == 'revoltado' &&
-        poderesEscolhidos.contains("Revoltado_Sozinho")) {
+        poderesEscolhidos.any((p) => p.nome == "Revoltado_Sozinho")) {
       baseLimite += 1;
     }
 
@@ -121,7 +126,7 @@ class _FichaAgenteState extends State<FichaAgente> {
 
   int get espacoMaximo {
     int base = forc == 0 ? 2 : forc * 5;
-    if (poderesEscolhidos.contains("Mochileiro")) base += 5;
+    if (poderesEscolhidos.any((p) => p.nome == "Mochileiro")) base += 5;
 
     if (trilhaAtual == 'tecnico' && nex >= 10) base += (inte * 5);
     return base;
@@ -191,7 +196,16 @@ class _FichaAgenteState extends State<FichaAgente> {
   // AUXILIAR DE REDUÇÃO DE CATEGORIA (ANIQUILADOR)
   String _reduzirCategoriaString(String cat, int reducao) {
     if (reducao <= 0 || cat == "0" || cat == "--") return cat;
-    List<String> ordem = ["0", "I", "II", "III", "IV", "V", "VI", "VII"]; // <--- Lista Aumentada
+    List<String> ordem = [
+      "0",
+      "I",
+      "II",
+      "III",
+      "IV",
+      "V",
+      "VI",
+      "VII",
+    ]; // <--- Lista Aumentada
     int idx = ordem.indexOf(cat.trim());
     if (idx == -1) return cat;
     int novoIdx = max(0, idx - reducao);
@@ -309,7 +323,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       sanAtual = ag.sanAtual ?? 0;
       inventario = List.from(ag.inventario);
       armas = List.from(ag.armas);
-      poderesEscolhidos = List.from(ag.poderes);
+      poderesEscolhidos = List.from(ag.poderes); // Usa List<Poder>
       periciasClasse = List.from(ag.periciasClasse);
 
       for (var p in listaPericias) {
@@ -481,26 +495,55 @@ class _FichaAgenteState extends State<FichaAgente> {
     );
   }
 
+  void _usarPoder(Poder poder) {
+    if (poder.custoPE <= 0) return; // Poder passivo, não faz nada
+
+    if (peAtual >= poder.custoPE) {
+      setState(() {
+        peAtual -= poder.custoPE;
+      });
+      _salvarSilencioso();
+      _mostrarNotificacao("Usou ${poder.nome}: -${poder.custoPE} PE");
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Pontos de Esforço insuficientes!"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
   // função pra rolar o ataque
   void _rolarAtaque(Arma arma, int bonusDanoFixo, bool isProficiente) {
     if (!_modoVisualizacao) return;
 
     // 1. Define Atributo e Perícia
-    String atributoUsado = arma.atributoPersonalizado.isNotEmpty 
-        ? arma.atributoPersonalizado 
+    String atributoUsado = arma.atributoPersonalizado.isNotEmpty
+        ? arma.atributoPersonalizado
         : (arma.tipo == 'Corpo a Corpo' ? 'FOR' : 'AGI');
-    
+
     String periciaUsada = arma.periciaPersonalizada.isNotEmpty
         ? arma.periciaPersonalizada
         : (arma.tipo == 'Corpo a Corpo' ? 'luta' : 'pontaria');
 
     int valorAtrib = 1;
     switch (atributoUsado) {
-      case 'AGI': valorAtrib = agi; break;
-      case 'FOR': valorAtrib = forc; break;
-      case 'INT': valorAtrib = inte; break;
-      case 'PRE': valorAtrib = pre; break;
-      case 'VIG': valorAtrib = vig; break;
+      case 'AGI':
+        valorAtrib = agi;
+        break;
+      case 'FOR':
+        valorAtrib = forc;
+        break;
+      case 'INT':
+        valorAtrib = inte;
+        break;
+      case 'PRE':
+        valorAtrib = pre;
+        break;
+      case 'VIG':
+        valorAtrib = vig;
+        break;
     }
 
     // ==== LEITURA DE MODIFICAÇÕES EXTRAS (Ataque e Multiplicador) ====
@@ -512,15 +555,22 @@ class _FichaAgenteState extends State<FichaAgente> {
     for (String mod in arma.modificacoes) {
       String mLower = mod.toLowerCase();
       // Bônus puros de acerto
-      if (mLower.contains("certeira") || mLower.contains("alongada")) modAtaque += 2;
+      if (mLower.contains("certeira") || mLower.contains("alongada")) {
+        modAtaque += 2;
+      }
       if (mLower.contains("ferramenta de trabalho")) modAtaque += 1;
-      
+
       // Multiplicador de Crítico
-      if (mLower.contains("letal") || mLower.contains("dum dum")) modMultExtra += 1;
-      
+      if (mLower.contains("letal") || mLower.contains("dum dum")) {
+        modMultExtra += 1;
+      }
+
       // Maldições (Dados extras)
-      if (mLower.contains("sanguinária") || mLower.contains("flamejante") || 
-          mLower.contains("vibrante") || mLower.contains("energética") || mLower.contains("erosiva")) {
+      if (mLower.contains("sanguinária") ||
+          mLower.contains("flamejante") ||
+          mLower.contains("vibrante") ||
+          mLower.contains("energética") ||
+          mLower.contains("erosiva")) {
         dadosDanoExtra.add("1d6");
       }
     }
@@ -529,24 +579,41 @@ class _FichaAgenteState extends State<FichaAgente> {
     int modMargemTrilha = 0;
     bool aniquilador99 = false;
 
-    if (trilhaAtual == 'guerreiro' && nex >= 10 && arma.tipo == 'Corpo a Corpo') {
+    if (trilhaAtual == 'guerreiro' &&
+        nex >= 10 &&
+        arma.tipo == 'Corpo a Corpo') {
       modMargemTrilha += 2; // Guerreiro 10%: Técnica Letal
     }
-    if (trilhaAtual == 'aniquilador' && nex >= 99 && arma.modificacoes.contains("Arma Favorita")) {
+    if (trilhaAtual == 'aniquilador' &&
+        nex >= 99 &&
+        arma.modificacoes.contains("Arma Favorita")) {
       modMargemTrilha += 2; // Aniquilador 99%: Máquina de Matar
       aniquilador99 = true;
     }
     // ==========================
 
     // 2. Calcula Bônus da Perícia
-    Pericia perObj = listaPericias.firstWhere((p) => p.id == periciaUsada, orElse: () => Pericia(id: '', nome: '', atributo: ''));
+    Pericia perObj = listaPericias.firstWhere(
+      (p) => p.id == periciaUsada,
+      orElse: () => Pericia(id: '', nome: '', atributo: ''),
+    );
     int bonusPericia = perObj.treino;
     int bonusExtraItem = 0;
-    for (var v in inventario.where((i) => i.periciaVinculada == periciaUsada && i.equipado)) {
-      int b = (v.modificacoes.contains("Aprimorado") || v.modificacoes.contains("Aprimorada")) ? 5 : 2;
+    for (var v in inventario.where(
+      (i) => i.periciaVinculada == periciaUsada && i.equipado,
+    )) {
+      int b =
+          (v.modificacoes.contains("Aprimorado") ||
+              v.modificacoes.contains("Aprimorada"))
+          ? 5
+          : 2;
       if (b > bonusExtraItem) bonusExtraItem = b;
     }
-    int totalBonus = bonusPericia + (bonusOrigem[periciaUsada] ?? 0) + bonusExtraItem + modAtaque;
+    int totalBonus =
+        bonusPericia +
+        (bonusOrigem[periciaUsada] ?? 0) +
+        bonusExtraItem +
+        modAtaque;
 
     // 3. Lógica do D20 e Proficiência
     int dadosExtras = isProficiente ? 0 : -2;
@@ -564,44 +631,49 @@ class _FichaAgenteState extends State<FichaAgente> {
 
     // 4. Crítico
     // Usa a margem que já vem mastigada da classe Arma e só aplica as Trilhas
-    int margemFinal = arma.margemAmeacaEfetiva - modMargemTrilha; 
+    int margemFinal = arma.margemAmeacaEfetiva - modMargemTrilha;
     int multFinal = arma.multiplicadorCritico + modMultExtra;
-    
+
     bool isCrit = d20Escolhido >= margemFinal;
     bool isFalhaCritica = d20Escolhido == 1;
 
     // 5. Rolagem Dinâmica de Dano
     int totalDano = 0;
     List<int> rolagensDano = [];
-    int flatTotal = bonusDanoFixo; // O danoCruel e Ferramenta já estão na string base
+    int flatTotal =
+        bonusDanoFixo; // O danoCruel e Ferramenta já estão na string base
 
     // Limpa a string da arma e troca sinais de '-' por '+-' para separar corretamente!
-    String stringDanoLimpo = arma.danoEfetivo.replaceAll(' ', '').replaceAll('-', '+-');
+    String stringDanoLimpo = arma.danoEfetivo
+        .replaceAll(' ', '')
+        .replaceAll('-', '+-');
     var partes = stringDanoLimpo.split('+');
-    
+
     // Processa Aniquilador 99% (+1 dado base do mesmo tipo)
     if (aniquilador99 && partes.isNotEmpty && partes[0].contains('d')) {
-       var dp = partes[0].split('d');
-       if(dp.length == 2) {
-           int q = (int.tryParse(dp[0]) ?? 1) + 1; 
-           partes[0] = "${q}d${dp[1]}";
-       }
+      var dp = partes[0].split('d');
+      if (dp.length == 2) {
+        int q = (int.tryParse(dp[0]) ?? 1) + 1;
+        partes[0] = "${q}d${dp[1]}";
+      }
     }
-    
+
     partes.addAll(dadosDanoExtra); // Acopla os dados amaldiçoados
 
     for (var parte in partes) {
       parte = parte.trim();
       if (parte.isEmpty) continue;
-      
+
       if (parte.contains('d')) {
         var dp = parte.split('d');
         if (dp.length == 2) {
           int qtd = int.tryParse(dp[0]) ?? 1;
           int faces = int.tryParse(dp[1]) ?? 0;
-          
-          if (isCrit && !isFalhaCritica) qtd *= multFinal; // O famoso multiplicador
-          
+
+          if (isCrit && !isFalhaCritica) {
+            qtd *= multFinal; // O famoso multiplicador
+          }
+
           for (int i = 0; i < qtd; i++) {
             int r = Random().nextInt(faces) + 1;
             rolagensDano.add(r);
@@ -618,39 +690,95 @@ class _FichaAgenteState extends State<FichaAgente> {
     // 6. Desenhar a Interface do Resultado
     Color corD20 = Colors.white;
     String tituloCrit = "";
-    if (isCrit && !isFalhaCritica) { corD20 = Colors.amberAccent; tituloCrit = "\nSUCESSO CRÍTICO!\n"; }
-    if (isFalhaCritica) { corD20 = Colors.redAccent; tituloCrit = "\nFALHA CRÍTICA!\n"; }
+    if (isCrit && !isFalhaCritica) {
+      corD20 = Colors.amberAccent;
+      tituloCrit = "\nSUCESSO CRÍTICO!\n";
+    }
+    if (isFalhaCritica) {
+      corD20 = Colors.redAccent;
+      tituloCrit = "\nFALHA CRÍTICA!\n";
+    }
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A1A),
-        title: Text("Ataque: ${arma.nome}", textAlign: TextAlign.center, style: TextStyle(color: corDestaque, fontWeight: FontWeight.bold)),
+        title: Text(
+          "Ataque: ${arma.nome}",
+          textAlign: TextAlign.center,
+          style: TextStyle(color: corDestaque, fontWeight: FontWeight.bold),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text("Teste de ${perObj.nome.isEmpty ? periciaUsada.toUpperCase() : perObj.nome} ($atributoUsado)", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            Text(
+              "Teste de ${perObj.nome.isEmpty ? periciaUsada.toUpperCase() : perObj.nome} ($atributoUsado)",
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            ),
             const SizedBox(height: 12),
-            Text("Ataque: $resultadoAtaque", style: TextStyle(fontSize: 42, fontWeight: FontWeight.bold, color: corD20)),
-            Text("Dados (${rolarPior ? 'Pior de $qtdDados' : '${qtdDados}d20'}): [${d20s.join(', ')}]\nCálculo: $d20Escolhido (Dado) + $totalBonus (Bônus)", textAlign: TextAlign.center, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-            Text(tituloCrit, style: TextStyle(color: corD20, fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(
+              "Ataque: $resultadoAtaque",
+              style: TextStyle(
+                fontSize: 42,
+                fontWeight: FontWeight.bold,
+                color: corD20,
+              ),
+            ),
+            Text(
+              "Dados (${rolarPior ? 'Pior de $qtdDados' : '${qtdDados}d20'}): [${d20s.join(', ')}]\nCálculo: $d20Escolhido (Dado) + $totalBonus (Bônus)",
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+            Text(
+              tituloCrit,
+              style: TextStyle(
+                color: corD20,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
             const Divider(color: Colors.grey),
             const SizedBox(height: 8),
-            Text("Dano: $totalDano", style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.redAccent)),
-            Text("Dados: [${rolagensDano.join(', ')}]${flatTotal != 0 ? ' + $flatTotal' : ''}", style: const TextStyle(color: Colors.white54, fontSize: 12)),
-            if (modAtaque > 0 || modMultExtra > 0 || dadosDanoExtra.isNotEmpty || modMargemTrilha > 0 || aniquilador99)
+            Text(
+              "Dano: $totalDano",
+              style: const TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Colors.redAccent,
+              ),
+            ),
+            Text(
+              "Dados: [${rolagensDano.join(', ')}]${flatTotal != 0 ? ' + $flatTotal' : ''}",
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+            if (modAtaque > 0 ||
+                modMultExtra > 0 ||
+                dadosDanoExtra.isNotEmpty ||
+                modMargemTrilha > 0 ||
+                aniquilador99)
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),
-                child: Text("Bônus de Trilhas e Efeitos Ativos.", style: TextStyle(color: corDestaque, fontSize: 10, fontStyle: FontStyle.italic)),
-              )
+                child: Text(
+                  "Bônus de Trilhas e Efeitos Ativos.",
+                  style: TextStyle(
+                    color: corDestaque,
+                    fontSize: 10,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text("FECHAR", style: TextStyle(color: corDestaque))),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("FECHAR", style: TextStyle(color: corDestaque)),
+          ),
         ],
       ),
     );
   }
+
   // ataque
   void _mostrarDialogEditarAtaque(Arma arma) {
     String attrAtual = arma.atributoPersonalizado.isEmpty
@@ -1138,19 +1266,35 @@ class _FichaAgenteState extends State<FichaAgente> {
                                       classeAtual = novaClasse;
                                       poderesEscolhidos.removeWhere(
                                         (p) =>
-                                            p.startsWith("Ataque Especial") ||
-                                            p.startsWith("Eclético") ||
-                                            p.startsWith("Perito") ||
-                                            p.startsWith(
+                                            p.nome.startsWith(
+                                              "Ataque Especial",
+                                            ) ||
+                                            p.nome.startsWith("Eclético") ||
+                                            p.nome.startsWith("Perito") ||
+                                            p.nome.startsWith(
                                               "Escolhido pelo Outro Lado",
                                             ),
                                       );
                                       if (novaClasse == 'combatente') {
                                         poderesEscolhidos.add(
-                                          "Ataque Especial",
+                                          Poder(
+                                            nome: "Ataque Especial",
+                                            tipo: "Combatente",
+                                            descricao:
+                                                "Quando faz um ataque, você pode gastar 2 PE para receber +5...",
+                                            custoPE: 2,
+                                          ),
                                         );
                                       } else if (novaClasse == 'especialista') {
-                                        poderesEscolhidos.add("Eclético");
+                                        poderesEscolhidos.add(
+                                          Poder(
+                                            nome: "Eclético",
+                                            tipo: "Especialista",
+                                            descricao:
+                                                "Quando faz um teste de uma perícia, você pode gastar 2 PE para...",
+                                            custoPE: 2,
+                                          ),
+                                        );
                                         List<String> nomesPerito =
                                             selecionadasPerito
                                                 .map(
@@ -1162,11 +1306,23 @@ class _FichaAgenteState extends State<FichaAgente> {
                                                 )
                                                 .toList();
                                         poderesEscolhidos.add(
-                                          "Perito (${nomesPerito.join(', ')})",
+                                          Poder(
+                                            nome:
+                                                "Perito (${nomesPerito.join(', ')})",
+                                            tipo: "Especialista",
+                                            descricao:
+                                                "Gaste 2 PE para somar +1d6...",
+                                            custoPE: 2,
+                                          ),
                                         );
                                       } else if (novaClasse == 'ocultista') {
                                         poderesEscolhidos.add(
-                                          "Escolhido pelo Outro Lado",
+                                          Poder(
+                                            nome: "Escolhido pelo Outro Lado",
+                                            tipo: "Ocultista",
+                                            descricao:
+                                                "Você pode lançar rituais de 1º círculo...",
+                                          ),
                                         );
                                       }
 
@@ -1278,12 +1434,14 @@ class _FichaAgenteState extends State<FichaAgente> {
                 return false;
               }
               if (isParanormal) {
-                bool temAfinidade = poderesEscolhidos.contains(
-                  "${p.nome} (Afinidade)",
+                bool temAfinidade = poderesEscolhidos.any(
+                  (pe) => pe.nome == "${p.nome} (Afinidade)",
                 );
                 if (temAfinidade) return false;
               } else {
-                if (poderesEscolhidos.contains(p.nome)) return false;
+                if (poderesEscolhidos.any((pe) => pe.nome == p.nome)) {
+                  return false;
+                }
               }
               return true;
             }).toList();
@@ -1456,7 +1614,9 @@ class _FichaAgenteState extends State<FichaAgente> {
                                   var p = filtrados[index];
                                   bool upandoAfinidade =
                                       isParanormal &&
-                                      poderesEscolhidos.contains(p.nome);
+                                      poderesEscolhidos.any(
+                                        (pe) => pe.nome == p.nome,
+                                      );
                                   Color corTitulo = Colors.white;
                                   if (isParanormal) {
                                     if (filtroParanormal == 'Sangue') {
@@ -1528,12 +1688,18 @@ class _FichaAgenteState extends State<FichaAgente> {
                                       onTap: () {
                                         setState(() {
                                           if (upandoAfinidade) {
-                                            poderesEscolhidos.remove(p.nome);
+                                            poderesEscolhidos.removeWhere(
+                                              (pe) => pe.nome == p.nome,
+                                            );
                                             poderesEscolhidos.add(
-                                              "${p.nome} (Afinidade)",
+                                              Poder(
+                                                nome: "${p.nome} (Afinidade)",
+                                                tipo: p.tipo,
+                                                descricao: p.descricao,
+                                              ),
                                             );
                                           } else {
-                                            poderesEscolhidos.add(p.nome);
+                                            poderesEscolhidos.add(p);
                                           }
                                         });
                                         atualizarFicha();
@@ -1559,144 +1725,201 @@ class _FichaAgenteState extends State<FichaAgente> {
     setState(() {
       if (nex < 10 || classeAtual == '--') trilhaAtual = '--';
 
-      if (nex < 50 && afinidadeAtual != null) {
+      // O Monstruoso retém a variável afinidadeAtual desde o NEX 10 (para sabermos o parasita),
+      // mas as outras trilhas perdem a variável se o NEX cair abaixo de 50.
+      if (nex < 50 && afinidadeAtual != null && trilhaAtual != 'monstruoso') {
         afinidadeAtual = null;
       }
 
-      // Limpa bônus de origem e resistências
+      // Reinicia Atributos Efetivos
+      efAgi = agi;
+      efFor = forc;
+      efInt = inte;
+      efPre = pre;
+      efVig = vig;
+      dadosExtrasPericias.clear();
       bonusOrigem.clear();
       resistencias.clear();
 
-      if (origemAtual == 'diplomata') bonusOrigem['diplomacia'] = 2;
-      if (origemAtual == 'profetizado') bonusOrigem['vontade'] = 2;
+      // --- LÓGICA: COMBATENTE MONSTRUOSO ---
+      if (trilhaAtual == 'monstruoso' && nex >= 10) {
+        String elem = afinidadeAtual ?? 'Sangue';
+        int resValue = 5;
+        int penValue = -1; // -1d20
+
+        if (nex >= 40) {
+          resValue = 10;
+          penValue = -2;
+        }
+        if (nex >= 65) {
+          resValue = 15;
+          efPre -= 1;
+        }
+        if (nex >= 99) {
+          resValue = 20;
+        }
+
+        if (!periciasClasse.contains('ocultismo')) {
+          periciasClasse.add('ocultismo');
+        }
+
+        if (elem == 'Sangue') {
+          resistencias['Balístico'] =
+              (resistencias['Balístico'] ?? 0) + resValue;
+          resistencias['Sangue'] = (resistencias['Sangue'] ?? 0) + resValue;
+          dadosExtrasPericias['ciencias'] = penValue;
+          dadosExtrasPericias['intuicao'] = penValue;
+          if (nex >= 99) {
+            efInt -= 1;
+            efFor += 1;
+          }
+
+          if (nex >= 65 && !armas.any((a) => a.nome == "Mordida Monstruosa")) {
+            armas.add(
+              Arma(
+                nome: "Mordida Monstruosa",
+                tipo: "Corpo a Corpo",
+                dano: "1d8",
+                margemAmeaca: 20,
+                multiplicadorCritico: 2,
+                categoria: "0",
+                espaco: 0,
+                proficiencia: "Simples",
+                empunhadura: "Leve",
+                descricao: "Arma natural (Faro).",
+              ),
+            );
+          }
+        } else if (elem == 'Morte') {
+          resistencias['Perfuração'] =
+              (resistencias['Perfuração'] ?? 0) + resValue;
+          resistencias['Morte'] = (resistencias['Morte'] ?? 0) + resValue;
+          dadosExtrasPericias['diplomacia'] = penValue;
+          dadosExtrasPericias['enganacao'] = penValue;
+          if (nex >= 40) {
+            dadosExtrasPericias['intimidacao'] =
+                (dadosExtrasPericias['intimidacao'] ?? 0) + 1;
+          }
+          if (nex >= 99) {
+            efPre -= 1;
+            efVig += 1;
+            resistencias['Morte'] = 999;
+          } // Imune
+        } else if (elem == 'Conhecimento') {
+          resistencias['Balístico'] =
+              (resistencias['Balístico'] ?? 0) + resValue;
+          resistencias['Conhecimento'] =
+              (resistencias['Conhecimento'] ?? 0) + resValue;
+          dadosExtrasPericias['atletismo'] = penValue;
+          dadosExtrasPericias['acrobacia'] = penValue;
+          if (nex >= 40) efInt += 1;
+          if (nex >= 99) {
+            efFor -= 1;
+            efInt += 1;
+          }
+        } else if (elem == 'Energia') {
+          resistencias['Corte'] = (resistencias['Corte'] ?? 0) + resValue;
+          resistencias['Eletricidade'] =
+              (resistencias['Eletricidade'] ?? 0) + resValue;
+          resistencias['Fogo'] = (resistencias['Fogo'] ?? 0) + resValue;
+          resistencias['Energia'] = (resistencias['Energia'] ?? 0) + resValue;
+          dadosExtrasPericias['investigacao'] = penValue;
+          dadosExtrasPericias['percepcao'] = penValue;
+          if (nex >= 65) {
+            resistencias['Químico'] = (resistencias['Químico'] ?? 0) + resValue;
+          }
+          if (nex >= 99) {
+            efFor -= 1;
+            efAgi += 1;
+          }
+        }
+      }
+      // -------------------------------------
+
+      // Limpeza de outras Trilhas/Origens inativas
+      if (trilhaAtual != 'cacador') {
+        poderesEscolhidos.removeWhere((p) => p.nome.startsWith("Cacador_"));
+      }
+      if (trilhaAtual != 'agente_secreto') {
+        poderesEscolhidos.removeWhere(
+          (p) => p.nome.startsWith("AgenteSecreto_"),
+        );
+      }
+
+      // ===== DEVOLVENDO A LÓGICA DO COLEGIAL E REVOLTADO =====
       if (origemAtual == 'colegial' &&
-          poderesEscolhidos.contains("Colegial_Perto") &&
-          !poderesEscolhidos.contains("Colegial_Morto")) {
+          poderesEscolhidos.any((p) => p.nome == "Colegial_Perto") &&
+          !poderesEscolhidos.any((p) => p.nome == "Colegial_Morto")) {
         for (var p in listaPericias) {
           bonusOrigem[p.id] = 2;
         }
       }
-      // Revoltado Sozinho (+1 em todas as perícias)
       if (origemAtual == 'revoltado' &&
-          poderesEscolhidos.contains("Revoltado_Sozinho")) {
+          poderesEscolhidos.any((p) => p.nome == "Revoltado_Sozinho")) {
         for (var p in listaPericias) {
           bonusOrigem[p.id] = (bonusOrigem[p.id] ?? 0) + 1;
         }
       }
+      // =======================================================
 
+      if (origemAtual == 'diplomata') bonusOrigem['diplomacia'] = 2;
+      if (origemAtual == 'profetizado') bonusOrigem['vontade'] = 2;
       if (origemAtual == 'experimento') resistencias['Geral'] = 2;
       if (origemAtual == 'teorico_da_conspiracao') {
-        resistencias['Mental'] = inte;
-      }
-
-      // Bônus passivos de trilhas
-      if (trilhaAtual == 'operacoes_especiais' && nex >= 10) {
-        bonusOrigem['iniciativa'] = (bonusOrigem['iniciativa'] ?? 0) + 5;
-      }
-
-      // Lógica do Atirador de Elite (Dano em Armas de Fogo Longas) e Aniquilador
-      // Estão programadas diretamente nos getters das armas quando equipadas (serão adicionadas no futuro)
-
-      // Lógica do Especialista: Técnico
-      if (trilhaAtual == 'tecnico' && nex >= 10) {
-        // Inventário otimizado é calculado no Getter do espacoMaximo
-      }
-
-      // Lógica do Especialista: Gatuno
-      if (trilhaAtual == 'infiltrador' && nex >= 40) {
-        bonusOrigem['atletismo'] = (bonusOrigem['atletismo'] ?? 0) + 5;
-        bonusOrigem['crime'] = (bonusOrigem['crime'] ?? 0) + 5;
-      }
-
-      // Lógica do Especialista: A Força do Saber
-      if (trilhaAtual == 'bibliotecario' && nex >= 99) {
-        // Intelecto aumenta em +1 (Considerado de forma passiva aqui para não alterar o atributo raiz editável)
-        peMax += inte + 1;
-      }
-
-      // Lógica do Ocultista: Intuitivo
-      if (trilhaAtual == 'intuitivo' && nex >= 65) {
-        resistencias['Mental'] = 10;
-        resistencias['Paranormal'] = 10;
-      }
-
-      for (String pod in poderesEscolhidos) {
-        if (pod.startsWith("Experimento_")) {
-          bonusOrigem[pod.replaceAll("Experimento_", "")] = 2;
-        }
-      }
-
-      var origemData = dadosOrigens[origemAtual];
-      if (origemData != null) {
-        habNome = origemData.nomeHabilidade;
-        habDesc = origemData.descHabilidade;
-        for (var p in listaPericias) {
-          if (p.daOrigem) {
-            if (p.treino <= 5) p.treino = 0;
-            p.daOrigem = false;
-          }
-        }
-        for (var p in listaPericias) {
-          if (origemData.pericias.contains(p.id)) {
-            if (p.treino < 5) p.treino = 5;
-            p.daOrigem = true;
-          }
-        }
-      } else {
-        habNome = "";
-        habDesc = "";
-        for (var p in listaPericias) {
-          if (p.daOrigem) {
-            if (p.treino <= 5) p.treino = 0;
-            p.daOrigem = false;
-          }
-        }
-      }
-
-      for (var p in listaPericias) {
-        if (periciasClasse.contains(p.id)) {
-          if (p.treino < 5) p.treino = 5;
-        }
+        resistencias['Mental'] = efInt;
       }
 
       var stats = dadosClasses[classeAtual];
       if (stats != null) {
         int nivel = (nex / 5).toInt();
 
-        pvMax = stats.pvBase + (vig * nivel) + (stats.pvPorNivel * (nivel - 1));
-        peMax = stats.peBase + (pre * nivel) + (stats.pePorNivel * (nivel - 1));
+        // Substituição do Atributo Base para PE (Monstruoso 40%)
+        int atributoPE = efPre;
+        if (trilhaAtual == 'monstruoso' && nex >= 40) {
+          if (afinidadeAtual == 'Sangue') atributoPE = efFor;
+          if (afinidadeAtual == 'Morte') atributoPE = efVig;
+          if (afinidadeAtual == 'Conhecimento') atributoPE = efInt;
+          if (afinidadeAtual == 'Energia') atributoPE = efAgi;
+        }
+
+        pvMax =
+            stats.pvBase + (efVig * nivel) + (stats.pvPorNivel * (nivel - 1));
+        if (trilhaAtual == 'monstruoso' && afinidadeAtual == 'Morte') {
+          pvMax += efFor; // Soma FOR nos PV
+        }
+
+        peMax =
+            stats.peBase +
+            (atributoPE * nivel) +
+            (stats.pePorNivel * (nivel - 1));
 
         if (origemAtual == 'colegial' &&
-            poderesEscolhidos.contains("Colegial_Morto")) {
+            poderesEscolhidos.any((p) => p.nome == "Colegial_Morto")) {
           peMax -= nivel; // Perde -1 PE por NEX se o amigo morrer
         }
 
-        int quantidadePoderesParanormais = 0;
-        List<Poder> todosParanormais = [
-          ...catalogoPoderesConhecimento,
-          ...catalogoPoderesEnergia,
-          ...catalogoPoderesMorte,
-          ...catalogoPoderesSangue,
-        ];
-        for (String nomePoderEscolhido in poderesEscolhidos) {
-          String nomeBase = nomePoderEscolhido.replaceAll(" (Afinidade)", "");
-          if (todosParanormais.any((p) => p.nome == nomeBase)) {
-            quantidadePoderesParanormais++;
-          }
+        int qtdParanormal = poderesEscolhidos
+            .where(
+              (p) => [
+                "Conhecimento",
+                "Energia",
+                "Morte",
+                "Sangue",
+              ].contains(p.tipo),
+            )
+            .length;
+        int sanBase = origemAtual == 'cultista_arrependido'
+            ? (stats.sanBase ~/ 2)
+            : stats.sanBase;
+        if (origemAtual == 'cultista_arrependido' && qtdParanormal > 0) {
+          qtdParanormal--;
         }
 
-        int sanidadeBase = stats.sanBase;
-        if (origemAtual == 'cultista_arrependido') {
-          sanidadeBase = (sanidadeBase / 2).floor();
-          if (quantidadePoderesParanormais > 0) quantidadePoderesParanormais--;
-        }
-
-        int sanidadePerdidaPorTranscender =
-            quantidadePoderesParanormais * stats.sanPorNivel;
         sanMax =
-            sanidadeBase +
+            sanBase +
             (stats.sanPorNivel * (nivel - 1)) -
-            sanidadePerdidaPorTranscender;
+            (qtdParanormal * stats.sanPorNivel);
+        if (sanMax < 0) sanMax = 0;
 
         if (origemAtual == 'desgarrado') pvMax += nivel;
         if (origemAtual == 'vitima') sanMax += nivel;
@@ -1707,16 +1930,10 @@ class _FichaAgenteState extends State<FichaAgente> {
           if (nivel >= 3) peMax += nexImpares;
         }
 
-        if (origemAtual == 'desgarrado') pvMax += nivel;
-        if (origemAtual == 'vitima') sanMax += nivel;
-        if (origemAtual == 'mergulhador') pvMax += 5;
-
         // Tropa de Choque (+1 PV por NEX)
         if (trilhaAtual == 'tropa_de_choque' && nex >= 10) {
           pvMax += nivel;
         }
-
-        if (sanMax < 0) sanMax = 0;
       } else {
         if (isInitialLoad && widget.agenteParaEditar == null) {
           pvMax = 0;
@@ -1725,8 +1942,7 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
       }
 
-      int defItens = 0;
-      int bonusBloqueioBracadeira = 0;
+      int defItens = 0, bonusBloqueioBracadeira = 0;
       bool usaProtecaoLeve = false;
       bool usaProtecaoPesadaOuEscudo = false;
 
@@ -1762,7 +1978,6 @@ class _FichaAgenteState extends State<FichaAgente> {
           }
           if (item.modificacoes.contains("Reforçada")) defItens += 2;
         }
-
         if (nomeLower.contains("braçadeira reforçada")) {
           bonusBloqueioBracadeira += 2;
         }
@@ -1775,44 +1990,52 @@ class _FichaAgenteState extends State<FichaAgente> {
         sofrePenalidadeProtecao = true;
       }
 
-      int bReflexos = 0, bFortitude = 0;
-      for (var p in listaPericias) {
-        if (p.id == 'reflexos') bReflexos = p.treino;
-        if (p.id == 'fortitude') bFortitude = p.treino;
-      }
+      int bReflexos = listaPericias
+          .firstWhere(
+            (p) => p.id == 'reflexos',
+            orElse: () => Pericia(nome: '', id: '', atributo: ''),
+          )
+          .treino;
+      int bFortitude = listaPericias
+          .firstWhere(
+            (p) => p.id == 'fortitude',
+            orElse: () => Pericia(nome: '', id: '', atributo: ''),
+          )
+          .treino;
 
-      // Bônus de Defesa das Origens
       int bonusDefesaOrigem = 0;
       if (origemAtual == 'policial') bonusDefesaOrigem += 2;
       if (origemAtual == 'ginasta') bonusDefesaOrigem += 2;
       if (origemAtual == 'revoltado' &&
-          poderesEscolhidos.contains("Revoltado_Sozinho")) {
+          poderesEscolhidos.any((p) => p.nome == "Revoltado_Sozinho")) {
         bonusDefesaOrigem += 1;
       }
 
-      defesa = 10 + agi + defItens + bonusDefesaOrigem;
+      defesa = 10 + efAgi + defItens + bonusDefesaOrigem;
+      if (trilhaAtual == 'monstruoso' && afinidadeAtual == 'Conhecimento') {
+        defesa += efInt; // Soma INT na Defesa
+      }
       if (estaSobrecarregado) defesa -= 5; // penalidade de sobrecarga (-5)
 
       esquiva = defesa + bReflexos;
       bloqueio = bFortitude + bonusBloqueioBracadeira;
-      // ==== TRILHAS: COMBATENTE & ESPECIALISTA ====
 
-      // Tropa de Choque
-      bloqueio = bFortitude + bonusBloqueioBracadeira;
+      if (trilhaAtual == 'monstruoso' && afinidadeAtual == 'Energia') {
+        bloqueio += efAgi; // Soma AGI no Bloqueio
+      }
       if (trilhaAtual == 'tropa_de_choque' && nex >= 10) {
-        bloqueio += vig; // Casca Grossa (Soma Vigor no bloqueio)
+        bloqueio += efVig; // Casca Grossa
       }
 
       bool isMachucado = pvMax > 0 && pvAtual <= (pvMax ~/ 2);
       if (trilhaAtual == 'tropa_de_choque' && nex >= 99 && isMachucado) {
-        defesa += 5; // Inquebrável (+5 Defesa)
-        resistencias['Geral'] =
-            (resistencias['Geral'] ?? 0) + 5; // Inquebrável (RD 5)
+        defesa += 5;
+        resistencias['Geral'] = (resistencias['Geral'] ?? 0) + 5;
       }
 
       // Caçador
       if (trilhaAtual == 'cacador' && nex >= 10) {
-        if (!poderesEscolhidos.contains("Cacador_SetupFeito")) {
+        if (!poderesEscolhidos.any((p) => p.nome == "Cacador_SetupFeito")) {
           var p = listaPericias.firstWhere(
             (e) => e.id == 'sobrevivencia',
             orElse: () => Pericia(id: '', nome: '', atributo: ''),
@@ -1821,12 +2044,22 @@ class _FichaAgenteState extends State<FichaAgente> {
             if (p.treino == 0) {
               p.treino = 5;
             } else {
-              poderesEscolhidos.add("Cacador_Bonus_sobrevivencia");
+              poderesEscolhidos.add(
+                Poder(
+                  nome: "Cacador_Bonus_sobrevivencia",
+                  tipo: "Sistema",
+                  descricao: "",
+                ),
+              );
             }
           }
-          poderesEscolhidos.add("Cacador_SetupFeito");
+          poderesEscolhidos.add(
+            Poder(nome: "Cacador_SetupFeito", tipo: "Sistema", descricao: ""),
+          );
         }
-        if (poderesEscolhidos.contains("Cacador_Bonus_sobrevivencia")) {
+        if (poderesEscolhidos.any(
+          (p) => p.nome == "Cacador_Bonus_sobrevivencia",
+        )) {
           bonusOrigem['sobrevivencia'] =
               (bonusOrigem['sobrevivencia'] ?? 0) + 2;
         }
@@ -1834,17 +2067,21 @@ class _FichaAgenteState extends State<FichaAgente> {
 
       // Agente Secreto (Gatilho do Pop-up)
       if (trilhaAtual == 'agente_secreto' && nex >= 10) {
-        if (!poderesEscolhidos.contains("AgenteSecreto_SetupFeito")) {
-          // Dispara o Pop-up com segurança no fim do ciclo de renderização
+        if (!poderesEscolhidos.any(
+          (p) => p.nome == "AgenteSecreto_SetupFeito",
+        )) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _mostrarDialogAgenteSecreto();
           });
         }
-        // Bônus passivos (NEX 10% e 40%)
-        if (poderesEscolhidos.contains("AgenteSecreto_Bonus_diplomacia")) {
+        if (poderesEscolhidos.any(
+          (p) => p.nome == "AgenteSecreto_Bonus_diplomacia",
+        )) {
           bonusOrigem['diplomacia'] = (bonusOrigem['diplomacia'] ?? 0) + 2;
         }
-        if (poderesEscolhidos.contains("AgenteSecreto_Bonus_enganacao")) {
+        if (poderesEscolhidos.any(
+          (p) => p.nome == "AgenteSecreto_Bonus_enganacao",
+        )) {
           bonusOrigem['enganacao'] = (bonusOrigem['enganacao'] ?? 0) + 2;
         }
         if (nex >= 40) {
@@ -1852,7 +2089,7 @@ class _FichaAgenteState extends State<FichaAgente> {
           bonusOrigem['enganacao'] = (bonusOrigem['enganacao'] ?? 0) + 2;
         }
       }
-      // ============================================
+
       if (isInitialLoad && widget.agenteParaEditar == null) {
         pvAtual = pvMax;
         peAtual = peMax;
@@ -1897,16 +2134,197 @@ class _FichaAgenteState extends State<FichaAgente> {
     );
   }
 
+  void _mostrarDialogTrilhas() {
+    if (classeAtual == '--') return;
+
+    List<DadosTrilha> trilhasDaClasse = trilhasOrdem.values
+        .where((t) => t.classe.toLowerCase() == classeAtual.toLowerCase())
+        .toList();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: corDestaque.withValues(alpha: 0.3)),
+          ),
+          insetPadding: const EdgeInsets.all(16),
+          child: Container(
+            width: double.maxFinite,
+            height: MediaQuery.of(context).size.height * 0.85,
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.call_split, color: corDestaque, size: 28),
+                    const SizedBox(width: 12),
+                    Text(
+                      "TRILHAS",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: corDestaque,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.grey),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  "A trilha representa o caminho de especialização que seu agente seguiu dentro de sua classe.",
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 13,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: trilhasDaClasse.length,
+                    itemBuilder: (context, index) {
+                      DadosTrilha t = trilhasDaClasse[index];
+                      String idTrilha = trilhasOrdem.entries
+                          .firstWhere((e) => e.value.nome == t.nome)
+                          .key;
+                      bool isSelected = trilhaAtual == idTrilha;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0D0D0D),
+                          border: Border.all(
+                            color: isSelected
+                                ? corDestaque
+                                : Colors.grey.shade800,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Theme(
+                          data: Theme.of(
+                            context,
+                          ).copyWith(dividerColor: Colors.transparent),
+                          child: ExpansionTile(
+                            iconColor: corDestaque,
+                            collapsedIconColor: Colors.grey,
+                            tilePadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
+                            ),
+                            title: Text(
+                              t.nome,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: isSelected ? corDestaque : Colors.white,
+                              ),
+                            ),
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  16,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Divider(
+                                      color: corDestaque.withValues(alpha: 0.3),
+                                      thickness: 1,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      t.descricao,
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 13,
+                                        fontStyle: FontStyle.italic,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: corFundoAfinidade,
+                                        foregroundColor: corTextoAfinidade,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 12,
+                                        ),
+                                        side: afinidadeAtual == 'Morte'
+                                            ? const BorderSide(
+                                                color: Colors.white54,
+                                              )
+                                            : null,
+                                      ),
+                                      onPressed: isSelected
+                                          ? null
+                                          : () {
+                                              if (idTrilha == 'monstruoso') {
+                                                _mostrarDialogElementoMonstruoso();
+                                              } else {
+                                                setState(() {
+                                                  trilhaAtual = idTrilha;
+                                                });
+                                                atualizarFicha();
+                                                Navigator.pop(context);
+                                              }
+                                            },
+                                      child: Text(
+                                        isSelected
+                                            ? "TRILHA ATUAL"
+                                            : "ESCOLHER ESTA TRILHA",
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _concluirSetupAgenteSecreto(String periciaEscolhida) {
     setState(() {
       var p = listaPericias.firstWhere((e) => e.id == periciaEscolhida);
       if (p.treino == 0) {
         p.treino = 5;
       } else {
-        poderesEscolhidos.add("AgenteSecreto_Bonus_$periciaEscolhida");
+        poderesEscolhidos.add(
+          Poder(
+            nome: "AgenteSecreto_Bonus_$periciaEscolhida",
+            tipo: "Sistema",
+            descricao: "",
+          ),
+        );
       }
 
-      poderesEscolhidos.add("AgenteSecreto_SetupFeito");
+      poderesEscolhidos.add(
+        Poder(nome: "AgenteSecreto_SetupFeito", tipo: "Sistema", descricao: ""),
+      );
       inventario.add(
         ItemInventario(
           nome: "Documentos Especiais",
@@ -1922,6 +2340,70 @@ class _FichaAgenteState extends State<FichaAgente> {
     Navigator.pop(context);
     _mostrarNotificacao("Treinamento e Documentos recebidos!");
   }
+
+  void _mostrarDialogElementoMonstruoso() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: const Text(
+          "O Parasita",
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          "Você foi infectado. Qual elemento habita o seu corpo agora? Esta escolha ditará seus poderes passivos permanentemente e travará sua afinidade.",
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _btnElementoMonstruoso("Sangue", const Color(0xFF990000)),
+              _btnElementoMonstruoso("Energia", const Color(0xFF9900FF)),
+              _btnElementoMonstruoso("Morte", Colors.black),
+              _btnElementoMonstruoso("Conhecimento", const Color(0xFFFFB300)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _btnElementoMonstruoso(String elemento, Color cor) {
+    Color corDoTexto = (elemento == 'Conhecimento')
+        ? Colors.black
+        : Colors.white;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: cor,
+          foregroundColor: corDoTexto,
+          side: elemento == 'Morte'
+              ? const BorderSide(color: Colors.white54)
+              : null,
+        ),
+        onPressed: () {
+          setState(() {
+            trilhaAtual = 'monstruoso'; // Defina o ID da sua trilha base aqui!
+            afinidadeAtual = elemento;
+          });
+          atualizarFicha();
+          Navigator.pop(context);
+          Navigator.pop(context); // Fecha o Dialog de escolha de trilha também
+        },
+        child: Text(
+          elemento.toUpperCase(),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
   // SISTEMA DE ABAS
 
   Widget _buildAbaAtributos(bool block, Color corDoPainel) {
@@ -1942,7 +2424,9 @@ class _FichaAgenteState extends State<FichaAgente> {
           ),
           const SizedBox(height: 16),
 
-          if (nex >= 50 && afinidadeAtual == null && !block)
+          if (nex >= 50 &&
+              (afinidadeAtual == null || afinidadeAtual!.isEmpty) &&
+              !block)
             Center(
               child: BotaoAfinidadeAnimado(onPressed: _mostrarDialogAfinidade),
             ),
@@ -2348,7 +2832,9 @@ class _FichaAgenteState extends State<FichaAgente> {
                 atual: pvAtual,
                 maximo: pvMax,
                 // Deixa vermelho escuro se estiver "Machucado"
-                cor: (pvMax > 0 && pvAtual <= pvMax ~/ 2) ? Colors.red.shade900 : Colors.red,
+                cor: (pvMax > 0 && pvAtual <= pvMax ~/ 2)
+                    ? Colors.red.shade900
+                    : Colors.red,
                 onChanged: (val) {
                   setState(() => pvAtual = val.clamp(0, pvMax));
                   atualizarFicha(); // atualizar a ficha para a Tropa de Choque 99% ligar a defesa
@@ -2563,16 +3049,19 @@ class _FichaAgenteState extends State<FichaAgente> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Exibe trilha
-          if (trilhaAtual != '--' && trilhasOrdem.containsKey(trilhaAtual))
+          // =====================================
+          // 1. EXIBIÇÃO DA TRILHA
+          if (trilhaAtual != '--')
             SecaoFicha(
-              titulo: "Trilha: ${trilhasOrdem[trilhaAtual]!.nome}",
+              titulo:
+                  "Trilha: ${trilhasOrdem[trilhaAtual]?.nome ?? trilhaAtual.toUpperCase()}",
               corTema: corFundoAfinidade,
               corTexto: corTextoAfinidade,
               isMorte: afinidadeAtual == 'Morte',
               filhos: [
                 Text(
-                  trilhasOrdem[trilhaAtual]!.descricao,
+                  trilhasOrdem[trilhaAtual]?.descricao ??
+                      "Descrição da trilha indisponível.",
                   style: const TextStyle(
                     fontSize: 13,
                     fontStyle: FontStyle.italic,
@@ -2584,52 +3073,60 @@ class _FichaAgenteState extends State<FichaAgente> {
                 const SizedBox(height: 8),
 
                 // Mostra apenas as habilidades que o NEX atual permite
-                ...trilhasOrdem[trilhaAtual]!.habilidades.entries
-                    .where((e) => nex >= e.key)
-                    .map((e) {
-                      String nomeHab = e.value.keys.first;
-                      String descHab = e.value.values.first;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "NEX ${e.key}% - $nomeHab",
-                              style: TextStyle(
-                                color: corDestaque,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
+                if (trilhasOrdem.containsKey(trilhaAtual))
+                  ...trilhasOrdem[trilhaAtual]!.habilidades.entries
+                      .where((e) => nex >= e.key)
+                      .map((e) {
+                        String nomeHab = e.value.keys.first;
+                        String descHab = e.value.values.first;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "NEX ${e.key}% - $nomeHab",
+                                style: TextStyle(
+                                  color: corDestaque,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              descHab,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 13,
-                                height: 1.4,
+                              const SizedBox(height: 4),
+                              Text(
+                                descHab,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                  height: 1.4,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
+                            ],
+                          ),
+                        );
+                      }),
               ],
             ),
 
           // =====================================
+          // 2. EXIBIÇÃO DA ORIGEM
           if (origemAtual != '--')
             SecaoFicha(
-              titulo: "Habilidade de Origem: $habNome",
+              // Puxa direto do banco de dados. Se falhar, formata o ID tirando os "_" e pondo em maiúsculo
+              titulo:
+                  "Habilidade de Origem: ${dadosOrigens[origemAtual]?.nomeHabilidade ?? origemAtual.replaceAll('_', ' ').toUpperCase()}",
               corTema: corFundoAfinidade,
               corTexto: corTextoAfinidade,
               isMorte: afinidadeAtual == 'Morte',
               filhos: [
                 Text(
-                  habDesc,
+                  // Puxa a descrição direto do banco de dados
+                  (dadosOrigens[origemAtual]?.descHabilidade != null &&
+                          dadosOrigens[origemAtual]!.descHabilidade.isNotEmpty)
+                      ? dadosOrigens[origemAtual]!.descHabilidade
+                      : "Descrição da origem indisponível.",
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     fontStyle: FontStyle.italic,
                     color: Colors.white,
                   ),
@@ -2644,18 +3141,31 @@ class _FichaAgenteState extends State<FichaAgente> {
                       "Amigo está Próximo (+2 em Perícias)",
                       style: TextStyle(color: Colors.white, fontSize: 13),
                     ),
-                    value: poderesEscolhidos.contains("Colegial_Perto"),
+                    value: poderesEscolhidos.any(
+                      (p) => p.nome == "Colegial_Perto",
+                    ),
                     activeThumbColor: corDestaque,
                     contentPadding: EdgeInsets.zero,
                     onChanged:
-                        block || poderesEscolhidos.contains("Colegial_Morto")
+                        block ||
+                            poderesEscolhidos.any(
+                              (p) => p.nome == "Colegial_Morto",
+                            )
                         ? null
                         : (val) {
                             setState(() {
                               if (val) {
-                                poderesEscolhidos.add("Colegial_Perto");
+                                poderesEscolhidos.add(
+                                  Poder(
+                                    nome: "Colegial_Perto",
+                                    tipo: "Origem",
+                                    descricao: "",
+                                  ),
+                                );
                               } else {
-                                poderesEscolhidos.remove("Colegial_Perto");
+                                poderesEscolhidos.removeWhere(
+                                  (p) => p.nome == "Colegial_Perto",
+                                );
                               }
                               atualizarFicha();
                             });
@@ -2671,7 +3181,9 @@ class _FichaAgenteState extends State<FichaAgente> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    value: poderesEscolhidos.contains("Colegial_Morto"),
+                    value: poderesEscolhidos.any(
+                      (p) => p.nome == "Colegial_Morto",
+                    ),
                     activeThumbColor: Colors.redAccent,
                     contentPadding: EdgeInsets.zero,
                     onChanged: block
@@ -2679,10 +3191,20 @@ class _FichaAgenteState extends State<FichaAgente> {
                         : (val) {
                             setState(() {
                               if (val) {
-                                poderesEscolhidos.add("Colegial_Morto");
-                                poderesEscolhidos.remove("Colegial_Perto");
+                                poderesEscolhidos.add(
+                                  Poder(
+                                    nome: "Colegial_Morto",
+                                    tipo: "Origem",
+                                    descricao: "",
+                                  ),
+                                );
+                                poderesEscolhidos.removeWhere(
+                                  (p) => p.nome == "Colegial_Perto",
+                                );
                               } else {
-                                poderesEscolhidos.remove("Colegial_Morto");
+                                poderesEscolhidos.removeWhere(
+                                  (p) => p.nome == "Colegial_Morto",
+                                );
                               }
                               atualizarFicha();
                             });
@@ -2699,7 +3221,9 @@ class _FichaAgenteState extends State<FichaAgente> {
                       "Sem Aliados Próximos (+1 Def, +1 Perícias, +1 PE)",
                       style: TextStyle(color: Colors.white, fontSize: 13),
                     ),
-                    value: poderesEscolhidos.contains("Revoltado_Sozinho"),
+                    value: poderesEscolhidos.any(
+                      (p) => p.nome == "Revoltado_Sozinho",
+                    ),
                     activeThumbColor: corDestaque,
                     contentPadding: EdgeInsets.zero,
                     onChanged: block
@@ -2707,9 +3231,17 @@ class _FichaAgenteState extends State<FichaAgente> {
                         : (val) {
                             setState(() {
                               if (val) {
-                                poderesEscolhidos.add("Revoltado_Sozinho");
+                                poderesEscolhidos.add(
+                                  Poder(
+                                    nome: "Revoltado_Sozinho",
+                                    tipo: "Origem",
+                                    descricao: "",
+                                  ),
+                                );
                               } else {
-                                poderesEscolhidos.remove("Revoltado_Sozinho");
+                                poderesEscolhidos.removeWhere(
+                                  (p) => p.nome == "Revoltado_Sozinho",
+                                );
                               }
                               atualizarFicha();
                             });
@@ -2720,7 +3252,12 @@ class _FichaAgenteState extends State<FichaAgente> {
               ],
             ),
 
-          if (afinidadeAtual != null)
+          // =====================================
+          // 3. EXIBIÇÃO DA AFINIDADE ELEMENTAL
+          // =====================================
+          // 3. EXIBIÇÃO DA AFINIDADE ELEMENTAL
+          // O Monstruoso já escolheu o elemento, mas a "Afinidade Real" só aparece no 50%
+          if (afinidadeAtual != null && afinidadeAtual!.isNotEmpty && nex >= 50)
             SecaoFicha(
               titulo: "Afinidade Elemental",
               corTema: corFundoAfinidade,
@@ -2760,6 +3297,8 @@ class _FichaAgenteState extends State<FichaAgente> {
               ],
             ),
 
+          // =====================================
+          // 4. EXIBIÇÃO DA LISTA DE PODERES
           SecaoFicha(
             titulo: "Poderes",
             corTema: corFundoAfinidade,
@@ -2767,22 +3306,60 @@ class _FichaAgenteState extends State<FichaAgente> {
             isMorte: afinidadeAtual == 'Morte',
             filhos: [
               if (!block)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton.icon(
-                    onPressed: _abrirCatalogoPoderes,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text("Poder"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: corFundoAfinidade,
-                      foregroundColor: corTextoAfinidade,
-                      side: afinidadeAtual == 'Morte'
-                          ? const BorderSide(color: Colors.white54)
-                          : null,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () => mostrarDialogCriarPoder(
+                        context: context,
+                        corDestaque: corDestaque,
+                        corTema: corFundoAfinidade,
+                        corTexto: corTextoAfinidade,
+                        onConfirmar: (novoPoder) {
+                          setState(() => poderesEscolhidos.add(novoPoder));
+                          _salvarSilencioso();
+                        },
+                      ),
+                      icon: const Icon(Icons.add_circle_outline, size: 18),
+                      label: const Text("Custom"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF151515),
+                        foregroundColor: corDestaque,
+                        side: BorderSide(
+                          color: corDestaque.withValues(alpha: 0.3),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      onPressed: _abrirCatalogoPoderes,
+                      icon: const Icon(Icons.search, size: 18),
+                      label: const Text("Poder"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: corFundoAfinidade,
+                        foregroundColor: corTextoAfinidade,
+                        side: afinidadeAtual == 'Morte'
+                            ? const BorderSide(color: Colors.white54)
+                            : null,
+                      ),
+                    ),
+                  ],
                 ),
-              if (poderesEscolhidos.isEmpty)
+
+              // Verifica se todos os poderes na lista são "invisíveis"
+              if (poderesEscolhidos
+                  .where(
+                    (p) =>
+                        !p.nome.startsWith("Experimento_") &&
+                        !p.nome.startsWith("Profetizado_") &&
+                        !p.nome.startsWith("Colegial_") &&
+                        !p.nome.startsWith("Revoltado_") &&
+                        !p.nome.startsWith("Engenheiro_") &&
+                        !p.nome.startsWith("Cacador_") &&
+                        !p.nome.startsWith("AgenteSecreto_") &&
+                        p.tipo != "Sistema",
+                  )
+                  .isEmpty)
                 const Padding(
                   padding: EdgeInsets.only(top: 8.0),
                   child: Text(
@@ -2790,43 +3367,27 @@ class _FichaAgenteState extends State<FichaAgente> {
                     style: TextStyle(color: Colors.grey),
                   ),
                 ),
+
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: poderesEscolhidos.length,
                 itemBuilder: (context, index) {
-                  String nomePoder = poderesEscolhidos[index];
-                  // Oculta as tags matemáticas de Origem da tela de poderes visuais
-                  if (nomePoder.startsWith("Experimento_") ||
-                      nomePoder.startsWith("Profetizado_") ||
-                      nomePoder.startsWith("Colegial_")) {
+                  Poder p = poderesEscolhidos[index];
+
+                  // Oculta as tags de sistema
+                  if (p.nome.startsWith("Experimento_") ||
+                      p.nome.startsWith("Profetizado_") ||
+                      p.nome.startsWith("Colegial_") ||
+                      p.nome.startsWith("Revoltado_") ||
+                      p.nome.startsWith("Engenheiro_") ||
+                      p.nome.startsWith("Cacador_") ||
+                      p.nome.startsWith("AgenteSecreto_") ||
+                      p.tipo == "Sistema") {
                     return const SizedBox.shrink();
                   }
 
-                  String nomeBase = nomePoder;
-                  if (nomePoder.startsWith("Perito (")) nomeBase = "Perito";
-                  if (nomePoder.endsWith(" (Afinidade)")) {
-                    nomeBase = nomePoder.replaceAll(" (Afinidade)", "");
-                  }
-
-                  List<Poder> todosPoderes = [
-                    ...catalogoPoderesGerais,
-                    ...catalogoPoderesCombatente,
-                    ...catalogoPoderesEspecialista,
-                    ...catalogoPoderesOcultista,
-                    ...catalogoPoderesConhecimento,
-                    ...catalogoPoderesEnergia,
-                    ...catalogoPoderesMorte,
-                    ...catalogoPoderesSangue,
-                  ];
-                  Poder p = todosPoderes.firstWhere(
-                    (pod) => pod.nome == nomeBase,
-                    orElse: () => Poder(
-                      nome: nomePoder,
-                      tipo: "Desconhecido",
-                      descricao: "Poder desconhecido.",
-                    ),
-                  );
+                  bool temCusto = p.custoPE > 0;
                   bool isParanormal = [
                     "Conhecimento",
                     "Energia",
@@ -2838,7 +3399,11 @@ class _FichaAgenteState extends State<FichaAgente> {
                     margin: const EdgeInsets.only(top: 8),
                     decoration: BoxDecoration(
                       color: const Color(0xFF0D0D0D),
-                      border: Border.all(color: Colors.grey.shade800),
+                      border: Border.all(
+                        color: temCusto
+                            ? Colors.blue.withValues(alpha: 0.5)
+                            : Colors.grey.shade800,
+                      ),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: ListTile(
@@ -2846,12 +3411,40 @@ class _FichaAgenteState extends State<FichaAgente> {
                         horizontal: 16,
                         vertical: 8,
                       ),
-                      title: Text(
-                        nomePoder,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isParanormal ? corDestaque : Colors.white,
-                        ),
+                      onTap: temCusto && !block ? () => _usarPoder(p) : null,
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              p.nome,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: isParanormal
+                                    ? corDestaque
+                                    : Colors.white,
+                              ),
+                            ),
+                          ),
+                          if (temCusto)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                "${p.custoPE} PE",
+                                style: const TextStyle(
+                                  color: Colors.blue,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2879,10 +3472,10 @@ class _FichaAgenteState extends State<FichaAgente> {
                       ),
                       trailing: (() {
                         bool isPoderDeClasse =
-                            nomeBase == "Ataque Especial" ||
-                            nomeBase == "Eclético" ||
-                            nomeBase == "Perito" ||
-                            nomeBase == "Escolhido pelo Outro Lado";
+                            p.nome == "Ataque Especial" ||
+                            p.nome == "Eclético" ||
+                            p.nome.startsWith("Perito") ||
+                            p.nome == "Escolhido pelo Outro Lado";
                         if (block) return null;
                         if (isPoderDeClasse) {
                           return const Icon(

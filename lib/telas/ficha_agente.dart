@@ -186,11 +186,35 @@ class _FichaAgenteState extends State<FichaAgente> {
   }
 
   Map<String, int> get limitesCategoria {
-    if (prestigio >= 200) return {"I": 3, "II": 3, "III": 3, "IV": 2};
-    if (prestigio >= 100) return {"I": 3, "II": 3, "III": 2, "IV": 1};
-    if (prestigio >= 50) return {"I": 3, "II": 2, "III": 1, "IV": 0};
-    if (prestigio >= 20) return {"I": 3, "II": 1, "III": 0, "IV": 0};
-    return {"I": 2, "II": 0, "III": 0, "IV": 0};
+    Map<String, int> limites;
+    if (prestigio >= 200) {
+      limites = {"I": 3, "II": 3, "III": 3, "IV": 2};
+    } else if (prestigio >= 100) {
+      limites = {"I": 3, "II": 3, "III": 2, "IV": 1};
+    } else if (prestigio >= 50) {
+      limites = {"I": 3, "II": 2, "III": 1, "IV": 0};
+    } else if (prestigio >= 20) {
+      limites = {"I": 3, "II": 1, "III": 0, "IV": 0};
+    } else {
+      limites = {"I": 2, "II": 0, "III": 0, "IV": 0};
+    }
+
+    // Bônus da Perícia Profissão
+    int profTreino = listaPericias
+        .firstWhere(
+          (p) => p.id == 'profissao',
+          orElse: () => Pericia(id: '', nome: '', atributo: ''),
+        )
+        .treino;
+    if (profTreino >= 15) {
+      limites['III'] = limites['III']! + 1;
+    } else if (profTreino >= 10) {
+      limites['II'] = limites['II']! + 1;
+    } else if (profTreino >= 5) {
+      limites['I'] = limites['I']! + 1;
+    }
+
+    return limites;
   }
 
   // AUXILIAR DE REDUÇÃO DE CATEGORIA (ANIQUILADOR)
@@ -344,7 +368,6 @@ class _FichaAgenteState extends State<FichaAgente> {
   }
 
   Future<void> _salvarSilencioso() async {
-    if (_modoVisualizacao) return;
     final prefs = await SharedPreferences.getInstance();
 
     Map<String, int> periciasTreinadas = {};
@@ -953,6 +976,7 @@ class _FichaAgenteState extends State<FichaAgente> {
             List<Pericia> periciasDisponiveisParaLivres = listaPericias.where((
               p,
             ) {
+              if (p.daOrigem) return false; // ESCONDE AS DE ORIGEM
               if (novaClasse == 'combatente' &&
                   (p.id == combOp1 || p.id == combOp2)) {
                 return false;
@@ -1264,18 +1288,19 @@ class _FichaAgenteState extends State<FichaAgente> {
                                 ? () {
                                     setState(() {
                                       classeAtual = novaClasse;
+                                      trilhaAtual = '--'; // Reseta a trilha
+
+                                      // Limpa TODOS os poderes da classe anterior e de trilhas
                                       poderesEscolhidos.removeWhere(
                                         (p) =>
-                                            p.nome.startsWith(
-                                              "Ataque Especial",
-                                            ) ||
-                                            p.nome.startsWith("Eclético") ||
-                                            p.nome.startsWith("Perito") ||
-                                            p.nome.startsWith(
-                                              "Escolhido pelo Outro Lado",
-                                            ),
+                                            p.tipo == "Combatente" ||
+                                            p.tipo == "Especialista" ||
+                                            p.tipo == "Ocultista" ||
+                                            p.tipo == "Sistema",
                                       );
+
                                       if (novaClasse == 'combatente') {
+                                        // ...
                                         poderesEscolhidos.add(
                                           Poder(
                                             nome: "Ataque Especial",
@@ -1381,13 +1406,18 @@ class _FichaAgenteState extends State<FichaAgente> {
     Color corLetra = corTextoAfinidade;
     Color corDestaqueLocal = corDestaque;
 
+    // Filtro que só mostra a aba da sua classe
     List<String> categoriasPrincipais = [
       "Gerais",
-      "Combatente",
-      "Especialista",
-      "Ocultista",
+      if (classeAtual == 'combatente') "Combatente",
+      if (classeAtual == 'especialista') "Especialista",
+      if (classeAtual == 'ocultista') "Ocultista",
       "Poderes Paranormais",
     ];
+
+    if (!categoriasPrincipais.contains(filtroPrincipal)) {
+      filtroPrincipal = "Gerais";
+    }
     List<String> categoriasParanormais = [
       "Conhecimento",
       "Energia",
@@ -1548,7 +1578,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                                 break;
                               case 'Morte':
                               default:
-                                corElemento = Colors.black;
+                                corElemento = Colors.grey.shade400;
                                 break;
                             }
                             Color corTxtSelecionado =
@@ -1723,15 +1753,17 @@ class _FichaAgenteState extends State<FichaAgente> {
 
   void atualizarFicha({bool isInitialLoad = false}) {
     setState(() {
+      // 1. Salva os status máximos ANTES de calcular o novo nível
+      int oldPvMax = pvMax;
+      int oldPeMax = peMax;
+      int oldSanMax = sanMax;
+
       if (nex < 10 || classeAtual == '--') trilhaAtual = '--';
 
-      // O Monstruoso retém a variável afinidadeAtual desde o NEX 10 (para sabermos o parasita),
-      // mas as outras trilhas perdem a variável se o NEX cair abaixo de 50.
       if (nex < 50 && afinidadeAtual != null && trilhaAtual != 'monstruoso') {
         afinidadeAtual = null;
       }
 
-      // Reinicia Atributos Efetivos
       efAgi = agi;
       efFor = forc;
       efInt = inte;
@@ -1741,7 +1773,6 @@ class _FichaAgenteState extends State<FichaAgente> {
       bonusOrigem.clear();
       resistencias.clear();
 
-      // --- LÓGICA: COMBATENTE MONSTRUOSO ---
       if (trilhaAtual == 'monstruoso' && nex >= 10) {
         String elem = afinidadeAtual ?? 'Sangue';
         int resValue = 5;
@@ -1804,7 +1835,7 @@ class _FichaAgenteState extends State<FichaAgente> {
             efPre -= 1;
             efVig += 1;
             resistencias['Morte'] = 999;
-          } // Imune
+          }
         } else if (elem == 'Conhecimento') {
           resistencias['Balístico'] =
               (resistencias['Balístico'] ?? 0) + resValue;
@@ -1834,9 +1865,7 @@ class _FichaAgenteState extends State<FichaAgente> {
           }
         }
       }
-      // -------------------------------------
 
-      // Limpeza de outras Trilhas/Origens inativas
       if (trilhaAtual != 'cacador') {
         poderesEscolhidos.removeWhere((p) => p.nome.startsWith("Cacador_"));
       }
@@ -1846,7 +1875,47 @@ class _FichaAgenteState extends State<FichaAgente> {
         );
       }
 
-      // ===== DEVOLVENDO A LÓGICA DO COLEGIAL E REVOLTADO =====
+      var origemData = dadosOrigens[origemAtual];
+      if (origemData == null) {
+        String normalizedOrigin = origemAtual.toLowerCase().replaceAll(
+          '_',
+          ' ',
+        );
+        for (var key in dadosOrigens.keys) {
+          if (key.toLowerCase().replaceAll('_', ' ') == normalizedOrigin) {
+            origemAtual = key;
+            origemData = dadosOrigens[key];
+            break;
+          }
+        }
+      }
+
+      if (origemData != null) {
+        habNome = origemData.nomeHabilidade;
+        habDesc = origemData.descHabilidade;
+        for (var p in listaPericias) {
+          if (p.daOrigem) {
+            if (p.treino <= 5) p.treino = 0;
+            p.daOrigem = false;
+          }
+        }
+        for (var p in listaPericias) {
+          if (origemData.pericias.contains(p.id)) {
+            if (p.treino < 5) p.treino = 5;
+            p.daOrigem = true;
+          }
+        }
+      } else {
+        habNome = "";
+        habDesc = "";
+        for (var p in listaPericias) {
+          if (p.daOrigem) {
+            if (p.treino <= 5) p.treino = 0;
+            p.daOrigem = false;
+          }
+        }
+      }
+
       if (origemAtual == 'colegial' &&
           poderesEscolhidos.any((p) => p.nome == "Colegial_Perto") &&
           !poderesEscolhidos.any((p) => p.nome == "Colegial_Morto")) {
@@ -1860,7 +1929,6 @@ class _FichaAgenteState extends State<FichaAgente> {
           bonusOrigem[p.id] = (bonusOrigem[p.id] ?? 0) + 1;
         }
       }
-      // =======================================================
 
       if (origemAtual == 'diplomata') bonusOrigem['diplomacia'] = 2;
       if (origemAtual == 'profetizado') bonusOrigem['vontade'] = 2;
@@ -1868,12 +1936,14 @@ class _FichaAgenteState extends State<FichaAgente> {
       if (origemAtual == 'teorico_da_conspiracao') {
         resistencias['Mental'] = efInt;
       }
+      if (trilhaAtual == 'operacoes_especiais' && nex >= 10) {
+        bonusOrigem['iniciativa'] = (bonusOrigem['iniciativa'] ?? 0) + 5;
+      }
 
       var stats = dadosClasses[classeAtual];
       if (stats != null) {
         int nivel = (nex / 5).toInt();
 
-        // Substituição do Atributo Base para PE (Monstruoso 40%)
         int atributoPE = efPre;
         if (trilhaAtual == 'monstruoso' && nex >= 40) {
           if (afinidadeAtual == 'Sangue') atributoPE = efFor;
@@ -1885,7 +1955,7 @@ class _FichaAgenteState extends State<FichaAgente> {
         pvMax =
             stats.pvBase + (efVig * nivel) + (stats.pvPorNivel * (nivel - 1));
         if (trilhaAtual == 'monstruoso' && afinidadeAtual == 'Morte') {
-          pvMax += efFor; // Soma FOR nos PV
+          pvMax += efFor;
         }
 
         peMax =
@@ -1895,7 +1965,7 @@ class _FichaAgenteState extends State<FichaAgente> {
 
         if (origemAtual == 'colegial' &&
             poderesEscolhidos.any((p) => p.nome == "Colegial_Morto")) {
-          peMax -= nivel; // Perde -1 PE por NEX se o amigo morrer
+          peMax -= nivel;
         }
 
         int qtdParanormal = poderesEscolhidos
@@ -1930,7 +2000,6 @@ class _FichaAgenteState extends State<FichaAgente> {
           if (nivel >= 3) peMax += nexImpares;
         }
 
-        // Tropa de Choque (+1 PV por NEX)
         if (trilhaAtual == 'tropa_de_choque' && nex >= 10) {
           pvMax += nivel;
         }
@@ -2013,18 +2082,18 @@ class _FichaAgenteState extends State<FichaAgente> {
 
       defesa = 10 + efAgi + defItens + bonusDefesaOrigem;
       if (trilhaAtual == 'monstruoso' && afinidadeAtual == 'Conhecimento') {
-        defesa += efInt; // Soma INT na Defesa
+        defesa += efInt;
       }
-      if (estaSobrecarregado) defesa -= 5; // penalidade de sobrecarga (-5)
+      if (estaSobrecarregado) defesa -= 5;
 
       esquiva = defesa + bReflexos;
       bloqueio = bFortitude + bonusBloqueioBracadeira;
 
       if (trilhaAtual == 'monstruoso' && afinidadeAtual == 'Energia') {
-        bloqueio += efAgi; // Soma AGI no Bloqueio
+        bloqueio += efAgi;
       }
       if (trilhaAtual == 'tropa_de_choque' && nex >= 10) {
-        bloqueio += efVig; // Casca Grossa
+        bloqueio += efVig;
       }
 
       bool isMachucado = pvMax > 0 && pvAtual <= (pvMax ~/ 2);
@@ -2033,7 +2102,6 @@ class _FichaAgenteState extends State<FichaAgente> {
         resistencias['Geral'] = (resistencias['Geral'] ?? 0) + 5;
       }
 
-      // Caçador
       if (trilhaAtual == 'cacador' && nex >= 10) {
         if (!poderesEscolhidos.any((p) => p.nome == "Cacador_SetupFeito")) {
           var p = listaPericias.firstWhere(
@@ -2065,7 +2133,6 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
       }
 
-      // Agente Secreto (Gatilho do Pop-up)
       if (trilhaAtual == 'agente_secreto' && nex >= 10) {
         if (!poderesEscolhidos.any(
           (p) => p.nome == "AgenteSecreto_SetupFeito",
@@ -2090,11 +2157,24 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
       }
 
-      if (isInitialLoad && widget.agenteParaEditar == null) {
+      // ========================================================
+      // 2. SOMA O GANHO DE VIDA/SAN/PE AO SUBIR DE NÍVEL
+      if (!isInitialLoad) {
+        if (pvMax > oldPvMax && oldPvMax > 0) {
+          pvAtual = min(pvMax, pvAtual + (pvMax - oldPvMax));
+        }
+        if (peMax > oldPeMax && oldPeMax > 0) {
+          peAtual = min(peMax, peAtual + (peMax - oldPeMax));
+        }
+        if (sanMax > oldSanMax && oldSanMax > 0) {
+          sanAtual = min(sanMax, sanAtual + (sanMax - oldSanMax));
+        }
+      } else if (widget.agenteParaEditar == null) {
         pvAtual = pvMax;
         peAtual = peMax;
         sanAtual = sanMax;
       }
+      // ========================================================
     });
 
     if (!isInitialLoad) _salvarSilencioso();
@@ -2373,6 +2453,82 @@ class _FichaAgenteState extends State<FichaAgente> {
     );
   }
 
+  void _verificarLevelUp(int oldNex, int newNex) {
+    if (newNex <= oldNex) return;
+    List<String> novidades = [];
+
+    if (newNex >= 20 && oldNex < 20) novidades.add("• +1 Ponto de Atributo");
+    if (newNex >= 50 && oldNex < 50) {
+      novidades.add(
+        "• +1 Ponto de Atributo\n• Afinidade Elemental (ou Versatilidade)",
+      );
+    }
+    if (newNex >= 80 && oldNex < 80) novidades.add("• +1 Ponto de Atributo");
+    if (newNex >= 95 && oldNex < 95) novidades.add("• +1 Ponto de Atributo");
+
+    if (newNex >= 35 && oldNex < 35) {
+      novidades.add("• Grau de Treinamento: Veterano (+10 nas perícias)");
+    }
+    if (newNex >= 70 && oldNex < 70) {
+      novidades.add("• Grau de Treinamento: Expert (+15 nas perícias)");
+    }
+
+    List<int> nexPoderes = [15, 30, 45, 60, 75, 90];
+    for (int n in nexPoderes) {
+      if (newNex >= n && oldNex < n) {
+        novidades.add("• Novo Poder de Classe (NEX $n%)");
+      }
+    }
+
+    if (novidades.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF1A1A1A),
+            title: Text(
+              "Level Up! (NEX $newNex%)",
+              style: TextStyle(color: corDestaque),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Você desbloqueou as seguintes melhorias:",
+                  style: TextStyle(color: Colors.white),
+                ),
+                const SizedBox(height: 12),
+                ...novidades.map(
+                  (n) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6.0),
+                    child: Text(
+                      n,
+                      style: TextStyle(
+                        color: corDestaque,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  "Ok",
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+            ],
+          ),
+        );
+      });
+    }
+  }
+
   Widget _btnElementoMonstruoso(String elemento, Color cor) {
     Color corDoTexto = (elemento == 'Conhecimento')
         ? Colors.black
@@ -2612,7 +2768,9 @@ class _FichaAgenteState extends State<FichaAgente> {
                       onChanged: block
                           ? null
                           : (val) {
+                              int oldNex = nex;
                               nex = int.parse(val!);
+                              _verificarLevelUp(oldNex, nex);
                               atualizarFicha();
                             },
                     ),
@@ -2758,65 +2916,78 @@ class _FichaAgenteState extends State<FichaAgente> {
                 ),
 
               // ===========================================
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  AtributoInputFicha(
-                    label: "AGI",
-                    value: agi,
-                    isVisu: block,
-                    corPopUp: corDestaque,
-                    onChanged: (val) {
-                      agi = int.tryParse(val) ?? 0;
-                      atualizarFicha();
-                    },
-                    onRolarDado: _rolarDado,
-                  ),
-                  AtributoInputFicha(
-                    label: "FOR",
-                    value: forc,
-                    isVisu: block,
-                    corPopUp: corDestaque,
-                    onChanged: (val) {
-                      forc = int.tryParse(val) ?? 0;
-                      atualizarFicha();
-                    },
-                    onRolarDado: _rolarDado,
-                  ),
-                  AtributoInputFicha(
-                    label: "INT",
-                    value: inte,
-                    isVisu: block,
-                    corPopUp: corDestaque,
-                    onChanged: (val) {
-                      inte = int.tryParse(val) ?? 0;
-                      atualizarFicha();
-                    },
-                    onRolarDado: _rolarDado,
-                  ),
-                  AtributoInputFicha(
-                    label: "PRE",
-                    value: pre,
-                    isVisu: block,
-                    corPopUp: corDestaque,
-                    onChanged: (val) {
-                      pre = int.tryParse(val) ?? 0;
-                      atualizarFicha();
-                    },
-                    onRolarDado: _rolarDado,
-                  ),
-                  AtributoInputFicha(
-                    label: "VIG",
-                    value: vig,
-                    isVisu: block,
-                    corPopUp: corDestaque,
-                    onChanged: (val) {
-                      vig = int.tryParse(val) ?? 0;
-                      atualizarFicha();
-                    },
-                    onRolarDado: _rolarDado,
-                  ),
-                ],
+              // ===========================================
+              // Embrulhamos a Row no FittedBox para telas pequenas
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    AtributoInputFicha(
+                      label: "AGI",
+                      value: agi,
+                      isVisu: block,
+                      corPopUp: corDestaque,
+                      onChanged: (val) {
+                        agi = int.tryParse(val) ?? 0;
+                        atualizarFicha();
+                      },
+                      onRolarDado: _rolarDado,
+                    ),
+                    AtributoInputFicha(
+                      label: "FOR",
+                      value: forc,
+                      isVisu: block,
+                      corPopUp: corDestaque,
+                      onChanged: (val) {
+                        forc = int.tryParse(val) ?? 0;
+                        atualizarFicha();
+                      },
+                      onRolarDado: _rolarDado,
+                    ),
+                    AtributoInputFicha(
+                      label: "INT",
+                      value: inte,
+                      isVisu: block,
+                      corPopUp: corDestaque,
+                      onChanged: (val) {
+                        int oldInt = inte;
+                        inte = int.tryParse(val) ?? 0;
+                        if (inte > oldInt) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            _mostrarNotificacao(
+                              "Intelecto aumentado! Você ganhou +1 Perícia Livre.",
+                            );
+                          });
+                        }
+                        atualizarFicha();
+                      },
+                      onRolarDado: _rolarDado,
+                    ),
+                    AtributoInputFicha(
+                      label: "PRE",
+                      value: pre,
+                      isVisu: block,
+                      corPopUp: corDestaque,
+                      onChanged: (val) {
+                        pre = int.tryParse(val) ?? 0;
+                        atualizarFicha();
+                      },
+                      onRolarDado: _rolarDado,
+                    ),
+                    AtributoInputFicha(
+                      label: "VIG",
+                      value: vig,
+                      isVisu: block,
+                      corPopUp: corDestaque,
+                      onChanged: (val) {
+                        vig = int.tryParse(val) ?? 0;
+                        atualizarFicha();
+                      },
+                      onRolarDado: _rolarDado,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -2909,7 +3080,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        "${e.key}: ${e.value}",
+                        "${e.key}: ${e.value >= 900 ? 'Imune' : e.value}",
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -2952,22 +3123,36 @@ class _FichaAgenteState extends State<FichaAgente> {
                   if (arma.tipo == 'Corpo a Corpo' ||
                       arma.tipo == 'Arremesso') {
                     bonusDano += forc;
-                    if (origemAtual == 'lutador') {
-                      bonusDano += 2; // LÓGICA: Lutador
-                    }
+                    if (origemAtual == 'lutador') bonusDano += 2;
                   } else if (arma.tipo == 'Fogo' || arma.tipo == 'Disparo') {
-                    if (origemAtual == 'militar') {
-                      bonusDano += 2; // LÓGICA: Militar
-                    }
+                    if (origemAtual == 'militar') bonusDano += 2;
                   }
+
                   if (bonusDano > 0) {
                     modDano = "+$bonusDano";
                   } else if (bonusDano < 0) {
                     modDano = "$bonusDano";
                   }
+
                   if (arma.modificacoes.contains("Ferramenta de Trabalho")) {
                     alertaProf += " | +1 no Ataque";
                   }
+
+                  // LÓGICA DE MARGEM REDUZIDA (GUERREIRO/ANIQUILADOR)
+                  int modMargemTrilha = 0;
+                  if (trilhaAtual == 'guerreiro' &&
+                      nex >= 10 &&
+                      arma.tipo == 'Corpo a Corpo') {
+                    modMargemTrilha += 2;
+                  }
+                  if (trilhaAtual == 'aniquilador' &&
+                      nex >= 99 &&
+                      arma.modificacoes.contains("Arma Favorita")) {
+                    modMargemTrilha += 2;
+                  }
+                  int margemExibida =
+                      arma.margemAmeacaEfetiva - modMargemTrilha;
+                  if (margemExibida < 2) margemExibida = 2;
 
                   return Container(
                     margin: const EdgeInsets.only(top: 8),
@@ -2988,7 +3173,8 @@ class _FichaAgenteState extends State<FichaAgente> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Dano: ${arma.danoEfetivo}$modDano | Crítico: ${arma.margemAmeacaEfetiva}/x${arma.multiplicadorCritico} \nTipo: ${arma.tipo}$alertaProf",
+                            // Mostra a margem reduzida calculada acima
+                            "Dano: ${arma.danoEfetivo}$modDano | Crítico: $margemExibida/x${arma.multiplicadorCritico} \nTipo: ${arma.tipo}$alertaProf",
                             style: TextStyle(
                               color: isProficiente
                                   ? Colors.grey
@@ -3414,14 +3600,46 @@ class _FichaAgenteState extends State<FichaAgente> {
                       onTap: temCusto && !block ? () => _usarPoder(p) : null,
                       title: Row(
                         children: [
+                          if (isParanormal)
+                            Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: p.tipo == 'Sangue'
+                                      ? const Color(0xFF990000)
+                                      : p.tipo == 'Energia'
+                                      ? const Color(0xFF9900FF)
+                                      : p.tipo == 'Conhecimento'
+                                      ? const Color(0xFFFFB300)
+                                      : Colors.white54,
+                                ),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                p.tipo.toUpperCase(),
+                                style: TextStyle(
+                                  color: p.tipo == 'Sangue'
+                                      ? const Color(0xFF990000)
+                                      : p.tipo == 'Energia'
+                                      ? const Color(0xFF9900FF)
+                                      : p.tipo == 'Conhecimento'
+                                      ? const Color(0xFFFFB300)
+                                      : Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                           Expanded(
                             child: Text(
                               p.nome,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: isParanormal
-                                    ? corDestaque
-                                    : Colors.white,
+                                color: Colors.white,
                               ),
                             ),
                           ),

@@ -201,13 +201,11 @@ extension _EquipamentosFicha on _FichaAgenteState {
                           color: Colors.white,
                         ),
                       ),
-
                       subtitle: RichText(
                         text: TextSpan(
                           style: TextStyle(color: corDestaque, fontSize: 13),
                           children: [
                             const TextSpan(text: "Categoria: "),
-
                             TextSpan(
                               text:
                                   "${(trilhaAtual == 'aniquilador' && arma.modificacoes.contains('Arma Favorita')) ? _reduzirCategoriaString(arma.categoriaEfetiva, nex >= 99 ? 3 : (nex >= 40 ? 2 : 1)) : arma.categoriaEfetiva}   ",
@@ -215,7 +213,6 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-
                             const TextSpan(text: "Espaços: "),
                             TextSpan(
                               text: arma.espacoEfetivo.toString().replaceAll(
@@ -229,7 +226,6 @@ extension _EquipamentosFicha on _FichaAgenteState {
                           ],
                         ),
                       ),
-
                       trailing: SizedBox(
                         width: 100,
                         child: Row(
@@ -287,109 +283,60 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                   ),
                                 ),
                               const SizedBox(height: 16),
+
+                              // BOTÕES DE GERENCIAMENTO (INTERFACE LIMPA)
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
-                                  if (!block)
+                                  if (!block &&
+                                      trilhaAtual == 'aniquilador' &&
+                                      nex >= 10 &&
+                                      !arma.modificacoes.contains(
+                                        "Arma Favorita",
+                                      ))
                                     TextButton(
                                       onPressed: () {
-                                        setState(() => armas.removeAt(index));
+                                        setState(() {
+                                          for (var a in armas) {
+                                            a.modificacoes = List<String>.from(
+                                              a.modificacoes,
+                                            );
+                                            a.modificacoes.remove(
+                                              "Arma Favorita",
+                                            );
+                                          }
+                                          arma.modificacoes = List<String>.from(
+                                            arma.modificacoes,
+                                          );
+                                          arma.modificacoes.add(
+                                            "Arma Favorita",
+                                          );
+                                          atualizarFicha();
+                                        });
                                         _salvarSilencioso();
+                                        _mostrarNotificacao(
+                                          "Arma Favorita definida!",
+                                        );
                                       },
                                       child: const Text(
-                                        "Remover",
+                                        "Tornar Favorita",
                                         style: TextStyle(
-                                          color: Colors.redAccent,
+                                          color: Colors.orangeAccent,
                                         ),
                                       ),
-                                    )
-                                  else
-                                    const SizedBox.shrink(),
-                                  Row(
-                                    children: [
-                                      if (!block) ...[
-                                        TextButton(
-                                          onPressed: () =>
-                                              _mostrarDialogEditarAtaque(arma),
-                                          child: const Text(
-                                            "Editar Teste",
-                                            style: TextStyle(
-                                              color: Colors.blueAccent,
-                                            ),
-                                          ),
+                                    ),
+                                  if (!block)
+                                    TextButton(
+                                      onPressed: () =>
+                                          _mostrarOpcoesArma(arma, index),
+                                      child: const Text(
+                                        "Gerenciar Arma",
+                                        style: TextStyle(
+                                          color: Colors.blueAccent,
+                                          fontWeight: FontWeight.bold,
                                         ),
-                                        if (!block &&
-                                            trilhaAtual == 'aniquilador' &&
-                                            nex >= 10 &&
-                                            !arma.modificacoes.contains(
-                                              "Arma Favorita",
-                                            ))
-                                          TextButton(
-                                            onPressed: () {
-                                              setState(() {
-                                                for (var a in armas) {
-                                                  a.modificacoes =
-                                                      List<String>.from(
-                                                        a.modificacoes,
-                                                      );
-                                                  a.modificacoes.remove(
-                                                    "Arma Favorita",
-                                                  );
-                                                }
-                                                arma.modificacoes =
-                                                    List<String>.from(
-                                                      arma.modificacoes,
-                                                    );
-                                                arma.modificacoes.add(
-                                                  "Arma Favorita",
-                                                );
-
-                                                atualizarFicha();
-                                              });
-                                              _salvarSilencioso();
-                                              _mostrarNotificacao(
-                                                "Arma Favorita definida!",
-                                              );
-                                            },
-                                            child: const Text(
-                                              "Tornar Favorita",
-                                              style: TextStyle(
-                                                color: Colors.orangeAccent,
-                                              ),
-                                            ),
-                                          ),
-
-                                        TextButton(
-                                          onPressed: () =>
-                                              mostrarDialogModificarEquipamento(
-                                                context: context,
-                                                equipamento: arma,
-                                                corDestaque: corDestaque,
-                                                corTema: corFundoAfinidade,
-                                                corTexto: corTextoAfinidade,
-                                                afinidadeAtual: afinidadeAtual,
-                                                nex: nex,
-                                                trilhaAtual: trilhaAtual,
-                                                onAplicar: (mods) {
-                                                  setState(() {
-                                                    armas[index].modificacoes =
-                                                        List.from(mods);
-                                                    atualizarFicha();
-                                                  });
-                                                  _salvarSilencioso();
-                                                },
-                                              ),
-                                          child: const Text(
-                                            "Editar",
-                                            style: TextStyle(
-                                              color: Colors.green,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
+                                      ),
+                                    ),
                                 ],
                               ),
                             ],
@@ -516,7 +463,6 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                   fontSize: 14,
                                 ),
                               ),
-
                               if (item.modificacoes.isNotEmpty)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 8.0),
@@ -530,60 +476,23 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                   ),
                                 ),
                               const SizedBox(height: 16),
+
+                              // BOTÕES DE GERENCIAMENTO (INTERFACE LIMPA)
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   if (!block)
                                     TextButton(
-                                      onPressed: () {
-                                        setState(
-                                          () => inventario.removeAt(index),
-                                        );
-                                        _salvarSilencioso();
-                                      },
+                                      onPressed: () =>
+                                          _mostrarOpcoesItem(item, index),
                                       child: const Text(
-                                        "Remover",
+                                        "Gerenciar Item",
                                         style: TextStyle(
-                                          color: Colors.redAccent,
+                                          color: Colors.green,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
-                                    )
-                                  else
-                                    const SizedBox.shrink(),
-                                  Row(
-                                    children: [
-                                      if (!block)
-                                        TextButton(
-                                          onPressed: () =>
-                                              mostrarDialogModificarEquipamento(
-                                                context: context,
-                                                equipamento: item,
-                                                corDestaque: corDestaque,
-                                                corTema: corFundoAfinidade,
-                                                corTexto: corTextoAfinidade,
-                                                afinidadeAtual: afinidadeAtual,
-                                                nex: nex,
-                                                trilhaAtual: trilhaAtual,
-                                                onAplicar: (mods) {
-                                                  setState(() {
-                                                    inventario[index]
-                                                            .modificacoes =
-                                                        List.from(mods);
-                                                    atualizarFicha();
-                                                  });
-                                                  _salvarSilencioso();
-                                                },
-                                              ),
-                                          child: const Text(
-                                            "Editar",
-                                            style: TextStyle(
-                                              color: Colors.green,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
+                                    ),
                                 ],
                               ),
                             ],
@@ -1308,14 +1217,12 @@ extension _EquipamentosFicha on _FichaAgenteState {
   void _aplicarTagsOrigemItem(ItemInventario item) {
     item.modificacoes = List.from(item.modificacoes);
 
-    // Engenheiro: Verifica se é o item escolhido na Origem
     if (origemAtual == 'engenheiro' &&
         poderesEscolhidos.any((p) => p.nome == "Engenheiro_${item.nome}")) {
       if (!item.modificacoes.contains("Ferramenta Favorita")) {
         item.modificacoes.add("Ferramenta Favorita");
       }
     }
-    // Verifica se é um Explosivo de Dano
     if (origemAtual == 'blaster' &&
         item.descricao.toLowerCase().contains("explosivo")) {
       if (item.descricao.toLowerCase().contains("dano") ||
@@ -1329,7 +1236,6 @@ extension _EquipamentosFicha on _FichaAgenteState {
   }
 
   void _processarNovoItem(ItemInventario novoItem) {
-    // 1. Bloqueio de Carga Absoluta (Dobro do limite)
     if (espacoOcupado + novoItem.espacoEfetivo > espacoMaximo * 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1345,13 +1251,11 @@ extension _EquipamentosFicha on _FichaAgenteState {
     _aplicarTagsOrigemItem(novoItem);
     String nomeLower = novoItem.nome.toLowerCase();
 
-    // Interceptador de Kits de Perícia
     if (nomeLower == "kit de perícia" || nomeLower == "kit") {
       _mostrarDialogEscolherKit(novoItem);
       return;
     }
 
-    // Processamento normal de Vestimentas
     if (nomeLower.contains("vestimenta") || nomeLower.contains("utensílio")) {
       bool isVestimenta = nomeLower.contains("vestimenta");
       mostrarDialogEscolherPericiaAprimoramento(
@@ -1381,7 +1285,6 @@ extension _EquipamentosFicha on _FichaAgenteState {
     }
   }
 
-  // Dialog de Seleção do Kit
   void _mostrarDialogEscolherKit(ItemInventario itemBase) {
     String kitEscolhido = 'Medicina';
 
@@ -1546,5 +1449,536 @@ extension _EquipamentosFicha on _FichaAgenteState {
       arma.equipado = !arma.equipado;
       atualizarFicha();
     });
+  }
+
+  // =========================================================================
+  // FUNÇÕES DE GERENCIAMENTO (ARMAS)
+  // =========================================================================
+
+  void _mostrarOpcoesArma(Arma arma, int index) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.edit, color: corDestaque),
+                title: const Text(
+                  "Editar Teste de Ataque (Atributo/Perícia)",
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _mostrarDialogEditarAtaque(arma);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.build, color: Colors.blueAccent),
+                title: const Text(
+                  "Modificações e Maldições",
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _mostrarDialogModificarArma(arma);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.settings, color: Colors.orangeAccent),
+                title: const Text(
+                  "Editar Status (Dano, Nome, Margem...)",
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _mostrarDialogEdicaoCompletaArma(arma, index);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.redAccent),
+                title: const Text(
+                  "Excluir Arma",
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                onTap: () {
+                  setState(() => armas.removeAt(index));
+                  atualizarFicha();
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogModificarArma(Arma arma) {
+    TextEditingController modController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1A1A1A),
+              title: Text(
+                "Modificações: ${arma.nome}",
+                style: TextStyle(color: corDestaque),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    "Clique no 'X' para remover uma modificação/maldição atual:",
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: arma.modificacoes
+                        .map(
+                          (m) => Chip(
+                            label: Text(
+                              m,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                            backgroundColor: const Color(0xFF0D0D0D),
+                            deleteIcon: const Icon(
+                              Icons.close,
+                              size: 16,
+                              color: Colors.redAccent,
+                            ),
+                            side: BorderSide(color: Colors.grey.shade800),
+                            onDeleted: () {
+                              setDialogState(() => arma.modificacoes.remove(m));
+                            },
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  const Divider(color: Colors.grey, height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: modController,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: EstiloParanormal.customInputDeco(
+                            "Nova (Ex: Cruel, Vibrante)",
+                            corDestaque,
+                            Icons.build,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.add_circle,
+                          color: corDestaque,
+                          size: 32,
+                        ),
+                        onPressed: () {
+                          if (modController.text.isNotEmpty) {
+                            setDialogState(() {
+                              arma.modificacoes.add(modController.text.trim());
+                              modController.clear();
+                            });
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "Fechar",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: corFundoAfinidade,
+                    foregroundColor: corTextoAfinidade,
+                  ),
+                  onPressed: () {
+                    setState(() => atualizarFicha());
+                    _salvarSilencioso();
+                    Navigator.pop(context);
+                  },
+                  child: const Text("SALVAR"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogEdicaoCompletaArma(Arma arma, int index) {
+    TextEditingController nomeCtrl = TextEditingController(text: arma.nome);
+    TextEditingController danoCtrl = TextEditingController(text: arma.dano);
+    TextEditingController margemCtrl = TextEditingController(
+      text: arma.margemAmeaca.toString(),
+    );
+    TextEditingController multCtrl = TextEditingController(
+      text: arma.multiplicadorCritico.toString(),
+    );
+    TextEditingController espacoCtrl = TextEditingController(
+      text: arma.espaco.toString(),
+    );
+    String tipoAtual = arma.tipo;
+    String catAtual = arma.categoria;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1A1A1A),
+              title: Text("Editar Arma", style: TextStyle(color: corDestaque)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nomeCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: EstiloParanormal.customInputDeco(
+                        "Nome da Arma",
+                        corDestaque,
+                        Icons.edit,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: danoCtrl,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: EstiloParanormal.customInputDeco(
+                              "Dano",
+                              corDestaque,
+                              Icons.casino,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: DropdownFicha(
+                            label: "Tipo",
+                            value: tipoAtual,
+                            options: const [
+                              "Corpo a Corpo",
+                              "Fogo",
+                              "Disparo",
+                              "Arremesso",
+                            ],
+                            onChanged: (val) =>
+                                setDialogState(() => tipoAtual = val!),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: margemCtrl,
+                            keyboardType: TextInputType.number,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: EstiloParanormal.customInputDeco(
+                              "Margem",
+                              corDestaque,
+                              Icons.warning,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: multCtrl,
+                            keyboardType: TextInputType.number,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: EstiloParanormal.customInputDeco(
+                              "Crítico (x)",
+                              corDestaque,
+                              Icons.close,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: espacoCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            style: const TextStyle(color: Colors.white),
+                            decoration: EstiloParanormal.customInputDeco(
+                              "Espaço",
+                              corDestaque,
+                              Icons.backpack,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: DropdownFicha(
+                            label: "Categoria",
+                            value: catAtual,
+                            options: const ["0", "I", "II", "III", "IV"],
+                            onChanged: (val) =>
+                                setDialogState(() => catAtual = val!),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "Cancelar",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: corFundoAfinidade,
+                    foregroundColor: corTextoAfinidade,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      arma.nome = nomeCtrl.text;
+                      arma.dano = danoCtrl.text;
+                      arma.tipo = tipoAtual;
+                      arma.margemAmeaca = int.tryParse(margemCtrl.text) ?? 20;
+                      arma.multiplicadorCritico =
+                          int.tryParse(multCtrl.text) ?? 2;
+                      arma.espaco = double.tryParse(espacoCtrl.text) ?? 1.0;
+                      arma.categoria = catAtual;
+                      atualizarFicha();
+                    });
+                    _salvarSilencioso();
+                    Navigator.pop(context);
+                  },
+                  child: const Text("SALVAR"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // =========================================================================
+  // FUNÇÕES DE GERENCIAMENTO (ITENS)
+  // =========================================================================
+
+  void _mostrarOpcoesItem(ItemInventario item, int index) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.build, color: Colors.blueAccent),
+                title: const Text(
+                  "Modificações e Maldições",
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  mostrarDialogModificarEquipamento(
+                    context: context,
+                    equipamento: item,
+                    corDestaque: corDestaque,
+                    corTema: corFundoAfinidade,
+                    corTexto: corTextoAfinidade,
+                    afinidadeAtual: afinidadeAtual,
+                    nex: nex,
+                    trilhaAtual: trilhaAtual,
+                    onAplicar: (mods) {
+                      setState(() {
+                        inventario[index].modificacoes = List.from(mods);
+                        atualizarFicha();
+                      });
+                      _salvarSilencioso();
+                    },
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.settings, color: Colors.orangeAccent),
+                title: const Text(
+                  "Editar Status (Nome, Categoria, Espaço...)",
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _mostrarDialogEdicaoCompletaItem(item, index);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.redAccent),
+                title: const Text(
+                  "Excluir Item",
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                onTap: () {
+                  setState(() => inventario.removeAt(index));
+                  atualizarFicha();
+                  _salvarSilencioso();
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogEdicaoCompletaItem(ItemInventario item, int index) {
+    TextEditingController nomeCtrl = TextEditingController(text: item.nome);
+    TextEditingController descCtrl = TextEditingController(
+      text: item.descricao,
+    );
+    TextEditingController espacoCtrl = TextEditingController(
+      text: item.espaco.toString(),
+    );
+    String catAtual = item.categoria;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1A1A1A),
+              title: Text("Editar Item", style: TextStyle(color: corDestaque)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nomeCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: EstiloParanormal.customInputDeco(
+                        "Nome do Item",
+                        corDestaque,
+                        Icons.edit,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: descCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: EstiloParanormal.customInputDeco(
+                        "Descrição / Tipo",
+                        corDestaque,
+                        Icons.description,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: espacoCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            style: const TextStyle(color: Colors.white),
+                            decoration: EstiloParanormal.customInputDeco(
+                              "Espaço",
+                              corDestaque,
+                              Icons.backpack,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: DropdownFicha(
+                            label: "Categoria",
+                            value: catAtual,
+                            options: const ["0", "I", "II", "III", "IV"],
+                            onChanged: (val) =>
+                                setDialogState(() => catAtual = val!),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "Cancelar",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: corFundoAfinidade,
+                    foregroundColor: corTextoAfinidade,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      item.nome = nomeCtrl.text;
+                      item.descricao = descCtrl.text;
+                      item.espaco = double.tryParse(espacoCtrl.text) ?? 1.0;
+                      item.categoria = catAtual;
+                      atualizarFicha();
+                    });
+                    _salvarSilencioso();
+                    Navigator.pop(context);
+                  },
+                  child: const Text("SALVAR"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 }

@@ -46,10 +46,7 @@ extension PericiasFicha on _FichaAgenteState {
                 'furtividade',
               ].contains(pericia.id);
               bool precisaKit = [
-                'enganacao',
-                'crime',
                 'medicina',
-                'tecnologia',
               ].contains(pericia.id);
 
               // Lógica de UX: Deixa o aviso vermelho se estiver penalizado

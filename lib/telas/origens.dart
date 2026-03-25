@@ -3,24 +3,38 @@ part of 'ficha_agente.dart';
 
 extension _OrigensFicha on _FichaAgenteState {
   void _mostrarDialogOrigens() {
-    String busca = ""; // Variável para a barra de pesquisa
+    String busca = "";
+    String? origemExpandida;
+
+    Color corTemaLocal = corFundoAfinidade;
+    Color corLetra = corTextoAfinidade;
+    Color corDestaqueLocal = corDestaque;
 
     showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            // Filtra as origens com base no que for digitado
-            var origensFiltradas = dadosOrigens.entries.where((e) {
-              return busca.isEmpty ||
-                  e.value.nome.toLowerCase().contains(busca.toLowerCase());
-            }).toList();
+            List<MapEntry<String, DadosOrigem>> filtrados = dadosOrigens.entries
+                .where((entry) {
+                  if (busca.isNotEmpty &&
+                      !entry.value.nome.toLowerCase().contains(
+                        busca.toLowerCase(),
+                      )) {
+                    return false;
+                  }
+                  return true;
+                })
+                .toList();
+            filtrados.sort((a, b) => a.value.nome.compareTo(b.value.nome));
 
             return Dialog(
               backgroundColor: const Color(0xFF1A1A1A),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: corDestaque.withValues(alpha: 0.3)),
+                side: BorderSide(
+                  color: corDestaqueLocal.withValues(alpha: 0.3),
+                ),
               ),
               insetPadding: const EdgeInsets.all(16),
               child: Container(
@@ -32,14 +46,18 @@ extension _OrigensFicha on _FichaAgenteState {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.history_edu, color: corDestaque, size: 28),
+                        Icon(
+                          Icons.history_edu,
+                          color: corDestaqueLocal,
+                          size: 28,
+                        ),
                         const SizedBox(width: 12),
                         Text(
                           "ORIGENS",
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: corDestaque,
+                            color: corDestaqueLocal,
                             letterSpacing: 1.5,
                           ),
                         ),
@@ -51,220 +69,254 @@ extension _OrigensFicha on _FichaAgenteState {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      "A origem de um agente é a sua vida antes de se envolver com o paranormal. Cada origem fornece treinamento em duas perícias e um poder único.",
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 13,
-                        height: 1.3,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // =======================================
-                    // A BARRA DE PESQUISA ESTÁ DE VOLTA AQUI!
                     TextField(
                       decoration: EstiloParanormal.customInputDeco(
                         "Pesquisar origem...",
-                        corDestaque,
+                        corDestaqueLocal,
                         Icons.search,
                       ),
                       style: const TextStyle(color: Colors.white),
-                      onChanged: (val) {
-                        setDialogState(() {
-                          busca = val;
-                        });
-                      },
+                      onChanged: (val) => setDialogState(() => busca = val),
                     ),
                     const SizedBox(height: 16),
 
-                    // =======================================
+                    if (busca.isEmpty) ...[
+                      ListTile(
+                        leading: const Icon(
+                          Icons.remove_circle_outline,
+                          color: Colors.redAccent,
+                        ),
+                        title: const Text(
+                          "Nenhuma Origem (--)",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        onTap: () {
+                          setState(() {
+                            origemAtual = '--';
+                            // Limpa todos os poderes marcados como 'Origem'
+                            poderesEscolhidos.removeWhere(
+                              (p) => p.tipo == "Origem",
+                            );
+                            atualizarFicha();
+                          });
+                          _salvarSilencioso();
+                          Navigator.pop(context);
+                        },
+                      ),
+                      const Divider(color: Colors.grey),
+                    ],
+
                     Expanded(
-                      child: origensFiltradas.isEmpty
-                          ? const Center(
-                              child: Text(
-                                "Nenhuma origem encontrada.",
-                                style: TextStyle(color: Colors.grey),
-                              ),
-                            )
-                          : ListView.builder(
-                              itemCount: origensFiltradas.length,
-                              itemBuilder: (context, index) {
-                                String idOrigem = origensFiltradas[index].key;
-                                DadosOrigem o = origensFiltradas[index].value;
-                                bool isSelected = origemAtual == idOrigem;
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade800),
+                        ),
+                        child: filtrados.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  "Nenhuma origem encontrada.",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: filtrados.length,
+                                itemBuilder: (context, index) {
+                                  var entry = filtrados[index];
+                                  DadosOrigem org = entry.value;
+                                  String keyOrigem = entry.key;
+                                  bool isExpanded =
+                                      origemExpandida == keyOrigem;
+                                  List<String> nomesPericias = org.pericias.map(
+                                    (id) {
+                                      try {
+                                        return listaPericias
+                                            .firstWhere((p) => p.id == id)
+                                            .nome;
+                                      } catch (e) {
+                                        return id;
+                                      }
+                                    },
+                                  ).toList();
 
-                                String nomesPericias = o.pericias
-                                    .map((pid) {
-                                      var periciaEncontrada = listaPericias
-                                          .firstWhere(
-                                            (p) => p.id == pid,
-                                            orElse: () => Pericia(
-                                              id: pid,
-                                              nome: 'À escolha do jogador',
-                                              atributo: '',
-                                            ),
-                                          );
-                                      return periciaEncontrada.nome;
-                                    })
-                                    .join(" e ");
-
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF0D0D0D),
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? corDestaque
-                                          : Colors.grey.shade800,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Theme(
-                                    data: Theme.of(context).copyWith(
-                                      dividerColor: Colors.transparent,
-                                    ),
-                                    child: ExpansionTile(
-                                      iconColor: corDestaque,
-                                      collapsedIconColor: Colors.grey,
-                                      tilePadding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 4,
-                                      ),
-                                      title: Text(
-                                        o.nome,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: isSelected
-                                              ? corDestaque
-                                              : Colors.white,
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      border: Border(
+                                        bottom: BorderSide(
+                                          color: Colors.grey.shade900,
                                         ),
                                       ),
-                                      subtitle: Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: 4.0,
+                                      color: isExpanded
+                                          ? Colors.grey.shade900.withValues(
+                                              alpha: 0.5,
+                                            )
+                                          : Colors.transparent,
+                                    ),
+                                    child: Theme(
+                                      data: Theme.of(context).copyWith(
+                                        dividerColor: Colors.transparent,
+                                      ),
+                                      child: ExpansionTile(
+                                        title: Text(
+                                          org.nome,
+                                          style: TextStyle(
+                                            color: isExpanded
+                                                ? corDestaqueLocal
+                                                : Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
-                                        child: Text(
-                                          "Perícias: $nomesPericias",
+                                        subtitle: Text(
+                                          isExpanded
+                                              ? "Perícias: ${nomesPericias.join(', ')}"
+                                              : org.nomeHabilidade,
                                           style: const TextStyle(
                                             color: Colors.grey,
                                             fontSize: 12,
                                           ),
                                         ),
-                                      ),
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.fromLTRB(
-                                            16,
-                                            0,
-                                            16,
-                                            16,
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.stretch,
-                                            children: [
-                                              Divider(
-                                                color: corDestaque.withValues(
-                                                  alpha: 0.3,
+                                        iconColor: corDestaqueLocal,
+                                        collapsedIconColor: Colors.grey,
+                                        onExpansionChanged: (expanded) {
+                                          setDialogState(() {
+                                            origemExpandida = expanded
+                                                ? keyOrigem
+                                                : null;
+                                          });
+                                        },
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              16,
+                                              0,
+                                              16,
+                                              16,
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.stretch,
+                                              children: [
+                                                const Divider(
+                                                  color: Colors.grey,
                                                 ),
-                                                thickness: 1,
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Text(
-                                                "PODER: ${o.nomeHabilidade}",
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 13,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                o.descHabilidade,
-                                                style: const TextStyle(
-                                                  color: Colors.white70,
-                                                  fontSize: 13,
-                                                  height: 1.4,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 16),
-                                              ElevatedButton(
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor:
-                                                      corFundoAfinidade,
-                                                  foregroundColor:
-                                                      corTextoAfinidade,
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        vertical: 12,
-                                                      ),
-                                                  side:
-                                                      afinidadeAtual == 'Morte'
-                                                      ? const BorderSide(
-                                                          color: Colors.white54,
-                                                        )
-                                                      : null,
-                                                ),
-                                                onPressed: isSelected
-                                                    ? null
-                                                    : () {
-                                                        if (idOrigem ==
-                                                            'experimento') {
-                                                          _mostrarDialogExperimento();
-                                                        } else if (idOrigem ==
-                                                            'profetizado') {
-                                                          _mostrarDialogProfetizado();
-                                                        } else if (idOrigem ==
-                                                            'engenheiro') {
-                                                          _mostrarDialogEngenheiro();
-                                                        } else if (idOrigem ==
-                                                            'amnésico') {
-                                                          _mostrarDialogAmnesico();
-                                                        } else {
-                                                          setState(() {
-                                                            origemAtual =
-                                                                idOrigem;
-                                                            poderesEscolhidos.removeWhere(
-                                                              (p) =>
-                                                                  p.nome.startsWith(
-                                                                    "Experimento_",
-                                                                  ) ||
-                                                                  p.nome.startsWith(
-                                                                    "Profetizado_",
-                                                                  ) ||
-                                                                  p.nome.startsWith(
-                                                                    "Colegial_",
-                                                                  ) ||
-                                                                  p.nome.startsWith(
-                                                                    "Revoltado_",
-                                                                  ),
-                                                            );
-                                                          });
-                                                          atualizarFicha();
-                                                          Navigator.pop(
-                                                            context,
-                                                          );
-                                                        }
-                                                      },
-                                                child: Text(
-                                                  isSelected
-                                                      ? "ORIGEM ATUAL"
-                                                      : "ESCOLHER ESTA ORIGEM",
-                                                  style: const TextStyle(
+                                                const SizedBox(height: 8),
+                                                Text(
+                                                  "Poder: ${org.nomeHabilidade}",
+                                                  style: TextStyle(
+                                                    color: corDestaqueLocal,
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
-                                              ),
-                                            ],
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  org.descHabilidade,
+                                                  style: const TextStyle(
+                                                    color: Colors.white70,
+                                                    fontSize: 13,
+                                                    height: 1.4,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 16),
+                                                ElevatedButton(
+                                                  style: ElevatedButton.styleFrom(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          vertical: 12,
+                                                        ),
+                                                    backgroundColor:
+                                                        corTemaLocal,
+                                                    foregroundColor: corLetra,
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
+                                                    ),
+                                                    side:
+                                                        afinidadeAtual ==
+                                                            'Morte'
+                                                        ? const BorderSide(
+                                                            color:
+                                                                Colors.white54,
+                                                          )
+                                                        : null,
+                                                  ),
+                                                  onPressed: () {
+                                                    // LIMPA TRIGGERS ANTIGOS DE ORIGEM AO TROCAR
+                                                    poderesEscolhidos
+                                                        .removeWhere(
+                                                          (p) =>
+                                                              p.nome.startsWith(
+                                                                "Experimento_",
+                                                              ) ||
+                                                              p.nome.startsWith(
+                                                                "Profetizado_",
+                                                              ) ||
+                                                              p.nome.startsWith(
+                                                                "Colegial_",
+                                                              ) ||
+                                                              p.nome.startsWith(
+                                                                "Revoltado_",
+                                                              ) ||
+                                                              p.nome.startsWith(
+                                                                "Engenheiro_",
+                                                              ),
+                                                        );
+
+                                                    // == INTERCEPTADORES DE ORIGEM ==
+                                                    if (keyOrigem ==
+                                                        'cultista_arrependido') {
+                                                      Navigator.pop(context);
+                                                      _mostrarDialogPoderCultista();
+                                                    } else if (keyOrigem ==
+                                                        'operario') {
+                                                      Navigator.pop(context);
+                                                      _mostrarDialogOperario();
+                                                    } else if (keyOrigem ==
+                                                        'experimento') {
+                                                      Navigator.pop(context);
+                                                      _mostrarDialogExperimento();
+                                                    } else if (keyOrigem ==
+                                                        'profetizado') {
+                                                      Navigator.pop(context);
+                                                      _mostrarDialogProfetizado();
+                                                    } else if (keyOrigem ==
+                                                        'engenheiro') {
+                                                      Navigator.pop(context);
+                                                      _mostrarDialogEngenheiro();
+                                                    } else if (keyOrigem ==
+                                                        'amnésico') {
+                                                      Navigator.pop(context);
+                                                      _mostrarDialogAmnesico();
+                                                    } else {
+                                                      setState(() {
+                                                        origemAtual = keyOrigem;
+                                                        atualizarFicha();
+                                                      });
+                                                      _salvarSilencioso();
+                                                      Navigator.pop(context);
+                                                    }
+                                                  },
+                                                  child: const Text(
+                                                    "ESCOLHER ORIGEM",
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                );
-                              },
-                            ),
+                                  );
+                                },
+                              ),
+                      ),
                     ),
                   ],
                 ),
@@ -276,308 +328,574 @@ extension _OrigensFicha on _FichaAgenteState {
     );
   }
 
-  // ============== DIALOGS ESPECÍFICOS DE ORIGENS ==============
+  void _mostrarDialogPoderCultista() {
+    String busca = "";
+    String filtroParanormal = "Conhecimento";
 
-  void _mostrarDialogExperimento() {
-    List<Pericia> listaValida = listaPericias
-        .where((p) => p.treino == 0)
-        .toList();
-    if (listaValida.isEmpty) {
-      listaValida = List.from(listaPericias);
-    }
-    String periciaSelecionada = listaValida.first.id;
+    Color corTemaLocal = corFundoAfinidade;
+    Color corLetra = corTextoAfinidade;
+    Color corDestaqueLocal = corDestaque;
+
+    List<String> categoriasParanormais = [
+      "Conhecimento",
+      "Energia",
+      "Morte",
+      "Sangue",
+    ];
 
     showDialog(
       context: context,
+      barrierDismissible:
+          false, // Obriga a escolher um poder ou cancelar a origem
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
+            List<Poder> listaAtiva = [];
+            if (filtroParanormal == "Conhecimento") {
+              listaAtiva = catalogoPoderesConhecimento;
+            } else if (filtroParanormal == "Energia") {
+              listaAtiva = catalogoPoderesEnergia;
+            } else if (filtroParanormal == "Morte") {
+              listaAtiva = catalogoPoderesMorte;
+            } else if (filtroParanormal == "Sangue") {
+              listaAtiva = catalogoPoderesSangue;
+            }
+
+            List<Poder> filtrados = listaAtiva.where((p) {
+              if (busca.isNotEmpty &&
+                  !p.nome.toLowerCase().contains(busca.toLowerCase())) {
+                return false;
+              }
+              // Oculta poderes que o jogador já tem
+              if (poderesEscolhidos.any((poder) => poder.nome == p.nome)) {
+                return false;
+              }
+              return true;
+            }).toList();
+
+            return Dialog(
               backgroundColor: const Color(0xFF1A1A1A),
-              title: Text(
-                "Cobáia (Experimento)",
-                style: TextStyle(color: corDestaque),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    "Escolha UMA perícia extra para receber treinamento (+5):",
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    initialValue: periciaSelecionada,
-                    dropdownColor: const Color(0xFF1A1A1A),
-                    style: const TextStyle(color: Colors.white),
-                    decoration: EstiloParanormal.customInputDeco(
-                      "Perícia Extra",
-                      corDestaque,
-                      Icons.star,
-                    ),
-                    items: listaValida
-                        .map(
-                          (p) => DropdownMenuItem(
-                            value: p.id,
-                            child: Text(p.nome),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (val) =>
-                        setDialogState(() => periciaSelecionada = val!),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    "Cancelar",
-                    style: TextStyle(color: Colors.grey),
-                  ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: corDestaqueLocal.withValues(alpha: 0.3),
                 ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: corFundoAfinidade,
-                    foregroundColor: corTextoAfinidade,
+              ),
+              insetPadding: const EdgeInsets.all(16),
+              child: Container(
+                width: double.maxFinite,
+                height: MediaQuery.of(context).size.height * 0.85,
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.bolt, color: corDestaqueLocal, size: 28),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            "PODER DO CULTISTA",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: corDestaqueLocal,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      "A origem Cultista Arrependido fornece um poder paranormal grátis. Escolha o seu abaixo:",
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      decoration: EstiloParanormal.customInputDeco(
+                        "Pesquisar poder...",
+                        corDestaqueLocal,
+                        Icons.search,
+                      ),
+                      style: const TextStyle(color: Colors.white),
+                      onChanged: (val) => setDialogState(() => busca = val),
+                    ),
+                    const SizedBox(height: 12),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: categoriasParanormais.map((cat) {
+                          Color corElemento;
+                          switch (cat) {
+                            case 'Sangue':
+                              corElemento = const Color(0xFF990000);
+                              break;
+                            case 'Energia':
+                              corElemento = const Color(0xFF9900FF);
+                              break;
+                            case 'Conhecimento':
+                              corElemento = const Color(0xFFFFB300);
+                              break;
+                            case 'Morte':
+                            default:
+                              corElemento = Colors.black;
+                              break;
+                          }
+
+                          Color corTxtSelecionado =
+                              (cat == 'Conhecimento' || cat == 'Morte')
+                              ? Colors.black
+                              : Colors.white;
+                          if (cat == 'Morte') {
+                            corTxtSelecionado = Colors.white;
+                          }
+
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: ChoiceChip(
+                              label: Text(
+                                cat,
+                                style: TextStyle(
+                                  color: filtroParanormal == cat
+                                      ? corTxtSelecionado
+                                      : corElemento,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              selected: filtroParanormal == cat,
+                              onSelected: (val) =>
+                                  setDialogState(() => filtroParanormal = cat),
+                              selectedColor: corElemento,
+                              backgroundColor: const Color(0xFF0D0D0D),
+                              side: BorderSide(
+                                color: filtroParanormal == cat
+                                    ? (cat == 'Morte'
+                                          ? Colors.white54
+                                          : corElemento)
+                                    : Colors.grey.shade900,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade800),
+                        ),
+                        child: filtrados.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  "Nenhum poder encontrado.",
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: filtrados.length,
+                                itemBuilder: (context, index) {
+                                  var p = filtrados[index];
+
+                                  Color corTitulo = Colors.white;
+                                  if (filtroParanormal == 'Sangue') {
+                                    corTitulo = const Color(0xFF990000);
+                                  } else if (filtroParanormal == 'Energia') {
+                                    corTitulo = const Color(0xFF9900FF);
+                                  } else if (filtroParanormal ==
+                                      'Conhecimento') {
+                                    corTitulo = const Color(0xFFFFB300);
+                                  }
+
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      border: Border(
+                                        bottom: BorderSide(
+                                          color: Colors.grey.shade900,
+                                        ),
+                                      ),
+                                    ),
+                                    child: ListTile(
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 8,
+                                          ),
+                                      title: Text(
+                                        p.nome,
+                                        style: TextStyle(
+                                          color: corTitulo,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      subtitle: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            p.descricao,
+                                            style: const TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          if (p.preRequisitos != "Nenhum") ...[
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              "Pré-req: ${p.preRequisitos}",
+                                              style: TextStyle(
+                                                color: corDestaqueLocal,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      trailing: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: corTemaLocal,
+                                          foregroundColor: corLetra,
+                                          side: afinidadeAtual == 'Morte'
+                                              ? const BorderSide(
+                                                  color: Colors.white54,
+                                                )
+                                              : null,
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            origemAtual =
+                                                'cultista_arrependido';
+                                            poderesEscolhidos.add(p);
+                                            atualizarFicha();
+                                          });
+                                          _salvarSilencioso();
+                                          Navigator.pop(context);
+                                          _mostrarNotificacao(
+                                            "Origem e Poder aplicados!",
+                                          );
+                                        },
+                                        child: const Text(
+                                          "ESCOLHER",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: const BorderSide(color: Colors.grey),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        "CANCELAR",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogOperario() {
+    List<Arma> armasValidas = catalogoArmasOrdem
+        .where(
+          (a) => a.proficiencia == 'Simples' || a.proficiencia == 'Táticas',
+        )
+        .toList();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: Text(
+            "Ferramenta de Trabalho",
+            style: TextStyle(color: corDestaque),
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: armasValidas.length,
+              itemBuilder: (ctx, i) {
+                var arma = armasValidas[i];
+                return ListTile(
+                  title: Text(
+                    arma.nome,
+                    style: const TextStyle(color: Colors.white),
                   ),
-                  onPressed: () {
+                  onTap: () {
+                    Arma novaArma = Arma(
+                      nome: arma.nome,
+                      tipo: arma.tipo,
+                      dano: arma.dano,
+                      margemAmeaca: arma.margemAmeaca,
+                      multiplicadorCritico: arma.multiplicadorCritico,
+                      categoria: arma.categoria,
+                      espaco: arma.espaco,
+                      proficiencia: arma.proficiencia,
+                      empunhadura: arma.empunhadura,
+                      descricao: arma.descricao,
+                      modificacoes: ["Ferramenta de Trabalho"],
+                    );
+
+                    setState(() {
+                      origemAtual = 'operario';
+                      armas.add(novaArma);
+                      atualizarFicha();
+                    });
+
+                    _salvarSilencioso();
+                    Navigator.pop(context);
+                    _mostrarNotificacao(
+                      "Origem aplicada e Ferramenta adicionada!",
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                "Cancelar",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogExperimento() {
+    List<String> idsFisicos = [
+      'acrobacia',
+      'atletismo',
+      'crime',
+      'fortitude',
+      'furtividade',
+      'iniciativa',
+      'luta',
+      'pilotagem',
+      'pontaria',
+      'reflexos',
+    ];
+    List<Pericia> periciasValidas = listaPericias
+        .where((p) => idsFisicos.contains(p.id))
+        .toList();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: Text(
+            "Mutação (Experimento)",
+            style: TextStyle(color: corDestaque),
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: periciasValidas.length,
+              itemBuilder: (ctx, i) {
+                var p = periciasValidas[i];
+                return ListTile(
+                  title: Text(
+                    p.nome,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  onTap: () {
                     setState(() {
                       origemAtual = 'experimento';
-                      poderesEscolhidos.removeWhere(
-                        (p) =>
-                            p.nome.startsWith("Experimento_") ||
-                            p.nome.startsWith("Profetizado_") ||
-                            p.nome.startsWith("Colegial_") ||
-                            p.nome.startsWith("Revoltado_"),
-                      );
                       poderesEscolhidos.add(
                         Poder(
-                          nome: "Experimento_$periciaSelecionada",
+                          nome: "Experimento_${p.id}",
                           tipo: "Origem",
                           descricao: "",
                         ),
                       );
+                      atualizarFicha();
                     });
-                    atualizarFicha();
+                    _salvarSilencioso();
                     Navigator.pop(context);
-                    Navigator.pop(context);
+                    _mostrarNotificacao("Origem Experimento aplicada!");
                   },
-                  child: const Text("Confirmar"),
-                ),
-              ],
-            );
-          },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                "Cancelar",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ],
         );
       },
     );
   }
 
   void _mostrarDialogProfetizado() {
-    String atributoSelecionado = 'PRE';
-
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: const Color(0xFF1A1A1A),
-              title: Text(
-                "Marca do Destino (Profetizado)",
-                style: TextStyle(color: corDestaque),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    "Você recebe +1 em um atributo à sua escolha:",
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    initialValue: atributoSelecionado,
-                    dropdownColor: const Color(0xFF1A1A1A),
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: Text(
+            "Premonição (Profetizado)",
+            style: TextStyle(color: corDestaque),
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: listaPericias.length,
+              itemBuilder: (ctx, i) {
+                var p = listaPericias[i];
+                return ListTile(
+                  title: Text(
+                    p.nome,
                     style: const TextStyle(color: Colors.white),
-                    decoration: EstiloParanormal.customInputDeco(
-                      "Atributo Extra",
-                      corDestaque,
-                      Icons.star,
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: "AGI", child: Text("Agilidade")),
-                      DropdownMenuItem(value: "FOR", child: Text("Força")),
-                      DropdownMenuItem(value: "INT", child: Text("Intelecto")),
-                      DropdownMenuItem(value: "PRE", child: Text("Presença")),
-                      DropdownMenuItem(value: "VIG", child: Text("Vigor")),
-                    ],
-                    onChanged: (val) =>
-                        setDialogState(() => atributoSelecionado = val!),
                   ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    "Cancelar",
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: corFundoAfinidade,
-                    foregroundColor: corTextoAfinidade,
-                  ),
-                  onPressed: () {
+                  onTap: () {
                     setState(() {
                       origemAtual = 'profetizado';
-                      if (atributoSelecionado == 'AGI') agi += 1;
-                      if (atributoSelecionado == 'FOR') forc += 1;
-                      if (atributoSelecionado == 'INT') inte += 1;
-                      if (atributoSelecionado == 'PRE') pre += 1;
-                      if (atributoSelecionado == 'VIG') vig += 1;
-
-                      poderesEscolhidos.removeWhere(
-                        (p) =>
-                            p.nome.startsWith("Experimento_") ||
-                            p.nome.startsWith("Profetizado_") ||
-                            p.nome.startsWith("Colegial_") ||
-                            p.nome.startsWith("Revoltado_"),
-                      );
                       poderesEscolhidos.add(
                         Poder(
-                          nome: "Profetizado_$atributoSelecionado",
+                          nome: "Profetizado_${p.id}",
                           tipo: "Origem",
                           descricao: "",
                         ),
                       );
+                      var pericia = listaPericias.firstWhere(
+                        (per) => per.id == p.id,
+                      );
+                      if (pericia.treino < 5) pericia.treino = 5;
+                      pericia.daOrigem = true;
+
+                      var vontade = listaPericias.firstWhere(
+                        (v) => v.id == 'vontade',
+                      );
+                      if (vontade.treino < 5) vontade.treino = 5;
+                      vontade.daOrigem = true;
+                      atualizarFicha();
                     });
-                    atualizarFicha();
+                    _salvarSilencioso();
                     Navigator.pop(context);
-                    Navigator.pop(context);
+                    _mostrarNotificacao("Origem Profetizado aplicada!");
                   },
-                  child: const Text("Confirmar"),
-                ),
-              ],
-            );
-          },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                "Cancelar",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ],
         );
       },
     );
   }
 
   void _mostrarDialogEngenheiro() {
-    TextEditingController customItemController = TextEditingController();
-    String itemSelecionado = "Arma";
-    bool mostrarCustom = false;
+    // Filtra itens do catálogo que tenham categoria maior que zero (I, II, III, etc)
+    List<ItemInventario> itensValidos = catalogoItensOrdem
+        .where((item) => item.categoria != '0' && item.categoria != '--')
+        .toList();
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: const Color(0xFF1A1A1A),
-              title: Text(
-                "Ferramenta Favorita (Engenheiro)",
-                style: TextStyle(color: corDestaque),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    "Escolha um item ou arma para ser sua ferramenta favorita. Ela receberá -1 na categoria e não contabilizará modificações como aumento de peso.",
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    initialValue: itemSelecionado,
-                    dropdownColor: const Color(0xFF1A1A1A),
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: Text(
+            "Ferramenta Favorita (Engenheiro)",
+            style: TextStyle(color: corDestaque),
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: itensValidos.length,
+              itemBuilder: (ctx, i) {
+                var item = itensValidos[i];
+                return ListTile(
+                  title: Text(
+                    item.nome,
                     style: const TextStyle(color: Colors.white),
-                    decoration: EstiloParanormal.customInputDeco(
-                      "Item/Arma",
-                      corDestaque,
-                      Icons.handyman,
-                    ),
-                    items:
-                        {
-                          ...armas.map((a) => a.nome),
-                          ...inventario.map((i) => i.nome),
-                          "Outro (Digitar manualmente)",
-                        }.map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          );
-                        }).toList(),
-                    onChanged: (val) {
-                      setDialogState(() {
-                        itemSelecionado = val!;
-                        mostrarCustom = val == "Outro (Digitar manualmente)";
-                      });
-                    },
                   ),
-                  if (mostrarCustom) ...[
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: customItemController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: EstiloParanormal.customInputDeco(
-                        "Nome Exato do Item",
-                        corDestaque,
-                        Icons.edit,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    "Cancelar",
-                    style: TextStyle(color: Colors.grey),
+                  subtitle: Text(
+                    "Categoria base: ${item.categoria}",
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: corFundoAfinidade,
-                    foregroundColor: corTextoAfinidade,
-                  ),
-                  onPressed: () {
-                    String finalItem = mostrarCustom
-                        ? customItemController.text.trim()
-                        : itemSelecionado;
-                    if (finalItem.isEmpty) return;
-
+                  onTap: () {
                     setState(() {
                       origemAtual = 'engenheiro';
-                      poderesEscolhidos.removeWhere(
-                        (p) =>
-                            p.nome.startsWith("Experimento_") ||
-                            p.nome.startsWith("Profetizado_") ||
-                            p.nome.startsWith("Colegial_") ||
-                            p.nome.startsWith("Revoltado_") ||
-                            p.nome.startsWith("Engenheiro_"),
-                      );
                       poderesEscolhidos.add(
                         Poder(
-                          nome: "Engenheiro_$finalItem",
+                          nome: "Engenheiro_${item.nome}",
                           tipo: "Origem",
                           descricao: "",
                         ),
                       );
+                      atualizarFicha();
                     });
-                    atualizarFicha();
+                    _salvarSilencioso();
                     Navigator.pop(context);
-                    Navigator.pop(context);
+                    _mostrarNotificacao("Origem Engenheiro aplicada!");
                   },
-                  child: const Text("Confirmar"),
-                ),
-              ],
-            );
-          },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                "Cancelar",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -616,11 +934,11 @@ extension _OrigensFicha on _FichaAgenteState {
                         p.nome.startsWith("Experimento_") ||
                         p.nome.startsWith("Profetizado_") ||
                         p.nome.startsWith("Colegial_") ||
-                        p.nome.startsWith("Revoltado_"),
+                        p.nome.startsWith("Revoltado_") ||
+                        p.nome.startsWith("Engenheiro_"),
                   );
                 });
                 atualizarFicha();
-                Navigator.pop(context);
                 Navigator.pop(context);
               },
               child: const Text("Entendi, Confirmar Origem"),

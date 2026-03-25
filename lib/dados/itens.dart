@@ -927,7 +927,7 @@ List<Arma> catalogoArmasOrdem = [
     margemAmeaca: 18,
     tipo: "Fogo",
     espaco: 1,
-    proficiencia: "Táticas",
+    proficiencia: "Simples",
     empunhadura: "Uma Mão",
     descricao: "Arma comum e facilmente recarregável.",
   ),

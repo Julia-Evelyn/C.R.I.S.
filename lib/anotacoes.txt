@@ -22,19 +22,27 @@ FEITO:
 - Limitar quantidade de atributos +ou-FEITO
 - Poder girar perícia na aba de perícias ----- FEITO
 - Configurar rolagem de teste e dano de armas ----- FEITO
+- Concertar display para dispositivos com telas menores ----- FEITO
+- Add tag de elemento nos poderes paranormais na aba de poderes ----- FEITO
+- Concertar opção de arma favorita (a formatação falha em telas menores) ----- FEITO
+- Mudar a paleta de morte na subcategoria de poder paranormal (a visualização do botão, quando não selecionado, fica sem contraste) ----- FEITO
+- fazer com que as perícias de origem não apareçam na tela de escolher perícias por classe ----- FEITO
+- Concertar trilha operações especiais (bônus de iniciativa), monstruoso de morte (resistência à morte 999 tá errado, é "Imune") ----- FEITO
+- Fazer debuff por falta de kit só se aplicar à perícia medicina ----- FEITO
+- Remover trilha ao trocar de classe ----- FEITO
+- Mostrar a margem de ameaça reduzida pela habilidade nex 10 da trilha de GUERREIRO ----- FEITO
+- Poderes de classe só são visíveis para a classe equivalente (ex. um combatente tem acesso somente aos poderes de combatente) ----- FEITO
+- Editar opções de editar arma/item em arsenal. Permitir alterar o item por completo no modo edição, desde de descrição, nome, dano, etc; incluir opção "Modificar" para adicionar somente as modificações. ----- FEITO
+- Melhorar aparência da opção da arma favorita de ANIQUILADOR. Talvez colocar em uma cor diferente(?) ----- FEITO
+- Concertar bug de não salvar vida q foi reduzida/aumentada no modo de visualização. Somar vida ganha ao subir de nex com vida atual (não pode ultrapassar a vida max) ----- FEITO
+- Perícia profissão add +1 em limite de categoria (I, II ou III dependendo do nível de treinamento na perícia) ----- FEITO
+- Add popup quando ganhar poder novo, atributo e melhoria de perícia ----- FEITO
+- Quando aumentar atributo de int, aparecer popup falando q pode escolher outra perícia ----- FEITO
 
 FALTA FAZER:
 
-- Mostrar a margem de ameaça reduzida pela habilidade nex 10 da trilha de GUERREIRO
-- Remover trilha ao trocar de classe
-- Poderes de classe só são visíveis para a classe equivalente (ex. um combatente tem acesso somente aos poderes de combatente)
-- Editar opções de editar arma/item em arsenal. Permitir alterar o item por completo no modo edição, incluir opção "Modificar" para adicionar somente as modificações.
-- Melhorar aparência da opção da arma favorita de ANIQUILADOR. Talvez colocar em uma cor diferente(?)
+- Remover perícias escolhidas ao trocar de classe
 - Add poder criar poder geral, paranormal, de classe e ritual personalizado. Fazer um pop-up com várias opções de que tipo de poder será criado.
-- Concertar bug de n salvar vida q foi reduzida/aumentada. Somar vida ganha ao subir de nex com vida atual (não pode ultrapassar a vida max)
-- Perícia profissão add +1 em limite de categoria (I, II ou III dependendo do nível de treinamento na perícia)
-- Add popup quando ganhar poder novo, atributo e melhoria de perícia
-- Quando aumentar atributo de int, aparecer popup falando q pode escolher outra perícia
 - Lógica de cada poder (geral, de classe e paranormal)
 - Poder puxar um personagem pro lado na tela de início e aparecer opções de Duplicar personagem (talvez tela de edição de backstory?)
 - Adicionar todos os rituais

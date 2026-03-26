@@ -9,6 +9,7 @@ import '../modelos/agente_dados.dart';
 import '../dados/base.dart';
 import '../dados/itens.dart';
 import '../dados/poderes.dart';
+import '../dados/rituais.dart';
 import '../dados/trilhas.dart';
 import '../componentes/estilizacao.dart';
 import '../componentes/dialogs_ficha.dart';
@@ -18,6 +19,7 @@ part 'origens.dart';
 part 'pericias.dart';
 part 'equipamentos.dart';
 part 'guia_combate.dart';
+part 'rituais_aba.dart';
 
 class FichaAgente extends StatefulWidget {
   final AgenteDados? agenteParaEditar;
@@ -42,7 +44,8 @@ class _FichaAgenteState extends State<FichaAgente> {
   List<ItemInventario> inventario = [];
   List<Arma> armas = [];
 
-  List<Poder> poderesEscolhidos = []; // Agora utilizando List<Poder>
+  List<Poder> poderesEscolhidos = [];
+  List<Ritual> rituaisConhecidos = [];
   List<String> periciasClasse = [];
 
   Map<String, int> resistencias = {};
@@ -52,11 +55,17 @@ class _FichaAgenteState extends State<FichaAgente> {
   String? fotoPath;
   String? afinidadeAtual;
   int nex = 5, prestigio = 0, agi = 1, forc = 1, inte = 1, pre = 1, vig = 1;
-  // ==========================================
+
   // ATRIBUTOS EFETIVOS E PENALIDADES (MONSTRUOSO)
   int efAgi = 1, efFor = 1, efInt = 1, efPre = 1, efVig = 1;
   Map<String, int> dadosExtrasPericias = {};
-  // ==========================================
+
+  // RASTREADORES DE MALDIÇÃO (Afetam Sanidade)
+  int maldicoesConhecimento = 0,
+      maldicoesEnergia = 0,
+      maldicoesMorte = 0,
+      maldicoesSangue = 0;
+
   int pvMax = 0, peMax = 0, sanMax = 0, pvAtual = 0, peAtual = 0, sanAtual = 0;
   int defesa = 10, esquiva = 10, bloqueio = 0;
   String habNome = "", habDesc = "";
@@ -93,26 +102,22 @@ class _FichaAgenteState extends State<FichaAgente> {
   int get limitePePorTurno {
     int baseLimite = (nex / 5).ceil();
     if (origemAtual == 'universitario') baseLimite += 1;
-
-    // Revoltado Sozinho
     if (origemAtual == 'revoltado' &&
         poderesEscolhidos.any((p) => p.nome == "Revoltado_Sozinho")) {
       baseLimite += 1;
     }
-
     return baseLimite;
   }
 
   int get deslocamento {
     int baseDesl = 9;
     if (origemAtual == 'ginasta') baseDesl += 3;
-    if (estaSobrecarregado) baseDesl -= 3; // penalidade de sobrecarga (-3m)
+    if (estaSobrecarregado) baseDesl -= 3;
     return baseDesl;
   }
 
-  // Cálculo de atributos
   int get totalAtributosPermitidos {
-    int max = 9; // (5 atributos base 1) + 4 pontos de criação = 9
+    int max = 9;
     if (nex >= 20) max += 1;
     if (nex >= 50) max += 1;
     if (nex >= 80) max += 1;
@@ -127,7 +132,6 @@ class _FichaAgenteState extends State<FichaAgente> {
   int get espacoMaximo {
     int base = forc == 0 ? 2 : forc * 5;
     if (poderesEscolhidos.any((p) => p.nome == "Mochileiro")) base += 5;
-
     if (trilhaAtual == 'tecnico' && nex >= 10) base += (inte * 5);
     return base;
   }
@@ -171,12 +175,11 @@ class _FichaAgenteState extends State<FichaAgente> {
     return "Recruta";
   }
 
-  // Limite de Crédito do magnata
   String get limiteCredito {
     if (origemAtual == 'magnata') {
       if (prestigio >= 100) return "Ilimitado";
       if (prestigio >= 20) return "Alto";
-      return "Médio"; // Um nível acima do recruta
+      return "Médio";
     } else {
       if (prestigio >= 200) return "Ilimitado";
       if (prestigio >= 100) return "Alto";
@@ -199,7 +202,6 @@ class _FichaAgenteState extends State<FichaAgente> {
       limites = {"I": 2, "II": 0, "III": 0, "IV": 0};
     }
 
-    // Bônus da Perícia Profissão
     int profTreino = listaPericias
         .firstWhere(
           (p) => p.id == 'profissao',
@@ -213,14 +215,82 @@ class _FichaAgenteState extends State<FichaAgente> {
     } else if (profTreino >= 5) {
       limites['I'] = limites['I']! + 1;
     }
-
     return limites;
   }
 
-  // AUXILIAR DE REDUÇÃO DE CATEGORIA (ANIQUILADOR)
-  String _reduzirCategoriaString(String cat, int reducao) {
-    if (reducao <= 0 || cat == "0" || cat == "--") return cat;
-    List<String> ordem = [
+  // ========================================================
+  // LÓGICA DE CATEGORIAS (COM MALDIÇÕES E MODS NORMAIS)
+  // ========================================================
+  // ========================================================
+  // LÓGICA DE CATEGORIAS (COM MALDIÇÕES E MODS NORMAIS)
+  // ========================================================
+  int _calcularAumentoCategoriaGeral(List<String> mods) {
+    int qtdMaldicoes = 0;
+    int qtdNormais = 0;
+    List<String> maldicoes = [
+      "Lancinante",
+      "Predadora",
+      "Sanguinária",
+      "Consumidora",
+      "Erosiva",
+      "Repulsora",
+      "Empuxo",
+      "Energética",
+      "Vibrante",
+      "Antielemento",
+      "Ritualística",
+      "Senciente",
+      "Regenerativa",
+      "Sádica",
+      "Letárgica",
+      "Repulsiva",
+      "Cinética",
+      "Lépida",
+      "Voltaica",
+      "Abascanta",
+      "Profética",
+      "Sombria",
+      "Carisma",
+      "Conjuração",
+      "Escudo Mental",
+      "Reflexão",
+      "Sagacidade",
+      "Defesa",
+      "Destreza",
+      "Potência",
+      "Esforço Adicional",
+      "Disposição",
+      "Pujança",
+      "Vitalidade",
+      "Proteção Elemental (Sangue)",
+      "Proteção Elemental (Morte)",
+      "Proteção Elemental (Energia)",
+      "Proteção Elemental (Conhecimento)",
+    ];
+
+    for (String mod in mods) {
+      if ([
+        "Ferramenta Favorita",
+        "Ferramenta de Trabalho",
+        "Arma Favorita",
+      ].contains(mod)) {
+        continue;
+      }
+      if (maldicoes.contains(mod)) {
+        qtdMaldicoes++;
+      } else {
+        qtdNormais++;
+      }
+    }
+    // A 1ª maldição sobe +2, as demais +1.
+    return qtdNormais + (qtdMaldicoes > 0 ? (1 + qtdMaldicoes) : 0);
+  }
+
+  String _obterCategoriaCalculada(dynamic eq) {
+    String cat = eq.categoria;
+    if (cat == "--") return cat;
+
+    List<String> ordemCompleta = [
       "0",
       "I",
       "II",
@@ -229,33 +299,44 @@ class _FichaAgenteState extends State<FichaAgente> {
       "V",
       "VI",
       "VII",
-    ]; // <--- Lista Aumentada
-    int idx = ordem.indexOf(cat.trim());
-    if (idx == -1) return cat;
-    int novoIdx = max(0, idx - reducao);
-    return ordem[novoIdx];
+      "VIII",
+      "IX",
+      "X",
+    ];
+    int idxBase = ordemCompleta.indexOf(cat.trim());
+    if (idxBase == -1) return cat;
+
+    int aumento = _calcularAumentoCategoriaGeral(
+      List<String>.from(eq.modificacoes),
+    );
+    int idxAumentado = idxBase + aumento;
+
+    int reducao = 0;
+    // O Aniquilador reduz a categoria final APÓS todos os aumentos
+    if (eq is Arma &&
+        trilhaAtual == 'aniquilador' &&
+        eq.modificacoes.contains("Arma Favorita")) {
+      reducao = nex >= 99 ? 3 : (nex >= 40 ? 2 : 1);
+    }
+
+    int idxFinal = max(0, idxAumentado - reducao);
+    idxFinal = min(
+      4,
+      idxFinal,
+    ); // TRAVA ABSOLUTA: O limite máximo da categoria é IV (índice 4)
+
+    return ordemCompleta[idxFinal];
   }
 
   Map<String, int> get usoCategoriaAtual {
     var uso = {"I": 0, "II": 0, "III": 0, "IV": 0};
     for (var item in inventario) {
-      if (uso.containsKey(item.categoriaEfetiva)) {
-        uso[item.categoriaEfetiva] = uso[item.categoriaEfetiva]! + 1;
-      }
+      String cat = _obterCategoriaCalculada(item);
+      if (uso.containsKey(cat)) uso[cat] = uso[cat]! + 1;
     }
     for (var arma in armas) {
-      String cat = arma.categoriaEfetiva;
-      // Lógica Passiva do Aniquilador no Limite de Itens
-      if (trilhaAtual == 'aniquilador' &&
-          arma.modificacoes.contains("Arma Favorita")) {
-        int reducao = 1;
-        if (nex >= 40) reducao = 2;
-        if (nex >= 99) reducao = 3;
-        cat = _reduzirCategoriaString(cat, reducao);
-      }
-      if (uso.containsKey(cat)) {
-        uso[cat] = uso[cat]! + 1;
-      }
+      String cat = _obterCategoriaCalculada(arma);
+      if (uso.containsKey(cat)) uso[cat] = uso[cat]! + 1;
     }
     return uso;
   }
@@ -347,7 +428,8 @@ class _FichaAgenteState extends State<FichaAgente> {
       sanAtual = ag.sanAtual ?? 0;
       inventario = List.from(ag.inventario);
       armas = List.from(ag.armas);
-      poderesEscolhidos = List.from(ag.poderes); // Usa List<Poder>
+      poderesEscolhidos = List.from(ag.poderes);
+      rituaisConhecidos = List.from(ag.rituais);
       periciasClasse = List.from(ag.periciasClasse);
 
       for (var p in listaPericias) {
@@ -369,7 +451,6 @@ class _FichaAgenteState extends State<FichaAgente> {
 
   Future<void> _salvarSilencioso() async {
     final prefs = await SharedPreferences.getInstance();
-
     Map<String, int> periciasTreinadas = {};
     for (var p in listaPericias) {
       if (p.treino > 0) periciasTreinadas[p.id] = p.treino;
@@ -401,6 +482,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       inventario: inventario,
       armas: armas,
       poderes: poderesEscolhidos,
+      rituais: rituaisConhecidos,
       periciasClasse: periciasClasse,
     );
 
@@ -469,6 +551,26 @@ class _FichaAgenteState extends State<FichaAgente> {
       corNumero = Colors.redAccent;
     }
 
+    int penCon = maldicoesConhecimento * 2;
+    int penEne = maldicoesEnergia * 2;
+    int penMor = maldicoesMorte * 2;
+    int penSan = maldicoesSangue * 2;
+
+    String avisoMaldicao = "";
+    if (nomeAtrib == "INT" && penCon > 0) {
+      avisoMaldicao =
+          "⚠️ FALHAR CUSTARÁ $penCon SAN (Maldições do Conhecimento)";
+    }
+    if (nomeAtrib == "AGI" && penEne > 0) {
+      avisoMaldicao = "⚠️ FALHAR CUSTARÁ $penEne SAN (Maldições de Energia)";
+    }
+    if (nomeAtrib == "PRE" && penMor > 0) {
+      avisoMaldicao = "⚠️ FALHAR CUSTARÁ $penMor SAN (Maldições da Morte)";
+    }
+    if ((nomeAtrib == "FOR" || nomeAtrib == "VIG") && penSan > 0) {
+      avisoMaldicao = "⚠️ FALHAR CUSTARÁ $penSan SAN (Maldições de Sangue)";
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -506,6 +608,20 @@ class _FichaAgenteState extends State<FichaAgente> {
                 ),
               ),
             ],
+            if (avisoMaldicao.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Divider(color: Colors.grey),
+              const SizedBox(height: 8),
+              Text(
+                avisoMaldicao,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.redAccent,
+                ),
+              ),
+            ],
           ],
         ),
         actions: [
@@ -519,12 +635,11 @@ class _FichaAgenteState extends State<FichaAgente> {
   }
 
   void _usarPoder(Poder poder) {
-    if (poder.custoPE <= 0) return; // Poder passivo, não faz nada
+    if (!_modoVisualizacao) return;
+    if (poder.custoPE <= 0) return;
 
     if (peAtual >= poder.custoPE) {
-      setState(() {
-        peAtual -= poder.custoPE;
-      });
+      setState(() => peAtual -= poder.custoPE);
       _salvarSilencioso();
       _mostrarNotificacao("Usou ${poder.nome}: -${poder.custoPE} PE");
     } else {
@@ -537,15 +652,12 @@ class _FichaAgenteState extends State<FichaAgente> {
     }
   }
 
-  // função pra rolar o ataque
   void _rolarAtaque(Arma arma, int bonusDanoFixo, bool isProficiente) {
     if (!_modoVisualizacao) return;
 
-    // 1. Define Atributo e Perícia
     String atributoUsado = arma.atributoPersonalizado.isNotEmpty
         ? arma.atributoPersonalizado
         : (arma.tipo == 'Corpo a Corpo' ? 'FOR' : 'AGI');
-
     String periciaUsada = arma.periciaPersonalizada.isNotEmpty
         ? arma.periciaPersonalizada
         : (arma.tipo == 'Corpo a Corpo' ? 'luta' : 'pontaria');
@@ -569,26 +681,20 @@ class _FichaAgenteState extends State<FichaAgente> {
         break;
     }
 
-    // ==== LEITURA DE MODIFICAÇÕES EXTRAS (Ataque e Multiplicador) ====
-    // (Cruel, Perigosa, Calibre Grosso e Mira Laser já vêm calculados na arma!)
     int modAtaque = 0;
     int modMultExtra = 0;
     List<String> dadosDanoExtra = [];
 
     for (String mod in arma.modificacoes) {
       String mLower = mod.toLowerCase();
-      // Bônus puros de acerto
       if (mLower.contains("certeira") || mLower.contains("alongada")) {
         modAtaque += 2;
       }
       if (mLower.contains("ferramenta de trabalho")) modAtaque += 1;
-
-      // Multiplicador de Crítico
       if (mLower.contains("letal") || mLower.contains("dum dum")) {
         modMultExtra += 1;
       }
 
-      // Maldições (Dados extras)
       if (mLower.contains("sanguinária") ||
           mLower.contains("flamejante") ||
           mLower.contains("vibrante") ||
@@ -596,26 +702,30 @@ class _FichaAgenteState extends State<FichaAgente> {
           mLower.contains("erosiva")) {
         dadosDanoExtra.add("1d6");
       }
+      if (mLower.contains("lancinante") || mLower.contains("erosiva")) {
+        dadosDanoExtra.add("1d8");
+      }
+      if (mLower.contains("antielemento")) dadosDanoExtra.add("4d8");
+      if (mLower.contains("predadora")) {
+        arma.margemAmeaca = 20 - ((20 - arma.margemAmeaca) * 2);
+      }
     }
 
-    // ==== BÔNUS DE TRILHAS ====
     int modMargemTrilha = 0;
     bool aniquilador99 = false;
 
     if (trilhaAtual == 'guerreiro' &&
         nex >= 10 &&
         arma.tipo == 'Corpo a Corpo') {
-      modMargemTrilha += 2; // Guerreiro 10%: Técnica Letal
+      modMargemTrilha += 2;
     }
     if (trilhaAtual == 'aniquilador' &&
         nex >= 99 &&
         arma.modificacoes.contains("Arma Favorita")) {
-      modMargemTrilha += 2; // Aniquilador 99%: Máquina de Matar
+      modMargemTrilha += 2;
       aniquilador99 = true;
     }
-    // ==========================
 
-    // 2. Calcula Bônus da Perícia
     Pericia perObj = listaPericias.firstWhere(
       (p) => p.id == periciaUsada,
       orElse: () => Pericia(id: '', nome: '', atributo: ''),
@@ -638,7 +748,6 @@ class _FichaAgenteState extends State<FichaAgente> {
         bonusExtraItem +
         modAtaque;
 
-    // 3. Lógica do D20 e Proficiência
     int dadosExtras = isProficiente ? 0 : -2;
     int qtdDados = valorAtrib + dadosExtras;
     bool rolarPior = false;
@@ -652,27 +761,21 @@ class _FichaAgenteState extends State<FichaAgente> {
     int d20Escolhido = rolarPior ? d20s.reduce(min) : d20s.reduce(max);
     int resultadoAtaque = d20Escolhido + totalBonus;
 
-    // 4. Crítico
-    // Usa a margem que já vem mastigada da classe Arma e só aplica as Trilhas
     int margemFinal = arma.margemAmeacaEfetiva - modMargemTrilha;
     int multFinal = arma.multiplicadorCritico + modMultExtra;
 
     bool isCrit = d20Escolhido >= margemFinal;
     bool isFalhaCritica = d20Escolhido == 1;
 
-    // 5. Rolagem Dinâmica de Dano
     int totalDano = 0;
     List<int> rolagensDano = [];
-    int flatTotal =
-        bonusDanoFixo; // O danoCruel e Ferramenta já estão na string base
+    int flatTotal = bonusDanoFixo;
 
-    // Limpa a string da arma e troca sinais de '-' por '+-' para separar corretamente!
     String stringDanoLimpo = arma.danoEfetivo
         .replaceAll(' ', '')
         .replaceAll('-', '+-');
     var partes = stringDanoLimpo.split('+');
 
-    // Processa Aniquilador 99% (+1 dado base do mesmo tipo)
     if (aniquilador99 && partes.isNotEmpty && partes[0].contains('d')) {
       var dp = partes[0].split('d');
       if (dp.length == 2) {
@@ -681,7 +784,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       }
     }
 
-    partes.addAll(dadosDanoExtra); // Acopla os dados amaldiçoados
+    partes.addAll(dadosDanoExtra);
 
     for (var parte in partes) {
       parte = parte.trim();
@@ -693,9 +796,7 @@ class _FichaAgenteState extends State<FichaAgente> {
           int qtd = int.tryParse(dp[0]) ?? 1;
           int faces = int.tryParse(dp[1]) ?? 0;
 
-          if (isCrit && !isFalhaCritica) {
-            qtd *= multFinal; // O famoso multiplicador
-          }
+          if (isCrit && !isFalhaCritica) qtd *= multFinal;
 
           for (int i = 0; i < qtd; i++) {
             int r = Random().nextInt(faces) + 1;
@@ -710,7 +811,6 @@ class _FichaAgenteState extends State<FichaAgente> {
     totalDano += flatTotal;
     if (isFalhaCritica) totalDano = 0;
 
-    // 6. Desenhar a Interface do Resultado
     Color corD20 = Colors.white;
     String tituloCrit = "";
     if (isCrit && !isFalhaCritica) {
@@ -802,7 +902,6 @@ class _FichaAgenteState extends State<FichaAgente> {
     );
   }
 
-  // ataque
   void _mostrarDialogEditarAtaque(Arma arma) {
     String attrAtual = arma.atributoPersonalizado.isEmpty
         ? "Padrão"
@@ -976,7 +1075,7 @@ class _FichaAgenteState extends State<FichaAgente> {
             List<Pericia> periciasDisponiveisParaLivres = listaPericias.where((
               p,
             ) {
-              if (p.daOrigem) return false; // ESCONDE AS DE ORIGEM
+              if (p.daOrigem) return false;
               if (novaClasse == 'combatente' &&
                   (p.id == combOp1 || p.id == combOp2)) {
                 return false;
@@ -1288,9 +1387,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                                 ? () {
                                     setState(() {
                                       classeAtual = novaClasse;
-                                      trilhaAtual = '--'; // Reseta a trilha
-
-                                      // Limpa TODOS os poderes da classe anterior e de trilhas
+                                      trilhaAtual = '--';
                                       poderesEscolhidos.removeWhere(
                                         (p) =>
                                             p.tipo == "Combatente" ||
@@ -1300,7 +1397,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                                       );
 
                                       if (novaClasse == 'combatente') {
-                                        // ...
                                         poderesEscolhidos.add(
                                           Poder(
                                             nome: "Ataque Especial",
@@ -1406,7 +1502,6 @@ class _FichaAgenteState extends State<FichaAgente> {
     Color corLetra = corTextoAfinidade;
     Color corDestaqueLocal = corDestaque;
 
-    // Filtro que só mostra a aba da sua classe
     List<String> categoriasPrincipais = [
       "Gerais",
       if (classeAtual == 'combatente') "Combatente",
@@ -1414,7 +1509,6 @@ class _FichaAgenteState extends State<FichaAgente> {
       if (classeAtual == 'ocultista') "Ocultista",
       "Poderes Paranormais",
     ];
-
     if (!categoriasPrincipais.contains(filtroPrincipal)) {
       filtroPrincipal = "Gerais";
     }
@@ -1464,10 +1558,11 @@ class _FichaAgenteState extends State<FichaAgente> {
                 return false;
               }
               if (isParanormal) {
-                bool temAfinidade = poderesEscolhidos.any(
+                if (poderesEscolhidos.any(
                   (pe) => pe.nome == "${p.nome} (Afinidade)",
-                );
-                if (temAfinidade) return false;
+                )) {
+                  return false;
+                }
               } else {
                 if (poderesEscolhidos.any((pe) => pe.nome == p.nome)) {
                   return false;
@@ -1565,22 +1660,13 @@ class _FichaAgenteState extends State<FichaAgente> {
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: categoriasParanormais.map((cat) {
-                            Color corElemento;
-                            switch (cat) {
-                              case 'Sangue':
-                                corElemento = const Color(0xFF990000);
-                                break;
-                              case 'Energia':
-                                corElemento = const Color(0xFF9900FF);
-                                break;
-                              case 'Conhecimento':
-                                corElemento = const Color(0xFFFFB300);
-                                break;
-                              case 'Morte':
-                              default:
-                                corElemento = Colors.grey.shade400;
-                                break;
-                            }
+                            Color corElemento = cat == 'Sangue'
+                                ? const Color(0xFF990000)
+                                : cat == 'Energia'
+                                ? const Color(0xFF9900FF)
+                                : cat == 'Conhecimento'
+                                ? const Color(0xFFFFB300)
+                                : Colors.grey.shade400;
                             Color corTxtSelecionado =
                                 (cat == 'Conhecimento' || cat == 'Morte')
                                 ? Colors.black
@@ -1588,7 +1674,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                             if (cat == 'Morte') {
                               corTxtSelecionado = Colors.white;
                             }
-
                             return Padding(
                               padding: const EdgeInsets.only(right: 8.0),
                               child: ChoiceChip(
@@ -1656,8 +1741,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                                     } else if (filtroParanormal ==
                                         'Conhecimento') {
                                       corTitulo = const Color(0xFFFFB300);
-                                    } else {
-                                      corTitulo = Colors.white;
                                     }
                                   }
 
@@ -1753,13 +1836,11 @@ class _FichaAgenteState extends State<FichaAgente> {
 
   void atualizarFicha({bool isInitialLoad = false}) {
     setState(() {
-      // 1. Salva os status máximos ANTES de calcular o novo nível
       int oldPvMax = pvMax;
       int oldPeMax = peMax;
       int oldSanMax = sanMax;
 
       if (nex < 10 || classeAtual == '--') trilhaAtual = '--';
-
       if (nex < 50 && afinidadeAtual != null && trilhaAtual != 'monstruoso') {
         afinidadeAtual = null;
       }
@@ -1776,8 +1857,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       if (trilhaAtual == 'monstruoso' && nex >= 10) {
         String elem = afinidadeAtual ?? 'Sangue';
         int resValue = 5;
-        int penValue = -1; // -1d20
-
+        int penValue = -1;
         if (nex >= 40) {
           resValue = 10;
           penValue = -2;
@@ -1804,7 +1884,6 @@ class _FichaAgenteState extends State<FichaAgente> {
             efInt -= 1;
             efFor += 1;
           }
-
           if (nex >= 65 && !armas.any((a) => a.nome == "Mordida Monstruosa")) {
             armas.add(
               Arma(
@@ -1962,7 +2041,6 @@ class _FichaAgenteState extends State<FichaAgente> {
             stats.peBase +
             (atributoPE * nivel) +
             (stats.pePorNivel * (nivel - 1));
-
         if (origemAtual == 'colegial' &&
             poderesEscolhidos.any((p) => p.nome == "Colegial_Morto")) {
           peMax -= nivel;
@@ -1985,10 +2063,14 @@ class _FichaAgenteState extends State<FichaAgente> {
           qtdParanormal--;
         }
 
+        int perdaMedo = poderesEscolhidos
+            .where((p) => p.nome == "Sistema_PerdaSanidadeMedo")
+            .length;
         sanMax =
             sanBase +
             (stats.sanPorNivel * (nivel - 1)) -
-            (qtdParanormal * stats.sanPorNivel);
+            (qtdParanormal * stats.sanPorNivel) -
+            perdaMedo;
         if (sanMax < 0) sanMax = 0;
 
         if (origemAtual == 'desgarrado') pvMax += nivel;
@@ -1999,10 +2081,7 @@ class _FichaAgenteState extends State<FichaAgente> {
           int nexImpares = (nivel / 2).floor();
           if (nivel >= 3) peMax += nexImpares;
         }
-
-        if (trilhaAtual == 'tropa_de_choque' && nex >= 10) {
-          pvMax += nivel;
-        }
+        if (trilhaAtual == 'tropa_de_choque' && nex >= 10) pvMax += nivel;
       } else {
         if (isInitialLoad && widget.agenteParaEditar == null) {
           pvMax = 0;
@@ -2015,9 +2094,128 @@ class _FichaAgenteState extends State<FichaAgente> {
       bool usaProtecaoLeve = false;
       bool usaProtecaoPesadaOuEscudo = false;
 
+      maldicoesConhecimento = 0;
+      maldicoesEnergia = 0;
+      maldicoesMorte = 0;
+      maldicoesSangue = 0;
+
+      void processarMaldicao(String m) {
+        if ([
+          "Antielemento",
+          "Ritualística",
+          "Senciente",
+          "Abascanta",
+          "Profética",
+          "Sombria",
+          "Carisma",
+          "Conjuração",
+          "Escudo Mental",
+          "Reflexão",
+          "Sagacidade",
+          "Proteção Elemental (Conhecimento)",
+        ].contains(m)) {
+          maldicoesConhecimento++;
+        }
+        if ([
+          "Empuxo",
+          "Energética",
+          "Vibrante",
+          "Cinética",
+          "Lépida",
+          "Voltaica",
+          "Defesa",
+          "Destreza",
+          "Potência",
+          "Proteção Elemental (Energia)",
+        ].contains(m)) {
+          maldicoesEnergia++;
+        }
+        if ([
+          "Consumidora",
+          "Erosiva",
+          "Repulsora",
+          "Letárgica",
+          "Repulsiva",
+          "Esforço Adicional",
+          "Proteção Elemental (Morte)",
+        ].contains(m)) {
+          maldicoesMorte++;
+        }
+        if ([
+          "Lancinante",
+          "Predadora",
+          "Sanguinária",
+          "Regenerativa",
+          "Sádica",
+          "Disposição",
+          "Pujança",
+          "Vitalidade",
+          "Proteção Elemental (Sangue)",
+        ].contains(m)) {
+          maldicoesSangue++;
+        }
+
+        // Status bônus de Maldições de Acessórios/Proteções
+        if (m == "Sagacidade") efInt += 1;
+        if (m == "Carisma") efPre += 1;
+        if (m == "Destreza") efAgi += 1;
+        if (m == "Disposição") efVig += 1;
+        if (m == "Pujança") efFor += 1;
+        if (m == "Vitalidade") pvMax += 15;
+        if (m == "Esforço Adicional") peMax += 5;
+        if (m == "Escudo Mental") {
+          resistencias['Mental'] = (resistencias['Mental'] ?? 0) + 10;
+        }
+        if (m == "Defesa") defItens += 5;
+        if (m == "Profética") {
+          resistencias['Conhecimento'] =
+              (resistencias['Conhecimento'] ?? 0) + 10;
+        }
+        if (m == "Sombria") {
+          dadosExtrasPericias['furtividade'] =
+              (dadosExtrasPericias['furtividade'] ?? 0) + 5;
+        }
+        if (m == "Cinética") {
+          defItens += 2;
+          resistencias['Geral'] = (resistencias['Geral'] ?? 0) + 2;
+        }
+        if (m == "Lépida") {
+          dadosExtrasPericias['atletismo'] =
+              (dadosExtrasPericias['atletismo'] ?? 0) + 10;
+        }
+        if (m == "Voltaica") {
+          resistencias['Energia'] = (resistencias['Energia'] ?? 0) + 10;
+        }
+        if (m == "Letárgica") defItens += 2;
+        if (m == "Repulsiva") {
+          resistencias['Morte'] = (resistencias['Morte'] ?? 0) + 10;
+        }
+        if (m == "Regenerativa") {
+          resistencias['Sangue'] = (resistencias['Sangue'] ?? 0) + 10;
+        }
+        if (m == "Proteção Elemental (Sangue)") {
+          resistencias['Sangue'] = (resistencias['Sangue'] ?? 0) + 10;
+        }
+        if (m == "Proteção Elemental (Morte)") {
+          resistencias['Morte'] = (resistencias['Morte'] ?? 0) + 10;
+        }
+        if (m == "Proteção Elemental एनर्जी") {
+          resistencias['Energia'] = (resistencias['Energia'] ?? 0) + 10;
+        }
+        if (m == "Proteção Elemental (Conhecimento)") {
+          resistencias['Conhecimento'] =
+              (resistencias['Conhecimento'] ?? 0) + 10;
+        }
+      }
+
+      // Varredura Itens
       for (var item in inventario.where((i) => i.equipado)) {
         String nomeLower = item.nome.toLowerCase();
         String descLower = item.descricao.toLowerCase();
+
+        for (var mod in item.modificacoes) {
+          processarMaldicao(mod);
+        }
 
         if (descLower.contains("proteção pesada")) {
           resistencias['Balístico'] = (resistencias['Balístico'] ?? 0) + 2;
@@ -2049,6 +2247,14 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
         if (nomeLower.contains("braçadeira reforçada")) {
           bonusBloqueioBracadeira += 2;
+        }
+      }
+
+      // Varredura Armas (Apenas pro Preço da Maldição e Repulsora)
+      for (var arma in armas.where((a) => a.equipado)) {
+        for (var mod in arma.modificacoes) {
+          processarMaldicao(mod);
+          if (mod == "Repulsora") defItens += 2;
         }
       }
 
@@ -2092,9 +2298,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       if (trilhaAtual == 'monstruoso' && afinidadeAtual == 'Energia') {
         bloqueio += efAgi;
       }
-      if (trilhaAtual == 'tropa_de_choque' && nex >= 10) {
-        bloqueio += efVig;
-      }
+      if (trilhaAtual == 'tropa_de_choque' && nex >= 10) bloqueio += efVig;
 
       bool isMachucado = pvMax > 0 && pvAtual <= (pvMax ~/ 2);
       if (trilhaAtual == 'tropa_de_choque' && nex >= 99 && isMachucado) {
@@ -2157,8 +2361,6 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
       }
 
-      // ========================================================
-      // 2. SOMA O GANHO DE VIDA/SAN/PE AO SUBIR DE NÍVEL
       if (!isInitialLoad) {
         if (pvMax > oldPvMax && oldPvMax > 0) {
           pvAtual = min(pvMax, pvAtual + (pvMax - oldPvMax));
@@ -2174,7 +2376,6 @@ class _FichaAgenteState extends State<FichaAgente> {
         peAtual = peMax;
         sanAtual = sanMax;
       }
-      // ========================================================
     });
 
     if (!isInitialLoad) _salvarSilencioso();
@@ -2216,7 +2417,6 @@ class _FichaAgenteState extends State<FichaAgente> {
 
   void _mostrarDialogTrilhas() {
     if (classeAtual == '--') return;
-
     List<DadosTrilha> trilhasDaClasse = trilhasOrdem.values
         .where((t) => t.classe.toLowerCase() == classeAtual.toLowerCase())
         .toList();
@@ -2401,7 +2601,6 @@ class _FichaAgenteState extends State<FichaAgente> {
           ),
         );
       }
-
       poderesEscolhidos.add(
         Poder(nome: "AgenteSecreto_SetupFeito", tipo: "Sistema", descricao: ""),
       );
@@ -2517,10 +2716,7 @@ class _FichaAgenteState extends State<FichaAgente> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  "Ok",
-                  style: TextStyle(color: Colors.grey),
-                ),
+                child: const Text("Ok", style: TextStyle(color: Colors.grey)),
               ),
             ],
           ),
@@ -2545,12 +2741,12 @@ class _FichaAgenteState extends State<FichaAgente> {
         ),
         onPressed: () {
           setState(() {
-            trilhaAtual = 'monstruoso'; // Defina o ID da sua trilha base aqui!
+            trilhaAtual = 'monstruoso';
             afinidadeAtual = elemento;
           });
           atualizarFicha();
           Navigator.pop(context);
-          Navigator.pop(context); // Fecha o Dialog de escolha de trilha também
+          Navigator.pop(context);
         },
         child: Text(
           elemento.toUpperCase(),
@@ -2561,7 +2757,6 @@ class _FichaAgenteState extends State<FichaAgente> {
   }
 
   // SISTEMA DE ABAS
-
   Widget _buildAbaAtributos(bool block, Color corDoPainel) {
     List<Arma> armasEquipadas = armas.where((a) => a.equipado).toList();
     return SingleChildScrollView(
@@ -2681,8 +2876,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                   ),
                 ],
               ),
-
-              // Opção trilhas
               const SizedBox(height: 16),
               GestureDetector(
                 onTap: (block || nex < 10 || classeAtual == '--')
@@ -2752,7 +2945,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -2884,17 +3076,15 @@ class _FichaAgenteState extends State<FichaAgente> {
             corTexto: corTextoAfinidade,
             isMorte: afinidadeAtual == 'Morte',
             filhos: [
-              // ======== CONTADOR DE ATRIBUTOS AQUI ========
-              if (!block) // Só mostra o contador se o modo de edição estiver ativado
+              // ======== CONTADOR DE ATRIBUTOS (Mostra no Modo Edição) ========
+              if (!block)
                 Align(
                   alignment: Alignment.centerRight,
                   child: Container(
-                    margin: const EdgeInsets.only(
-                      bottom: 16,
-                    ), // Espaçamento antes dos botões
+                    margin: const EdgeInsets.only(bottom: 16),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
+                      horizontal: 12,
+                      vertical: 6,
                     ),
                     decoration: BoxDecoration(
                       color: totalAtributosAtuais > totalAtributosPermitidos
@@ -2914,80 +3104,77 @@ class _FichaAgenteState extends State<FichaAgente> {
                     ),
                   ),
                 ),
-
-              // ===========================================
-              // ===========================================
-              // Embrulhamos a Row no FittedBox para telas pequenas
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    AtributoInputFicha(
-                      label: "AGI",
-                      value: agi,
-                      isVisu: block,
-                      corPopUp: corDestaque,
-                      onChanged: (val) {
-                        agi = int.tryParse(val) ?? 0;
-                        atualizarFicha();
-                      },
-                      onRolarDado: _rolarDado,
-                    ),
-                    AtributoInputFicha(
-                      label: "FOR",
-                      value: forc,
-                      isVisu: block,
-                      corPopUp: corDestaque,
-                      onChanged: (val) {
-                        forc = int.tryParse(val) ?? 0;
-                        atualizarFicha();
-                      },
-                      onRolarDado: _rolarDado,
-                    ),
-                    AtributoInputFicha(
-                      label: "INT",
-                      value: inte,
-                      isVisu: block,
-                      corPopUp: corDestaque,
-                      onChanged: (val) {
-                        int oldInt = inte;
-                        inte = int.tryParse(val) ?? 0;
-                        if (inte > oldInt) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            _mostrarNotificacao(
-                              "Intelecto aumentado! Você ganhou +1 Perícia Livre.",
-                            );
-                          });
-                        }
-                        atualizarFicha();
-                      },
-                      onRolarDado: _rolarDado,
-                    ),
-                    AtributoInputFicha(
-                      label: "PRE",
-                      value: pre,
-                      isVisu: block,
-                      corPopUp: corDestaque,
-                      onChanged: (val) {
-                        pre = int.tryParse(val) ?? 0;
-                        atualizarFicha();
-                      },
-                      onRolarDado: _rolarDado,
-                    ),
-                    AtributoInputFicha(
-                      label: "VIG",
-                      value: vig,
-                      isVisu: block,
-                      corPopUp: corDestaque,
-                      onChanged: (val) {
-                        vig = int.tryParse(val) ?? 0;
-                        atualizarFicha();
-                      },
-                      onRolarDado: _rolarDado,
-                    ),
-                  ],
-                ),
+              // ======== GRID RESPONSIVO DE ATRIBUTOS ========
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12, // Espaço horizontal entre os quadrados
+                runSpacing:
+                    16, // Espaço vertical se a tela for pequena e quebrar linha
+                children: [
+                  AtributoInputFicha(
+                    label: "AGI",
+                    value: agi,
+                    isVisu: block,
+                    corPopUp: corDestaque,
+                    onChanged: (val) {
+                      agi = int.tryParse(val) ?? 0;
+                      atualizarFicha();
+                    },
+                    onRolarDado: _rolarDado,
+                  ),
+                  AtributoInputFicha(
+                    label: "FOR",
+                    value: forc,
+                    isVisu: block,
+                    corPopUp: corDestaque,
+                    onChanged: (val) {
+                      forc = int.tryParse(val) ?? 0;
+                      atualizarFicha();
+                    },
+                    onRolarDado: _rolarDado,
+                  ),
+                  AtributoInputFicha(
+                    label: "INT",
+                    value: inte,
+                    isVisu: block,
+                    corPopUp: corDestaque,
+                    onChanged: (val) {
+                      int oldInt = inte;
+                      inte = int.tryParse(val) ?? 0;
+                      if (inte > oldInt) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _mostrarNotificacao(
+                            "Intelecto aumentado! Você ganhou +1 Perícia Livre.",
+                          );
+                        });
+                      }
+                      atualizarFicha();
+                    },
+                    onRolarDado: _rolarDado,
+                  ),
+                  AtributoInputFicha(
+                    label: "PRE",
+                    value: pre,
+                    isVisu: block,
+                    corPopUp: corDestaque,
+                    onChanged: (val) {
+                      pre = int.tryParse(val) ?? 0;
+                      atualizarFicha();
+                    },
+                    onRolarDado: _rolarDado,
+                  ),
+                  AtributoInputFicha(
+                    label: "VIG",
+                    value: vig,
+                    isVisu: block,
+                    corPopUp: corDestaque,
+                    onChanged: (val) {
+                      vig = int.tryParse(val) ?? 0;
+                      atualizarFicha();
+                    },
+                    onRolarDado: _rolarDado,
+                  ),
+                ],
               ),
             ],
           ),
@@ -3002,13 +3189,12 @@ class _FichaAgenteState extends State<FichaAgente> {
                 titulo: "PONTOS DE VIDA (PV)",
                 atual: pvAtual,
                 maximo: pvMax,
-                // Deixa vermelho escuro se estiver "Machucado"
                 cor: (pvMax > 0 && pvAtual <= pvMax ~/ 2)
                     ? Colors.red.shade900
                     : Colors.red,
                 onChanged: (val) {
                   setState(() => pvAtual = val.clamp(0, pvMax));
-                  atualizarFicha(); // atualizar a ficha para a Tropa de Choque 99% ligar a defesa
+                  atualizarFicha();
                 },
               ),
               const SizedBox(height: 16),
@@ -3118,8 +3304,8 @@ class _FichaAgenteState extends State<FichaAgente> {
                       ? ""
                       : "\n⚠️ Não proficiente: -2d20 no Ataque";
                   String modDano = "";
-
                   int bonusDano = 0;
+
                   if (arma.tipo == 'Corpo a Corpo' ||
                       arma.tipo == 'Arremesso') {
                     bonusDano += forc;
@@ -3133,12 +3319,10 @@ class _FichaAgenteState extends State<FichaAgente> {
                   } else if (bonusDano < 0) {
                     modDano = "$bonusDano";
                   }
-
                   if (arma.modificacoes.contains("Ferramenta de Trabalho")) {
                     alertaProf += " | +1 no Ataque";
                   }
 
-                  // LÓGICA DE MARGEM REDUZIDA (GUERREIRO/ANIQUILADOR)
                   int modMargemTrilha = 0;
                   if (trilhaAtual == 'guerreiro' &&
                       nex >= 10 &&
@@ -3155,7 +3339,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                   if (margemExibida < 2) margemExibida = 2;
 
                   return Container(
-                    margin: const EdgeInsets.only(top: 8),
+                    margin: const EdgeInsets.only(bottom: 8),
                     decoration: BoxDecoration(
                       color: const Color(0xFF0D0D0D),
                       border: Border.all(color: Colors.grey.shade800),
@@ -3173,7 +3357,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            // Mostra a margem reduzida calculada acima
                             "Dano: ${arma.danoEfetivo}$modDano | Crítico: $margemExibida/x${arma.multiplicadorCritico} \nTipo: ${arma.tipo}$alertaProf",
                             style: TextStyle(
                               color: isProficiente
@@ -3235,8 +3418,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // =====================================
-          // 1. EXIBIÇÃO DA TRILHA
+          // Trilha
           if (trilhaAtual != '--')
             SecaoFicha(
               titulo:
@@ -3258,7 +3440,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                 const Divider(color: Colors.grey),
                 const SizedBox(height: 8),
 
-                // Mostra apenas as habilidades que o NEX atual permite
                 if (trilhasOrdem.containsKey(trilhaAtual))
                   ...trilhasOrdem[trilhaAtual]!.habilidades.entries
                       .where((e) => nex >= e.key)
@@ -3294,11 +3475,9 @@ class _FichaAgenteState extends State<FichaAgente> {
               ],
             ),
 
-          // =====================================
-          // 2. EXIBIÇÃO DA ORIGEM
+          // Origem
           if (origemAtual != '--')
             SecaoFicha(
-              // Puxa direto do banco de dados. Se falhar, formata o ID tirando os "_" e pondo em maiúsculo
               titulo:
                   "Habilidade de Origem: ${dadosOrigens[origemAtual]?.nomeHabilidade ?? origemAtual.replaceAll('_', ' ').toUpperCase()}",
               corTema: corFundoAfinidade,
@@ -3306,7 +3485,6 @@ class _FichaAgenteState extends State<FichaAgente> {
               isMorte: afinidadeAtual == 'Morte',
               filhos: [
                 Text(
-                  // Puxa a descrição direto do banco de dados
                   (dadosOrigens[origemAtual]?.descHabilidade != null &&
                           dadosOrigens[origemAtual]!.descHabilidade.isNotEmpty)
                       ? dadosOrigens[origemAtual]!.descHabilidade
@@ -3318,7 +3496,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                   ),
                 ),
 
-                // Switches Exclusivos do Colegial
                 if (origemAtual == 'colegial') ...[
                   const SizedBox(height: 16),
                   const Divider(color: Colors.grey),
@@ -3398,7 +3575,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                           },
                   ),
                 ],
-                // Switches Exclusivos do Revoltado
                 if (origemAtual == 'revoltado') ...[
                   const SizedBox(height: 16),
                   const Divider(color: Colors.grey),
@@ -3438,11 +3614,7 @@ class _FichaAgenteState extends State<FichaAgente> {
               ],
             ),
 
-          // =====================================
-          // 3. EXIBIÇÃO DA AFINIDADE ELEMENTAL
-          // =====================================
-          // 3. EXIBIÇÃO DA AFINIDADE ELEMENTAL
-          // O Monstruoso já escolheu o elemento, mas a "Afinidade Real" só aparece no 50%
+          // Afinidade
           if (afinidadeAtual != null && afinidadeAtual!.isNotEmpty && nex >= 50)
             SecaoFicha(
               titulo: "Afinidade Elemental",
@@ -3483,8 +3655,7 @@ class _FichaAgenteState extends State<FichaAgente> {
               ],
             ),
 
-          // =====================================
-          // 4. EXIBIÇÃO DA LISTA DE PODERES
+          // Poderes
           SecaoFicha(
             titulo: "Poderes",
             corTema: corFundoAfinidade,
@@ -3531,8 +3702,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                     ),
                   ],
                 ),
-
-              // Verifica se todos os poderes na lista são "invisíveis"
               if (poderesEscolhidos
                   .where(
                     (p) =>
@@ -3553,7 +3722,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                     style: TextStyle(color: Colors.grey),
                   ),
                 ),
-
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -3597,7 +3765,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                         horizontal: 16,
                         vertical: 8,
                       ),
-                      onTap: temCusto && !block ? () => _usarPoder(p) : null,
+                      onTap: temCusto && block ? () => _usarPoder(p) : null,
                       title: Row(
                         children: [
                           if (isParanormal)
@@ -3724,17 +3892,6 @@ class _FichaAgenteState extends State<FichaAgente> {
       ),
     );
   }
-
-  Widget _buildAbaRituais(bool block, Color corDoPainel) {
-    return const Center(
-      child: Text(
-        "Grimório e Rituais (não) serão implementados em breve...",
-        style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
-      ),
-    );
-  }
-
-  // navbar q flutua
 
   Widget _buildFloatingNavBar(bool block, Color corDoPainel) {
     return Container(

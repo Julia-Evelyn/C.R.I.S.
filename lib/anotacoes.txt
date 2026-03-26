@@ -38,15 +38,18 @@ FEITO:
 - Perícia profissão add +1 em limite de categoria (I, II ou III dependendo do nível de treinamento na perícia) ----- FEITO
 - Add popup quando ganhar poder novo, atributo e melhoria de perícia ----- FEITO
 - Quando aumentar atributo de int, aparecer popup falando q pode escolher outra perícia ----- FEITO
+- Adicionar todos os rituais ----- FEITO
+- Subcategoria na aba de rituais pra facilitar navegação (1º, 2º círculo; morte, energia, etc) ----- FEITO
+- Adicionar DT de rituais na aba de rituais ----- FEITO
+- Adicionar maldições ----- FEITO
 
 FALTA FAZER:
 
+- Concertar visualização dos atributos em telas maiores
 - Remover perícias escolhidas ao trocar de classe
 - Add poder criar poder geral, paranormal, de classe e ritual personalizado. Fazer um pop-up com várias opções de que tipo de poder será criado.
-- Lógica de cada poder (geral, de classe e paranormal)
+- Lógica de cada poder (geral, de classe, paranormal e trilha)
 - Poder puxar um personagem pro lado na tela de início e aparecer opções de Duplicar personagem (talvez tela de edição de backstory?)
-- Adicionar todos os rituais
-- Subcategoria na aba de rituais pra facilitar navegação (1º, 2º círculo; morte, energia, etc)
 - Fazer cada ritual ter uma aparência diferente de acordo com elemento. O de medo é o que mais deve se destacar, possuindo fundo branco e aura que se mexe levemente. Colocar fundo de acordo com a cor de cada elemento.
 - Configurar maldições
 - Fazer a área de detalhes do backstory do personagem (fazer opção de baixar versão pdf das anotações, 100% formatada e bonita pra enviar pro mestre)

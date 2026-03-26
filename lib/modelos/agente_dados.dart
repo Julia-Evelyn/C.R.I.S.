@@ -1,3 +1,5 @@
+import '../dados/rituais.dart';
+
 class Pericia {
   final String nome, atributo, id;
   int treino;
@@ -152,7 +154,7 @@ class Arma extends ItemInventario {
     return e;
   }
 
-  // --- MATEMÁTICA ATUALIZADA DO DANO ---
+  // Matemática do dano
   String get danoEfetivo {
     if (!modificacoes.contains("Calibre Grosso") &&
         !modificacoes.contains("Cruel") &&
@@ -199,7 +201,7 @@ class Arma extends ItemInventario {
     if (modificacoes.contains("Calibre Grosso")) dados += 1;
     if (modificacoes.contains("Cruel")) flat += 2;
     if (modificacoes.contains("Ferramenta de Trabalho")) {
-      flat += 1; // Bônus do Operário!
+      flat += 1; // Bônus do Operário
     }
 
     String result = "$dados$resto";
@@ -212,7 +214,7 @@ class Arma extends ItemInventario {
     return result;
   }
 
-  // --- MATEMÁTICA ATUALIZADA DA MARGEM ---
+  // Cálculo da margem
   int get margemAmeacaEfetiva {
     int m = margemAmeaca;
     if (modificacoes.contains("Perigosa") ||
@@ -220,7 +222,7 @@ class Arma extends ItemInventario {
       m -= 2;
     }
     if (modificacoes.contains("Ferramenta de Trabalho")) {
-      m -= 1; // Bônus do Operário!
+      m -= 1; // Bônus do Operário
     }
     if (m < 2) return 2;
     return m;
@@ -263,7 +265,6 @@ class Arma extends ItemInventario {
   }
 }
 
-// CORREÇÃO: CLASSE PODER FICA AQUI PARA SER RECONHECIDA NO AGENTE DADOS
 class Poder {
   final String nome;
   final String tipo;
@@ -306,7 +307,9 @@ class AgenteDados {
   List<ItemInventario> inventario;
   List<Arma> armas;
 
-  List<Poder> poderes; // <------ AGORA ACEITA List<Poder>
+  List<Poder> poderes; 
+
+  final List<Ritual> rituais;
 
   List<String> periciasClasse;
 
@@ -331,6 +334,7 @@ class AgenteDados {
     required this.inventario,
     required this.armas,
     this.poderes = const [],
+    this.rituais = const [],
     this.periciasClasse = const [],
   });
 
@@ -357,7 +361,9 @@ class AgenteDados {
 
     'poderes': poderes
         .map((p) => p.toJson())
-        .toList(), // <------ AGORA SALVA OS PODERES
+        .toList(),
+
+    'rituais': rituais.map((e) => e.toJson()).toList(),
 
     'periciasClasse': periciasClasse,
   };
@@ -394,8 +400,6 @@ class AgenteDados {
     armas: json['armas'] != null
         ? (json['armas'] as List).map((a) => Arma.fromJson(a)).toList()
         : <Arma>[],
-
-    // <------ CÓDIGO DE COMPATIBILIDADE ATUALIZADO AQUI
     poderes: json['poderes'] != null
         ? (json['poderes'] as List).map((p) {
             if (p is Map<String, dynamic>) {
@@ -410,6 +414,8 @@ class AgenteDados {
             return Poder(nome: "Erro", tipo: "Erro", descricao: "");
           }).toList()
         : <Poder>[],
+
+    rituais: json['rituais'] != null ? (json['rituais'] as List).map((i) => Ritual.fromJson(i)).toList() : [],
 
     periciasClasse: json['periciasClasse'] is List
         ? List<String>.from(json['periciasClasse'])

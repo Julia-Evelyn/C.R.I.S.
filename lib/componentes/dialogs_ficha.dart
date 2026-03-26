@@ -715,7 +715,6 @@ void mostrarDialogModificarEquipamento({
     builder: (context) {
       return StatefulBuilder(
         builder: (context, setDialogState) {
-          // ======== A SUA LÓGICA DE CÁLCULO EM TEMPO REAL ========
           int calcularCategoriaSimulada() {
             int base = getCatInt(catBase);
 

@@ -1064,7 +1064,7 @@ void mostrarDialogConfigurarEquipamentoBase({
   );
 }
 
-// CRIAR PODER PERSONALIZADO
+// Criar poder personalizado
 void mostrarDialogCriarPoder({
   required BuildContext context,
   required Color corDestaque,
@@ -1072,76 +1072,264 @@ void mostrarDialogCriarPoder({
   required Color corTexto,
   required Function(Poder) onConfirmar,
 }) {
-  String nome = "", desc = "", tipo = "Personalizado";
-  int custo = 0;
+  TextEditingController nomeCtrl = TextEditingController();
+  TextEditingController descCtrl = TextEditingController();
+  TextEditingController preReqCtrl = TextEditingController();
+  TextEditingController custoPECtrl = TextEditingController(text: "0");
+
+  bool isParanormal = false; // Começa na aba "Geral"
+  String elementoEscolhido =
+      "Sangue"; // Elemento padrão se for para a aba paranormal
 
   showDialog(
     context: context,
-    builder: (context) => AlertDialog(
-      backgroundColor: const Color(0xFF1A1A1A),
-      title: Text("Novo Poder", style: TextStyle(color: corDestaque)),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              decoration: EstiloParanormal.customInputDeco(
-                "Nome do Poder",
-                corDestaque,
-                Icons.bolt,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF1A1A1A),
+            title: Text("Criar Poder", style: TextStyle(color: corDestaque)),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: nomeCtrl,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: "Nome do Poder",
+                      labelStyle: const TextStyle(color: Colors.grey),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: corDestaque),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ============================================
+                  // NOVO SELETOR DE CATEGORIA (Geral vs Paranormal)
+                  // ============================================
+                  Container(
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0D0D0D),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade800),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Aba Geral
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setDialogState(() {
+                                isParanormal = false;
+                              });
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: !isParanormal
+                                    ? corDestaque
+                                    : Colors.transparent,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(7),
+                                  bottomLeft: Radius.circular(7),
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  "Geral",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: !isParanormal
+                                        ? Colors.black
+                                        : Colors.grey.shade500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Divisória sutil
+                        Container(width: 1, color: Colors.grey.shade800),
+                        // Aba Paranormal
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setDialogState(() {
+                                isParanormal = true;
+                              });
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: isParanormal
+                                    ? corDestaque
+                                    : Colors.transparent,
+                                borderRadius: const BorderRadius.only(
+                                  topRight: Radius.circular(7),
+                                  bottomRight: Radius.circular(7),
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  "Paranormal",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: isParanormal
+                                        ? Colors.black
+                                        : Colors.grey.shade500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ============================================
+                  // ESCOLHA DE ELEMENTO (Só aparece na aba Paranormal)
+                  // ============================================
+                  if (isParanormal) ...[
+                    const Text(
+                      "Elemento do Poder:",
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: ["Sangue", "Morte", "Energia", "Conhecimento"].map((
+                        elem,
+                      ) {
+                        Color corElem = elem == 'Sangue'
+                            ? const Color(0xFF990000)
+                            : elem == 'Energia'
+                            ? const Color(0xFF9900FF)
+                            : elem == 'Conhecimento'
+                            ? const Color(0xFFFFB300)
+                            : Colors.grey.shade400;
+                        bool selected = elementoEscolhido == elem;
+
+                        // Garante que o texto de Morte e Conhecimento fique legível quando selecionado
+                        Color txtCor = selected
+                            ? (elem == 'Conhecimento' || elem == 'Morte'
+                                  ? Colors.black
+                                  : Colors.white)
+                            : corElem;
+                        if (elem == 'Morte' && selected) {
+                          txtCor = Colors.black;
+                        } else if (elem == 'Morte' && !selected) {
+                          txtCor = Colors.white;
+                        }
+
+                        return ChoiceChip(
+                          label: Text(
+                            elem,
+                            style: TextStyle(
+                              color: txtCor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          selected: selected,
+                          selectedColor: corElem,
+                          backgroundColor: const Color(0xFF0D0D0D),
+                          side: BorderSide(
+                            color: selected ? corElem : Colors.grey.shade800,
+                          ),
+                          onSelected: (val) {
+                            if (val) {
+                              setDialogState(() => elementoEscolhido = elem);
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  TextField(
+                    controller: descCtrl,
+                    style: const TextStyle(color: Colors.white),
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: "Descrição",
+                      labelStyle: const TextStyle(color: Colors.grey),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: corDestaque),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: preReqCtrl,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: "Pré-requisitos (Ex: Sangue 1)",
+                      labelStyle: const TextStyle(color: Colors.grey),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: corDestaque),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: custoPECtrl,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: "Custo em PE",
+                      labelStyle: const TextStyle(color: Colors.grey),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: corDestaque),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              style: const TextStyle(color: Colors.white),
-              onChanged: (val) => nome = val,
             ),
-            const SizedBox(height: 16),
-            TextField(
-              decoration: EstiloParanormal.customInputDeco(
-                "Custo em PE",
-                corDestaque,
-                Icons.bolt_outlined,
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  "Cancelar",
+                  style: TextStyle(color: Colors.grey),
+                ),
               ),
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.white),
-              onChanged: (val) => custo = int.tryParse(val) ?? 0,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              decoration: EstiloParanormal.customInputDeco(
-                "Descrição",
-                corDestaque,
-                Icons.description,
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: corTema,
+                  foregroundColor: corTexto,
+                ),
+                onPressed: () {
+                  onConfirmar(
+                    Poder(
+                      nome: nomeCtrl.text.isNotEmpty
+                          ? nomeCtrl.text
+                          : "Poder Desconhecido",
+                      // Se for paranormal, usa o elemento. Senão, vai pro filtro "Gerais"
+                      tipo: isParanormal ? elementoEscolhido : "Gerais",
+                      descricao: descCtrl.text,
+                      preRequisitos: preReqCtrl.text.isNotEmpty
+                          ? preReqCtrl.text
+                          : "Nenhum",
+                      custoPE: int.tryParse(custoPECtrl.text) ?? 0,
+                    ),
+                  );
+                  Navigator.pop(context);
+                },
+                child: const Text("CRIAR"),
               ),
-              maxLines: 3,
-              style: const TextStyle(color: Colors.white),
-              onChanged: (val) => desc = val,
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("CANCELAR", style: TextStyle(color: Colors.grey)),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: corTema,
-            foregroundColor: corTexto,
-          ),
-          onPressed: () {
-            if (nome.isNotEmpty) {
-              onConfirmar(
-                Poder(nome: nome, tipo: tipo, descricao: desc, custoPE: custo),
-              );
-              Navigator.pop(context);
-            }
-          },
-          child: const Text(
-            "CRIAR",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-      ],
-    ),
+            ],
+          );
+        },
+      );
+    },
   );
 }
+

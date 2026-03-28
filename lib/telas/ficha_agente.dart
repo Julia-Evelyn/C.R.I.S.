@@ -66,6 +66,9 @@ class _FichaAgenteState extends State<FichaAgente> {
       maldicoesMorte = 0,
       maldicoesSangue = 0;
 
+  bool armaDeSangueAtiva = false;
+  bool encararAMorteAtivo = false;
+
   int pvMax = 0, peMax = 0, sanMax = 0, pvAtual = 0, peAtual = 0, sanAtual = 0;
   int defesa = 10, esquiva = 10, bloqueio = 0;
   String habNome = "", habDesc = "";
@@ -105,6 +108,18 @@ class _FichaAgenteState extends State<FichaAgente> {
     if (origemAtual == 'revoltado' &&
         poderesEscolhidos.any((p) => p.nome == "Revoltado_Sozinho")) {
       baseLimite += 1;
+    }
+
+    // PODER: ENCARAR A MORTE
+    if (encararAMorteAtivo) {
+      baseLimite +=
+          poderesEscolhidos.any(
+            (p) =>
+                p.nome.contains("Encarar a Morte") &&
+                p.nome.contains("(Afinidade)"),
+          )
+          ? 3
+          : 1;
     }
     return baseLimite;
   }
@@ -153,6 +168,9 @@ class _FichaAgenteState extends State<FichaAgente> {
   int get maosOcupadas {
     int m = 0;
     for (var a in armas.where((a) => a.equipado)) {
+      if (a.nome == "Arma de Sangue") {
+        continue; // Arma de Sangue não ocupa mãos
+      }
       if (a.empunhadura == 'Duas Mãos') {
         m += 2;
       } else {
@@ -638,6 +656,55 @@ class _FichaAgenteState extends State<FichaAgente> {
     if (!_modoVisualizacao) return;
     if (poder.custoPE <= 0) return;
 
+    // LÓGICA ESPECIAL PARA A ARMA DE SANGUE
+    if (poder.nome.contains("Arma de Sangue") && !armaDeSangueAtiva) {
+      if (peAtual >= poder.custoPE) {
+        setState(() {
+          peAtual -= poder.custoPE;
+          armaDeSangueAtiva = true;
+
+          bool temAfinidade = poderesEscolhidos.any(
+            (p) =>
+                p.nome.contains("Arma de Sangue") &&
+                p.nome.contains("(Afinidade)"),
+          );
+
+          // Cria e equipa automaticamente a arma de sangue
+          armas.add(
+            Arma(
+              nome: "Arma de Sangue",
+              tipo: "Corpo a Corpo",
+              dano: temAfinidade ? "1d10" : "1d6",
+              margemAmeaca: 20,
+              multiplicadorCritico: 2,
+              categoria: "0",
+              espaco: 0,
+              proficiencia: "Simples",
+              empunhadura: "Leve",
+              descricao: temAfinidade
+                  ? "Parte permanente de você. 1/turno: 1 PE para ataque extra."
+                  : "Dura até o fim da cena. 1/turno: 1 PE para ataque extra.",
+              equipado: true,
+            ),
+          );
+          atualizarFicha();
+        });
+        _salvarSilencioso();
+        _mostrarNotificacao("Arma de Sangue ativada: -${poder.custoPE} PE");
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("PE insuficientes!"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+      return;
+    } else if (poder.nome.contains("Arma de Sangue") && armaDeSangueAtiva) {
+      _mostrarNotificacao("Sua Arma de Sangue já está ativa.");
+      return;
+    }
+
     if (peAtual >= poder.custoPE) {
       setState(() => peAtual -= poder.custoPE);
       _salvarSilencioso();
@@ -724,6 +791,17 @@ class _FichaAgenteState extends State<FichaAgente> {
         arma.modificacoes.contains("Arma Favorita")) {
       modMargemTrilha += 2;
       aniquilador99 = true;
+    }
+
+    // ======== GOLPE DE SORTE ========
+    if (poderesEscolhidos.any((p) => p.nome.contains("Golpe de Sorte"))) {
+      modMargemTrilha += 1;
+      if (poderesEscolhidos.any(
+        (p) =>
+            p.nome.contains("Golpe de Sorte") && p.nome.contains("(Afinidade)"),
+      )) {
+        modMultExtra += 1;
+      }
     }
 
     Pericia perObj = listaPericias.firstWhere(
@@ -1799,8 +1877,742 @@ class _FichaAgenteState extends State<FichaAgente> {
                                         color: corDestaqueLocal,
                                       ),
                                       onTap: () {
+                                        // Usamos startsWith para abranger variantes personalizadas (Expansão, Fervente)
+                                        bool isPoderAtual =
+                                            isParanormal &&
+                                            poderesEscolhidos.any(
+                                              (pe) =>
+                                                  pe.nome.startsWith(p.nome),
+                                            );
+
+                                        // VERIFICAR PRÉ REQUISITOS DE AFINIDADE
+                                        if (isPoderAtual &&
+                                            afinidadeAtual != p.tipo) {
+                                          showDialog(
+                                            context: context,
+                                            builder: (ctxErro) => AlertDialog(
+                                              backgroundColor: const Color(
+                                                0xFF1A1A1A,
+                                              ),
+                                              title: const Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.warning_amber_rounded,
+                                                    color: Colors.redAccent,
+                                                  ),
+                                                  SizedBox(width: 8),
+                                                  Text(
+                                                    "Afinidade Incompatível",
+                                                    style: TextStyle(
+                                                      color: Colors.redAccent,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              content: const Text(
+                                                "Você precisa ter Afinidade com este elemento para aprimorar este poder!",
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(ctxErro),
+                                                  child: const Text(
+                                                    "OK",
+                                                    style: TextStyle(
+                                                      color: Colors.grey,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        // VERIFICAR PRÉ REQUISITOS DE PODERES
+                                        if (p.preRequisitos != "Nenhum" &&
+                                            p.preRequisitos.isNotEmpty) {
+                                          Map<String, int> contagem = {
+                                            "Sangue": poderesEscolhidos
+                                                .where(
+                                                  (pe) => pe.tipo == "Sangue",
+                                                )
+                                                .length,
+                                            "Morte": poderesEscolhidos
+                                                .where(
+                                                  (pe) => pe.tipo == "Morte",
+                                                )
+                                                .length,
+                                            "Energia": poderesEscolhidos
+                                                .where(
+                                                  (pe) => pe.tipo == "Energia",
+                                                )
+                                                .length,
+                                            "Conhecimento": poderesEscolhidos
+                                                .where(
+                                                  (pe) =>
+                                                      pe.tipo == "Conhecimento",
+                                                )
+                                                .length,
+                                          };
+                                          bool cumpre = true;
+                                          for (String req
+                                              in p.preRequisitos.split(',')) {
+                                            req = req.trim();
+                                            for (String elem in [
+                                              "Sangue",
+                                              "Morte",
+                                              "Energia",
+                                              "Conhecimento",
+                                            ]) {
+                                              if (req.startsWith(elem)) {
+                                                int needed =
+                                                    int.tryParse(
+                                                      req
+                                                          .replaceAll(elem, '')
+                                                          .trim(),
+                                                    ) ??
+                                                    0;
+                                                if (contagem[elem]! < needed) {
+                                                  cumpre = false;
+                                                }
+                                              }
+                                            }
+                                          }
+                                          if (!cumpre) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (ctxErro) => AlertDialog(
+                                                backgroundColor: const Color(
+                                                  0xFF1A1A1A,
+                                                ),
+                                                title: const Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.block,
+                                                      color: Colors.redAccent,
+                                                    ),
+                                                    SizedBox(width: 8),
+                                                    Text(
+                                                      "Requisito Ausente",
+                                                      style: TextStyle(
+                                                        color: Colors.redAccent,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                content: Text(
+                                                  "Pré-requisitos não atendidos: ${p.preRequisitos}",
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(ctxErro),
+                                                    child: const Text(
+                                                      "OK",
+                                                      style: TextStyle(
+                                                        color: Colors.grey,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                            return;
+                                          }
+                                        }
+
+                                        // REGRA: SANGUE FERVENTE
+                                        if (p.nome == "Sangue Fervente") {
+                                          showDialog(
+                                            context: context,
+                                            builder: (ctx) => AlertDialog(
+                                              backgroundColor: const Color(
+                                                0xFF1A1A1A,
+                                              ),
+                                              title: Text(
+                                                isPoderAtual
+                                                    ? "Sangue Fervente (Afinidade)"
+                                                    : "Sangue Fervente",
+                                                style: TextStyle(
+                                                  color: corDestaqueLocal,
+                                                ),
+                                              ),
+                                              content: const Text(
+                                                "Escolha o atributo para receber o bônus enquanto estiver machucado:",
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () {
+                                                    setState(() {
+                                                      if (isPoderAtual) {
+                                                        poderesEscolhidos
+                                                            .removeWhere(
+                                                              (pe) => pe.nome
+                                                                  .startsWith(
+                                                                    "Sangue Fervente",
+                                                                  ),
+                                                            );
+                                                        poderesEscolhidos.add(
+                                                          Poder(
+                                                            nome:
+                                                                "Sangue Fervente (AGI) (Afinidade)",
+                                                            tipo: p.tipo,
+                                                            descricao:
+                                                                p.descricao,
+                                                            preRequisitos:
+                                                                p.preRequisitos,
+                                                            custoPE: p.custoPE,
+                                                          ),
+                                                        );
+                                                      } else {
+                                                        poderesEscolhidos.add(
+                                                          Poder(
+                                                            nome:
+                                                                "Sangue Fervente (AGI)",
+                                                            tipo: p.tipo,
+                                                            descricao:
+                                                                p.descricao,
+                                                            preRequisitos:
+                                                                p.preRequisitos,
+                                                            custoPE: p.custoPE,
+                                                          ),
+                                                        );
+                                                      }
+                                                      atualizarFicha();
+                                                    });
+                                                    Navigator.pop(ctx);
+                                                    Navigator.pop(context);
+                                                  },
+                                                  child: Text(
+                                                    "AGILIDADE",
+                                                    style: TextStyle(
+                                                      color: corDestaqueLocal,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () {
+                                                    setState(() {
+                                                      if (isPoderAtual) {
+                                                        poderesEscolhidos
+                                                            .removeWhere(
+                                                              (pe) => pe.nome
+                                                                  .startsWith(
+                                                                    "Sangue Fervente",
+                                                                  ),
+                                                            );
+                                                        poderesEscolhidos.add(
+                                                          Poder(
+                                                            nome:
+                                                                "Sangue Fervente (FOR) (Afinidade)",
+                                                            tipo: p.tipo,
+                                                            descricao:
+                                                                p.descricao,
+                                                            preRequisitos:
+                                                                p.preRequisitos,
+                                                            custoPE: p.custoPE,
+                                                          ),
+                                                        );
+                                                      } else {
+                                                        poderesEscolhidos.add(
+                                                          Poder(
+                                                            nome:
+                                                                "Sangue Fervente (FOR)",
+                                                            tipo: p.tipo,
+                                                            descricao:
+                                                                p.descricao,
+                                                            preRequisitos:
+                                                                p.preRequisitos,
+                                                            custoPE: p.custoPE,
+                                                          ),
+                                                        );
+                                                      }
+                                                      atualizarFicha();
+                                                    });
+                                                    Navigator.pop(ctx);
+                                                    Navigator.pop(context);
+                                                  },
+                                                  child: Text(
+                                                    "FORÇA",
+                                                    style: TextStyle(
+                                                      color: corDestaqueLocal,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        // REGRA: RESISTIR A ELEMENTO
+                                        if (p.nome == "Resistir a Elemento") {
+                                          if (isPoderAtual) {
+                                            setState(() {
+                                              String existingName =
+                                                  poderesEscolhidos
+                                                      .firstWhere(
+                                                        (
+                                                          pe,
+                                                        ) => pe.nome.startsWith(
+                                                          "Resistir a Elemento",
+                                                        ),
+                                                      )
+                                                      .nome;
+                                              poderesEscolhidos.removeWhere(
+                                                (pe) => pe.nome.startsWith(
+                                                  "Resistir a Elemento",
+                                                ),
+                                              );
+                                              poderesEscolhidos.add(
+                                                Poder(
+                                                  nome:
+                                                      "$existingName (Afinidade)",
+                                                  tipo: p.tipo,
+                                                  descricao: p.descricao,
+                                                  preRequisitos:
+                                                      p.preRequisitos,
+                                                  custoPE: p.custoPE,
+                                                ),
+                                              );
+                                              atualizarFicha();
+                                            });
+                                            Navigator.pop(context);
+                                            return;
+                                          } else {
+                                            showDialog(
+                                              context: context,
+                                              builder: (ctx) => AlertDialog(
+                                                backgroundColor: const Color(
+                                                  0xFF1A1A1A,
+                                                ),
+                                                title: Text(
+                                                  "Resistir a Elemento",
+                                                  style: TextStyle(
+                                                    color: corDestaqueLocal,
+                                                  ),
+                                                ),
+                                                content: Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children:
+                                                      [
+                                                        "Sangue",
+                                                        "Morte",
+                                                        "Energia",
+                                                        "Conhecimento",
+                                                      ].map((elem) {
+                                                        return ListTile(
+                                                          title: Text(
+                                                            elem,
+                                                            style:
+                                                                const TextStyle(
+                                                                  color: Colors
+                                                                      .white,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                ),
+                                                          ),
+                                                          onTap: () {
+                                                            setState(() {
+                                                              poderesEscolhidos.add(
+                                                                Poder(
+                                                                  nome:
+                                                                      "Resistir a Elemento ($elem)",
+                                                                  tipo: p.tipo,
+                                                                  descricao: p
+                                                                      .descricao,
+                                                                  preRequisitos:
+                                                                      p.preRequisitos,
+                                                                  custoPE:
+                                                                      p.custoPE,
+                                                                ),
+                                                              );
+                                                              atualizarFicha();
+                                                            });
+                                                            Navigator.pop(ctx);
+                                                            Navigator.pop(
+                                                              context,
+                                                            );
+                                                          },
+                                                        );
+                                                      }).toList(),
+                                                ),
+                                              ),
+                                            );
+                                            return;
+                                          }
+                                        }
+
+                                        // REGRA: EXPANSÃO DE CONHECIMENTO
+                                        if (p.nome ==
+                                            "Expansão de Conhecimento") {
+                                          List<Poder> outrasClasses = [];
+                                          List<String> opcoesFiltro = ["Todos"];
+                                          if (classeAtual != 'combatente') {
+                                            outrasClasses.addAll(
+                                              catalogoPoderesCombatente,
+                                            );
+                                            opcoesFiltro.add("Combatente");
+                                          }
+                                          if (classeAtual != 'especialista') {
+                                            outrasClasses.addAll(
+                                              catalogoPoderesEspecialista,
+                                            );
+                                            opcoesFiltro.add("Especialista");
+                                          }
+                                          if (classeAtual != 'ocultista') {
+                                            outrasClasses.addAll(
+                                              catalogoPoderesOcultista,
+                                            );
+                                            opcoesFiltro.add("Ocultista");
+                                          }
+
+                                          String filtroExpansao =
+                                              "Todos"; // Estado local do Pop-up
+
+                                          showDialog(
+                                            context: context,
+                                            builder: (ctx) {
+                                              return StatefulBuilder(
+                                                builder: (context, setExpansaoState) {
+                                                  // Filtra a lista com base no botão clicado
+                                                  List<Poder> listaFiltrada =
+                                                      outrasClasses.where((
+                                                        pod,
+                                                      ) {
+                                                        if (filtroExpansao ==
+                                                            "Todos") {
+                                                          return true;
+                                                        }
+                                                        return pod.tipo ==
+                                                            filtroExpansao;
+                                                      }).toList();
+
+                                                  return AlertDialog(
+                                                    backgroundColor:
+                                                        const Color(0xFF1A1A1A),
+                                                    title: Text(
+                                                      isPoderAtual
+                                                          ? "Expansão (Afinidade)"
+                                                          : "Expansão de Conhecimento",
+                                                      style: TextStyle(
+                                                        color: corDestaqueLocal,
+                                                      ),
+                                                    ),
+                                                    content: SizedBox(
+                                                      width: double.maxFinite,
+                                                      height: 400,
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .stretch,
+                                                        children: [
+                                                          // BOTOES DE FILTRO DA EXPANSÃO
+                                                          SingleChildScrollView(
+                                                            scrollDirection:
+                                                                Axis.horizontal,
+                                                            child: Row(
+                                                              children: opcoesFiltro
+                                                                  .map(
+                                                                    (
+                                                                      cat,
+                                                                    ) => Padding(
+                                                                      padding: const EdgeInsets.only(
+                                                                        right:
+                                                                            8.0,
+                                                                      ),
+                                                                      child: ChoiceChip(
+                                                                        label: Text(
+                                                                          cat,
+                                                                          style: TextStyle(
+                                                                            color:
+                                                                                filtroExpansao ==
+                                                                                    cat
+                                                                                ? Colors.black
+                                                                                : Colors.grey.shade400,
+                                                                            fontWeight:
+                                                                                FontWeight.bold,
+                                                                            fontSize:
+                                                                                12,
+                                                                          ),
+                                                                        ),
+                                                                        selected:
+                                                                            filtroExpansao ==
+                                                                            cat,
+                                                                        onSelected: (val) => setExpansaoState(
+                                                                          () => filtroExpansao =
+                                                                              cat,
+                                                                        ),
+                                                                        selectedColor:
+                                                                            Colors.white,
+                                                                        backgroundColor:
+                                                                            const Color(
+                                                                              0xFF0D0D0D,
+                                                                            ),
+                                                                        side: BorderSide(
+                                                                          color:
+                                                                              filtroExpansao ==
+                                                                                  cat
+                                                                              ? Colors.white
+                                                                              : Colors.grey.shade800,
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                  )
+                                                                  .toList(),
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 12,
+                                                          ),
+
+                                                          // LISTA DE PODERES ESTRANGEIROS
+                                                          Expanded(
+                                                            child: ListView.builder(
+                                                              itemCount:
+                                                                  listaFiltrada
+                                                                      .length,
+                                                              itemBuilder: (context, idxClass) {
+                                                                var pEstrangeiro =
+                                                                    listaFiltrada[idxClass];
+                                                                return Theme(
+                                                                  data:
+                                                                      Theme.of(
+                                                                        context,
+                                                                      ).copyWith(
+                                                                        dividerColor:
+                                                                            Colors.transparent,
+                                                                      ),
+                                                                  child: ExpansionTile(
+                                                                    iconColor:
+                                                                        Colors
+                                                                            .white,
+                                                                    collapsedIconColor:
+                                                                        Colors
+                                                                            .white54,
+                                                                    title: Text(
+                                                                      pEstrangeiro
+                                                                          .nome,
+                                                                      style: const TextStyle(
+                                                                        color: Colors
+                                                                            .white,
+                                                                        fontWeight:
+                                                                            FontWeight.bold,
+                                                                        fontSize:
+                                                                            14,
+                                                                      ),
+                                                                    ),
+                                                                    subtitle: Text(
+                                                                      pEstrangeiro.preRequisitos !=
+                                                                              "Nenhum"
+                                                                          ? "Pré-req: ${pEstrangeiro.preRequisitos}"
+                                                                          : "Sem Pré-requisito",
+                                                                      style: const TextStyle(
+                                                                        color: Colors
+                                                                            .grey,
+                                                                        fontSize:
+                                                                            10,
+                                                                      ),
+                                                                    ),
+                                                                    trailing: IconButton(
+                                                                      icon: const Icon(
+                                                                        Icons
+                                                                            .add_circle,
+                                                                        color: Colors
+                                                                            .white,
+                                                                      ),
+                                                                      onPressed: () {
+                                                                        // VERIFICAÇÃO DE PRÉ-REQUISITOS DO PODER ESTRANGEIRO
+                                                                        if (pEstrangeiro.preRequisitos !=
+                                                                                "Nenhum" &&
+                                                                            pEstrangeiro.preRequisitos.isNotEmpty) {
+                                                                          Map<
+                                                                            String,
+                                                                            int
+                                                                          >
+                                                                          contagem = {
+                                                                            "Sangue": poderesEscolhidos
+                                                                                .where(
+                                                                                  (
+                                                                                    pe,
+                                                                                  ) =>
+                                                                                      pe.tipo ==
+                                                                                      "Sangue",
+                                                                                )
+                                                                                .length,
+                                                                            "Morte": poderesEscolhidos
+                                                                                .where(
+                                                                                  (
+                                                                                    pe,
+                                                                                  ) =>
+                                                                                      pe.tipo ==
+                                                                                      "Morte",
+                                                                                )
+                                                                                .length,
+                                                                            "Energia": poderesEscolhidos
+                                                                                .where(
+                                                                                  (
+                                                                                    pe,
+                                                                                  ) =>
+                                                                                      pe.tipo ==
+                                                                                      "Energia",
+                                                                                )
+                                                                                .length,
+                                                                            "Conhecimento": poderesEscolhidos
+                                                                                .where(
+                                                                                  (
+                                                                                    pe,
+                                                                                  ) =>
+                                                                                      pe.tipo ==
+                                                                                      "Conhecimento",
+                                                                                )
+                                                                                .length,
+                                                                          };
+                                                                          bool
+                                                                          cumpre =
+                                                                              true;
+                                                                          for (String req in pEstrangeiro.preRequisitos.split(
+                                                                            ',',
+                                                                          )) {
+                                                                            req =
+                                                                                req.trim();
+                                                                            for (String elem in [
+                                                                              "Sangue",
+                                                                              "Morte",
+                                                                              "Energia",
+                                                                              "Conhecimento",
+                                                                            ]) {
+                                                                              if (req.startsWith(
+                                                                                elem,
+                                                                              )) {
+                                                                                int
+                                                                                needed =
+                                                                                    int.tryParse(
+                                                                                      req
+                                                                                          .replaceAll(
+                                                                                            elem,
+                                                                                            '',
+                                                                                          )
+                                                                                          .trim(),
+                                                                                    ) ??
+                                                                                    0;
+                                                                                if (contagem[elem]! <
+                                                                                    needed) {
+                                                                                  cumpre = false;
+                                                                                }
+                                                                              }
+                                                                            }
+                                                                          }
+                                                                          if (!cumpre) {
+                                                                            ScaffoldMessenger.of(
+                                                                              context,
+                                                                            ).showSnackBar(
+                                                                              SnackBar(
+                                                                                content: Text(
+                                                                                  "Pré-requisitos não atendidos: ${pEstrangeiro.preRequisitos}",
+                                                                                ),
+                                                                                backgroundColor: Colors.redAccent,
+                                                                                behavior: SnackBarBehavior.floating,
+                                                                              ),
+                                                                            );
+                                                                            return;
+                                                                          }
+                                                                        }
+
+                                                                        setState(() {
+                                                                          String
+                                                                          prefix =
+                                                                              isPoderAtual
+                                                                              ? "Expansão (Afinidade)"
+                                                                              : "Expansão";
+                                                                          poderesEscolhidos.add(
+                                                                            Poder(
+                                                                              nome: "$prefix: ${pEstrangeiro.nome}",
+                                                                              tipo: p.tipo,
+                                                                              descricao: pEstrangeiro.descricao,
+                                                                              preRequisitos: pEstrangeiro.preRequisitos,
+                                                                              custoPE: pEstrangeiro.custoPE,
+                                                                            ),
+                                                                          );
+                                                                          atualizarFicha();
+                                                                        });
+                                                                        Navigator.pop(
+                                                                          ctx,
+                                                                        );
+                                                                        Navigator.pop(
+                                                                          context,
+                                                                        );
+                                                                      },
+                                                                    ),
+                                                                    children: [
+                                                                      Padding(
+                                                                        padding: const EdgeInsets.only(
+                                                                          left:
+                                                                              16,
+                                                                          right:
+                                                                              16,
+                                                                          bottom:
+                                                                              16,
+                                                                        ),
+                                                                        child: Text(
+                                                                          pEstrangeiro
+                                                                              .descricao,
+                                                                          style: const TextStyle(
+                                                                            color:
+                                                                                Colors.white70,
+                                                                            fontSize:
+                                                                                12,
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                );
+                                                              },
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(ctx),
+                                                        child: const Text(
+                                                          "CANCELAR",
+                                                          style: TextStyle(
+                                                            color: Colors.grey,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
+                                              );
+                                            },
+                                          );
+                                          return;
+                                        }
+
+                                        // ADIÇÃO NORMAL DE PODERES
                                         setState(() {
-                                          if (upandoAfinidade) {
+                                          if (isPoderAtual) {
                                             poderesEscolhidos.removeWhere(
                                               (pe) => pe.nome == p.nome,
                                             );
@@ -1809,6 +2621,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                                                 nome: "${p.nome} (Afinidade)",
                                                 tipo: p.tipo,
                                                 descricao: p.descricao,
+                                                custoPE: p.custoPE,
                                               ),
                                             );
                                           } else {
@@ -1883,22 +2696,6 @@ class _FichaAgenteState extends State<FichaAgente> {
           if (nex >= 99) {
             efInt -= 1;
             efFor += 1;
-          }
-          if (nex >= 65 && !armas.any((a) => a.nome == "Mordida Monstruosa")) {
-            armas.add(
-              Arma(
-                nome: "Mordida Monstruosa",
-                tipo: "Corpo a Corpo",
-                dano: "1d8",
-                margemAmeaca: 20,
-                multiplicadorCritico: 2,
-                categoria: "0",
-                espaco: 0,
-                proficiencia: "Simples",
-                empunhadura: "Leve",
-                descricao: "Arma natural (Faro).",
-              ),
-            );
           }
         } else if (elem == 'Morte') {
           resistencias['Perfuração'] =
@@ -1995,6 +2792,60 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
       }
 
+      // ==========================================
+      // BÔNUS PASSIVOS DE PODERES PARANORMAIS
+      // ==========================================
+
+      // ESPREITAR DA BESTA
+      if (poderesEscolhidos.any((p) => p.nome.contains("Espreitar da Besta"))) {
+        int bonusEspreitar =
+            poderesEscolhidos.any(
+              (p) =>
+                  p.nome.contains("Espreitar da Besta") &&
+                  p.nome.contains("(Afinidade)"),
+            )
+            ? 10
+            : 5;
+        bonusOrigem['furtividade'] =
+            (bonusOrigem['furtividade'] ?? 0) + bonusEspreitar;
+      }
+
+      // PRECOGNIÇÃO
+      if (poderesEscolhidos.any((p) => p.nome.contains("Precognição"))) {
+        defesa += 2;
+        bonusOrigem['fortitude'] = (bonusOrigem['fortitude'] ?? 0) + 2;
+        bonusOrigem['reflexos'] = (bonusOrigem['reflexos'] ?? 0) + 2;
+        bonusOrigem['vontade'] = (bonusOrigem['vontade'] ?? 0) + 2;
+      }
+
+      // SENSITIVO
+      if (poderesEscolhidos.any((p) => p.nome.contains("Sensitivo"))) {
+        bonusOrigem['diplomacia'] = (bonusOrigem['diplomacia'] ?? 0) + 5;
+        bonusOrigem['intimidacao'] = (bonusOrigem['intimidacao'] ?? 0) + 5;
+        bonusOrigem['intuicao'] = (bonusOrigem['intuicao'] ?? 0) + 5;
+      }
+
+      // VISÃO DO OCULTO
+      if (poderesEscolhidos.any((p) => p.nome.contains("Visão do Oculto"))) {
+        bonusOrigem['percepcao'] = (bonusOrigem['percepcao'] ?? 0) + 5;
+      }
+
+      // RESISTIR A ELEMENTO
+      for (var elem in ["Sangue", "Morte", "Energia", "Conhecimento"]) {
+        if (poderesEscolhidos.any(
+          (p) => p.nome.contains("Resistir a Elemento ($elem)"),
+        )) {
+          int resValor =
+              poderesEscolhidos.any(
+                (p) =>
+                    p.nome.contains("Resistir a Elemento ($elem) (Afinidade)"),
+              )
+              ? 20
+              : 10;
+          resistencias[elem] = (resistencias[elem] ?? 0) + resValor;
+        }
+      }
+
       if (origemAtual == 'colegial' &&
           poderesEscolhidos.any((p) => p.nome == "Colegial_Perto") &&
           !poderesEscolhidos.any((p) => p.nome == "Colegial_Morto")) {
@@ -2037,6 +2888,21 @@ class _FichaAgenteState extends State<FichaAgente> {
           pvMax += efFor;
         }
 
+        // PODER: SANGUE DE FERRO
+        if (poderesEscolhidos.any((p) => p.nome.contains("Sangue de Ferro"))) {
+          pvMax += (nivel * 2);
+
+          if (poderesEscolhidos.any(
+            (p) =>
+                p.nome.contains("Sangue de Ferro") &&
+                p.nome.contains("(Afinidade)"),
+          )) {
+            bonusOrigem['fortitude'] = (bonusOrigem['fortitude'] ?? 0) + 5;
+            resistencias['Venenos'] = 999;
+            resistencias['Doenças'] = 999;
+          }
+        }
+
         peMax =
             stats.peBase +
             (atributoPE * nivel) +
@@ -2044,6 +2910,20 @@ class _FichaAgenteState extends State<FichaAgente> {
         if (origemAtual == 'colegial' &&
             poderesEscolhidos.any((p) => p.nome == "Colegial_Morto")) {
           peMax -= nivel;
+        }
+        // POTENCIAL APRIMORADO
+        if (poderesEscolhidos.any(
+          (p) => p.nome.contains("Potencial Aprimorado"),
+        )) {
+          int bonusPE =
+              poderesEscolhidos.any(
+                (p) =>
+                    p.nome.contains("Potencial Aprimorado") &&
+                    p.nome.contains("(Afinidade)"),
+              )
+              ? 2
+              : 1;
+          peMax += (bonusPE * nivel);
         }
 
         int qtdParanormal = poderesEscolhidos
@@ -2155,7 +3035,6 @@ class _FichaAgenteState extends State<FichaAgente> {
           maldicoesSangue++;
         }
 
-        // Status bônus de Maldições de Acessórios/Proteções
         if (m == "Sagacidade") efInt += 1;
         if (m == "Carisma") efPre += 1;
         if (m == "Destreza") efAgi += 1;
@@ -2199,7 +3078,7 @@ class _FichaAgenteState extends State<FichaAgente> {
         if (m == "Proteção Elemental (Morte)") {
           resistencias['Morte'] = (resistencias['Morte'] ?? 0) + 10;
         }
-        if (m == "Proteção Elemental एनर्जी") {
+        if (m == "Proteção Elemental (Energia)") {
           resistencias['Energia'] = (resistencias['Energia'] ?? 0) + 10;
         }
         if (m == "Proteção Elemental (Conhecimento)") {
@@ -2208,7 +3087,6 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
       }
 
-      // Varredura Itens
       for (var item in inventario.where((i) => i.equipado)) {
         String nomeLower = item.nome.toLowerCase();
         String descLower = item.descricao.toLowerCase();
@@ -2250,7 +3128,6 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
       }
 
-      // Varredura Armas (Apenas pro Preço da Maldição e Repulsora)
       for (var arma in armas.where((a) => a.equipado)) {
         for (var mod in arma.modificacoes) {
           processarMaldicao(mod);
@@ -2291,6 +3168,26 @@ class _FichaAgenteState extends State<FichaAgente> {
         defesa += efInt;
       }
       if (estaSobrecarregado) defesa -= 5;
+      // PRECOGNIÇÃO (+2 na Defesa)
+      if (poderesEscolhidos.any((p) => p.nome.contains("Precognição"))) {
+        defesa += 2;
+      }
+
+      // RESISTIR A ELEMENTO (10 ou 20 com afinidade)
+      for (var elem in ["Sangue", "Morte", "Energia", "Conhecimento"]) {
+        if (poderesEscolhidos.any(
+          (p) => p.nome.contains("Resistir a Elemento ($elem)"),
+        )) {
+          int resValor =
+              poderesEscolhidos.any(
+                (p) =>
+                    p.nome.contains("Resistir a Elemento ($elem) (Afinidade)"),
+              )
+              ? 20
+              : 10;
+          resistencias[elem] = (resistencias[elem] ?? 0) + resValor;
+        }
+      }
 
       esquiva = defesa + bReflexos;
       bloqueio = bFortitude + bonusBloqueioBracadeira;
@@ -2304,6 +3201,28 @@ class _FichaAgenteState extends State<FichaAgente> {
       if (trilhaAtual == 'tropa_de_choque' && nex >= 99 && isMachucado) {
         defesa += 5;
         resistencias['Geral'] = (resistencias['Geral'] ?? 0) + 5;
+      }
+
+      // PODER: SANGUE FERVENTE
+      if (isMachucado) {
+        int bonusSangueFervente =
+            poderesEscolhidos.any(
+              (p) =>
+                  p.nome.contains("Sangue Fervente") &&
+                  p.nome.contains("(Afinidade)"),
+            )
+            ? 2
+            : 1;
+
+        if (poderesEscolhidos.any(
+          (p) => p.nome.contains("Sangue Fervente (AGI)"),
+        )) {
+          efAgi += bonusSangueFervente;
+        } else if (poderesEscolhidos.any(
+          (p) => p.nome.contains("Sangue Fervente (FOR)"),
+        )) {
+          efFor += bonusSangueFervente;
+        }
       }
 
       if (trilhaAtual == 'cacador' && nex >= 10) {
@@ -3070,21 +3989,25 @@ class _FichaAgenteState extends State<FichaAgente> {
             ],
           ),
 
+          // ======== SEÇÃO DE ATRIBUTOS (COM VISUAL CORRIGIDO) ========
+          // ======== SEÇÃO DE ATRIBUTOS (COM VISUAL TOTALMENTE CORRIGIDO) ========
           SecaoFicha(
             titulo: "Atributos ${block ? '(Toque para Rolar)' : ''}",
             corTema: corFundoAfinidade,
             corTexto: corTextoAfinidade,
             isMorte: afinidadeAtual == 'Morte',
             filhos: [
-              // ======== CONTADOR DE ATRIBUTOS (Mostra no Modo Edição) ========
-              if (!block)
+              // ======== CONTADOR DE ATRIBUTOS AQUI ========
+              if (!block) // Só mostra o contador se o modo de edição estiver ativado
                 Align(
                   alignment: Alignment.centerRight,
                   child: Container(
-                    margin: const EdgeInsets.only(bottom: 16),
+                    margin: const EdgeInsets.only(
+                      bottom: 16,
+                    ), // Espaçamento antes dos botões
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+                      horizontal: 10,
+                      vertical: 4,
                     ),
                     decoration: BoxDecoration(
                       color: totalAtributosAtuais > totalAtributosPermitidos
@@ -3104,12 +4027,10 @@ class _FichaAgenteState extends State<FichaAgente> {
                     ),
                   ),
                 ),
-              // ======== GRID RESPONSIVO DE ATRIBUTOS ========
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 12, // Espaço horizontal entre os quadrados
-                runSpacing:
-                    16, // Espaço vertical se a tela for pequena e quebrar linha
+
+              // ===========================================
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   AtributoInputFicha(
                     label: "AGI",
@@ -3139,15 +4060,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                     isVisu: block,
                     corPopUp: corDestaque,
                     onChanged: (val) {
-                      int oldInt = inte;
                       inte = int.tryParse(val) ?? 0;
-                      if (inte > oldInt) {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          _mostrarNotificacao(
-                            "Intelecto aumentado! Você ganhou +1 Perícia Livre.",
-                          );
-                        });
-                      }
                       atualizarFicha();
                     },
                     onRolarDado: _rolarDado,
@@ -3324,6 +4237,8 @@ class _FichaAgenteState extends State<FichaAgente> {
                   }
 
                   int modMargemTrilha = 0;
+                  int modMultTrilha = 0;
+
                   if (trilhaAtual == 'guerreiro' &&
                       nex >= 10 &&
                       arma.tipo == 'Corpo a Corpo') {
@@ -3334,9 +4249,26 @@ class _FichaAgenteState extends State<FichaAgente> {
                       arma.modificacoes.contains("Arma Favorita")) {
                     modMargemTrilha += 2;
                   }
+
+                  // ======== GOLPE DE SORTE ========
+                  if (poderesEscolhidos.any(
+                    (p) => p.nome.contains("Golpe de Sorte"),
+                  )) {
+                    modMargemTrilha += 1;
+                    if (poderesEscolhidos.any(
+                      (p) =>
+                          p.nome.contains("Golpe de Sorte") &&
+                          p.nome.contains("(Afinidade)"),
+                    )) {
+                      modMultTrilha += 1;
+                    }
+                  }
+                  // ================================
+
                   int margemExibida =
                       arma.margemAmeacaEfetiva - modMargemTrilha;
                   if (margemExibida < 2) margemExibida = 2;
+                  int multExibido = arma.multiplicadorCritico + modMultTrilha;
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
@@ -3357,7 +4289,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Dano: ${arma.danoEfetivo}$modDano | Crítico: $margemExibida/x${arma.multiplicadorCritico} \nTipo: ${arma.tipo}$alertaProf",
+                            "Dano: ${arma.danoEfetivo}$modDano | Crítico: $margemExibida/x$multExibido \nTipo: ${arma.tipo}$alertaProf",
                             style: TextStyle(
                               color: isProficiente
                                   ? Colors.grey
@@ -3418,7 +4350,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Trilha
+          // 1. EXIBIÇÃO DA TRILHA
           if (trilhaAtual != '--')
             SecaoFicha(
               titulo:
@@ -3475,7 +4407,7 @@ class _FichaAgenteState extends State<FichaAgente> {
               ],
             ),
 
-          // Origem
+          // 2. EXIBIÇÃO DA ORIGEM
           if (origemAtual != '--')
             SecaoFicha(
               titulo:
@@ -3614,7 +4546,7 @@ class _FichaAgenteState extends State<FichaAgente> {
               ],
             ),
 
-          // Afinidade
+          // 3. EXIBIÇÃO DA AFINIDADE ELEMENTAL
           if (afinidadeAtual != null && afinidadeAtual!.isNotEmpty && nex >= 50)
             SecaoFicha(
               titulo: "Afinidade Elemental",
@@ -3655,7 +4587,7 @@ class _FichaAgenteState extends State<FichaAgente> {
               ],
             ),
 
-          // Poderes
+          // 4. EXIBIÇÃO DA LISTA DE PODERES
           SecaoFicha(
             titulo: "Poderes",
             corTema: corFundoAfinidade,
@@ -3862,6 +4794,57 @@ class _FichaAgenteState extends State<FichaAgente> {
                             p.nome == "Eclético" ||
                             p.nome.startsWith("Perito") ||
                             p.nome == "Escolhido pelo Outro Lado";
+
+                        // Mostra o Switch Vermelho se a Arma de Sangue estiver Ativa!
+                        if (block &&
+                            p.nome.contains("Arma de Sangue") &&
+                            armaDeSangueAtiva) {
+                          bool temAfinidadeArma = poderesEscolhidos.any(
+                            (pe) =>
+                                pe.nome.contains("Arma de Sangue") &&
+                                pe.nome.contains("(Afinidade)"),
+                          );
+                          if (temAfinidadeArma) {
+                            return const Icon(
+                              Icons.check_circle,
+                              color: Colors.redAccent,
+                              size: 24,
+                            );
+                          }
+
+                          return Switch(
+                            value: armaDeSangueAtiva,
+                            activeThumbColor: Colors.redAccent,
+                            onChanged: (val) {
+                              if (!val) {
+                                setState(() {
+                                  armaDeSangueAtiva = false;
+                                  armas.removeWhere(
+                                    (a) => a.nome == "Arma de Sangue",
+                                  );
+                                  atualizarFicha();
+                                });
+                                _salvarSilencioso();
+                                _mostrarNotificacao("Arma de Sangue desfeita.");
+                              }
+                            },
+                          );
+                        }
+
+                        // NOVO: Switch Branco para Encarar a Morte!
+                        if (block && p.nome.contains("Encarar a Morte")) {
+                          return Switch(
+                            value: encararAMorteAtivo,
+                            activeThumbColor: Colors.white,
+                            onChanged: (val) {
+                              setState(() {
+                                encararAMorteAtivo = val;
+                                atualizarFicha(); // Atualiza o PE/Turno visualmente
+                              });
+                            },
+                          );
+                        }
+
                         if (block) return null;
                         if (isPoderDeClasse) {
                           return const Icon(
@@ -3876,7 +4859,15 @@ class _FichaAgenteState extends State<FichaAgente> {
                               color: Colors.redAccent,
                             ),
                             onPressed: () {
-                              setState(() => poderesEscolhidos.removeAt(index));
+                              setState(() {
+                                poderesEscolhidos.removeAt(index);
+                                if (p.nome.contains("Arma de Sangue")) {
+                                  armaDeSangueAtiva = false;
+                                  armas.removeWhere(
+                                    (a) => a.nome == "Arma de Sangue",
+                                  );
+                                }
+                              });
                               atualizarFicha();
                             },
                           );

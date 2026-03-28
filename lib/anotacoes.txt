@@ -42,13 +42,19 @@ FEITO:
 - Subcategoria na aba de rituais pra facilitar navegação (1º, 2º círculo; morte, energia, etc) ----- FEITO
 - Adicionar DT de rituais na aba de rituais ----- FEITO
 - Adicionar maldições ----- FEITO
+- Poder criar ritual personalizado ----- FEITO
+- Add poder criar poder geral, paranormal, de classe e  Fazer um pop-up com várias opções de que tipo de poder será criado. ----- FEITO
+- Lógica de Poderes Paranormais ----- FEITO
 
 FALTA FAZER:
 
+- Add itens amaldiçoados
+- Concertar add componente de (elemento) e amarras de (elemento)
 - Concertar visualização dos atributos em telas maiores
+- Remover amaldiçoar arma de medo
 - Remover perícias escolhidas ao trocar de classe
-- Add poder criar poder geral, paranormal, de classe e ritual personalizado. Fazer um pop-up com várias opções de que tipo de poder será criado.
-- Lógica de cada poder (geral, de classe, paranormal e trilha)
+- recuperar sanidade perdida ao deletar um poder paranormal
+- Lógica de cada poder (geral, de classe e trilha)
 - Poder puxar um personagem pro lado na tela de início e aparecer opções de Duplicar personagem (talvez tela de edição de backstory?)
 - Fazer cada ritual ter uma aparência diferente de acordo com elemento. O de medo é o que mais deve se destacar, possuindo fundo branco e aura que se mexe levemente. Colocar fundo de acordo com a cor de cada elemento.
 - Configurar maldições

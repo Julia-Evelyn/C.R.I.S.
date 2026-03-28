@@ -266,235 +266,293 @@ extension _EquipamentosFicha on _FichaAgenteState {
                 ),
 
               // ================= ARMAS EXPANSÍVEIS =================
-              ...armas.asMap().entries.map((entry) {
-                int index = entry.key;
-                var arma = entry.value;
+              ...armas
+                  .asMap()
+                  .entries
+                  .where((e) => e.value.nome != "Arma de Sangue")
+                  .map((entry) {
+                    int index = entry.key;
+                    var arma = entry.value;
 
-                bool isProficiente =
-                    arma.proficiencia == 'Simples' ||
-                    (arma.proficiencia == 'Táticas' &&
-                        classeAtual == 'combatente');
-                String alertaProf = isProficiente
-                    ? ""
-                    : "\n⚠️ Não proficiente: -2d20 no Ataque";
-                String modDano = "";
-                int bonusDano = 0;
+                    bool isProficiente =
+                        arma.proficiencia == 'Simples' ||
+                        (arma.proficiencia == 'Táticas' &&
+                            classeAtual == 'combatente');
+                    String alertaProf = isProficiente
+                        ? ""
+                        : "\n⚠️ Não proficiente: -2d20 no Ataque";
+                    String modDano = "";
+                    int bonusDano = 0;
 
-                if (arma.tipo == 'Corpo a Corpo' || arma.tipo == 'Arremesso') {
-                  bonusDano += forc;
-                  if (origemAtual == 'lutador') bonusDano += 2;
-                } else if (arma.tipo == 'Fogo' || arma.tipo == 'Disparo') {
-                  if (origemAtual == 'militar') bonusDano += 2;
-                }
-                if (bonusDano > 0) {
-                  modDano = "+$bonusDano";
-                } else if (bonusDano < 0) {
-                  modDano = "$bonusDano";
-                }
-                if (arma.modificacoes.contains("Ferramenta de Trabalho")) {
-                  alertaProf += " | +1 no Ataque";
-                }
+                    if (arma.tipo == 'Corpo a Corpo' ||
+                        arma.tipo == 'Arremesso') {
+                      bonusDano += forc;
+                      if (origemAtual == 'lutador') bonusDano += 2;
+                    } else if (arma.tipo == 'Fogo' || arma.tipo == 'Disparo') {
+                      if (origemAtual == 'militar') bonusDano += 2;
+                    }
+                    if (bonusDano > 0) {
+                      modDano = "+$bonusDano";
+                    } else if (bonusDano < 0) {
+                      modDano = "$bonusDano";
+                    }
+                    if (arma.modificacoes.contains("Ferramenta de Trabalho")) {
+                      alertaProf += " | +1 no Ataque";
+                    }
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF151515),
-                    border: Border.all(color: Colors.grey.shade900),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Theme(
-                    data: Theme.of(
-                      context,
-                    ).copyWith(dividerColor: Colors.transparent),
-                    child: ExpansionTile(
-                      iconColor: corDestaque,
-                      collapsedIconColor: Colors.grey,
-                      tilePadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
+                    int modMargemTrilha = 0;
+                    int modMultTrilha = 0;
+
+                    if (trilhaAtual == 'guerreiro' &&
+                        nex >= 10 &&
+                        arma.tipo == 'Corpo a Corpo') {
+                      modMargemTrilha += 2;
+                    }
+                    if (trilhaAtual == 'aniquilador' &&
+                        nex >= 99 &&
+                        arma.modificacoes.contains("Arma Favorita")) {
+                      modMargemTrilha += 2;
+                    }
+
+                    // ======== GOLPE DE SORTE ========
+                    if (poderesEscolhidos.any(
+                      (p) => p.nome.contains("Golpe de Sorte"),
+                    )) {
+                      modMargemTrilha += 1;
+                      if (poderesEscolhidos.any(
+                        (p) =>
+                            p.nome.contains("Golpe de Sorte") &&
+                            p.nome.contains("(Afinidade)"),
+                      )) {
+                        modMultTrilha += 1;
+                      }
+                    }
+
+                    int margemExibida =
+                        arma.margemAmeacaEfetiva - modMargemTrilha;
+                    if (margemExibida < 2) margemExibida = 2;
+                    int multExibido = arma.multiplicadorCritico + modMultTrilha;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF151515),
+                        border: Border.all(color: Colors.grey.shade900),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      title: Text(
-                        arma.nome,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      subtitle: RichText(
-                        text: TextSpan(
-                          style: TextStyle(color: corDestaque, fontSize: 13),
-                          children: [
-                            const TextSpan(text: "Categoria: "),
-                            TextSpan(
-                              text: "${_obterCategoriaCalculada(arma)}   ",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
+                      child: Theme(
+                        data: Theme.of(
+                          context,
+                        ).copyWith(dividerColor: Colors.transparent),
+                        child: ExpansionTile(
+                          iconColor: corDestaque,
+                          collapsedIconColor: Colors.grey,
+                          tilePadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
+                          title: Text(
+                            arma.nome,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
-                            const TextSpan(text: "Espaços: "),
-                            TextSpan(
-                              text: arma.espacoEfetivo.toString().replaceAll(
-                                '.0',
-                                '',
+                          ),
+                          subtitle: RichText(
+                            text: TextSpan(
+                              style: TextStyle(
+                                color: corDestaque,
+                                fontSize: 13,
                               ),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      trailing: SizedBox(
-                        width: 100,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Checkbox(
-                              value: arma.equipado,
-                              activeColor: corDestaque,
-                              onChanged: (val) => _toggleEquiparArma(arma),
-                            ),
-                            Icon(
-                              Icons.expand_more,
-                              color: corDestaque.withValues(alpha: 0.5),
-                            ),
-                          ],
-                        ),
-                      ),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Divider(
-                                color: corDestaque.withValues(alpha: 0.3),
-                                thickness: 1,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                "Arma ${arma.tipo} • ${arma.proficiencia} • ${arma.empunhadura}",
-                                style: const TextStyle(
-                                  color: Colors.grey,
-                                  fontStyle: FontStyle.italic,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                "Dano: ${arma.danoEfetivo}$modDano | Crítico: ${arma.margemAmeacaEfetiva}/x${arma.multiplicadorCritico}$alertaProf",
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              if (arma.modificacoes.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    "Mods: ${arma.modificacoes.join(', ')}",
-                                    style: TextStyle(
-                                      color: corDestaque,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                              children: [
+                                const TextSpan(text: "Categoria: "),
+                                TextSpan(
+                                  text: "${_obterCategoriaCalculada(arma)}   ",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                              const SizedBox(height: 16),
-
-                              if (!block)
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    if (trilhaAtual == 'aniquilador' &&
-                                        nex >= 10 &&
-                                        !arma.modificacoes.contains(
-                                          "Arma Favorita",
-                                        ))
-                                      TextButton.icon(
-                                        onPressed: () {
-                                          setState(() {
-                                            for (var a in armas) {
-                                              a.modificacoes = List.from(
-                                                a.modificacoes,
-                                              )..remove("Arma Favorita");
-                                            }
-                                            arma.modificacoes = List.from(
-                                              arma.modificacoes,
-                                            )..add("Arma Favorita");
-                                            atualizarFicha();
-                                          });
-                                          _salvarSilencioso();
-                                          _mostrarNotificacao(
-                                            "Arma Favorita definida!",
-                                          );
-                                        },
-                                        icon: Icon(
-                                          Icons.star,
-                                          size: 16,
-                                          color: corDestaque,
-                                        ),
-                                        label: Text(
-                                          "Favorita",
-                                          style: TextStyle(color: corDestaque),
-                                        ),
-                                      ),
-                                    IconButton(
-                                      onPressed: () {
-                                        setState(() => armas.removeAt(index));
-                                        atualizarFicha();
-                                        _salvarSilencioso();
-                                      },
-                                      icon: const Icon(
-                                        Icons.delete_outline,
-                                        color: Colors.redAccent,
-                                        size: 20,
-                                      ),
-                                      tooltip: "Excluir",
+                                const TextSpan(text: "Espaços: "),
+                                TextSpan(
+                                  text: arma.espacoEfetivo
+                                      .toString()
+                                      .replaceAll('.0', ''),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          trailing: SizedBox(
+                            width: 100,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Checkbox(
+                                  value: arma.equipado,
+                                  activeColor: corDestaque,
+                                  onChanged: (val) => _toggleEquiparArma(arma),
+                                ),
+                                Icon(
+                                  Icons.expand_more,
+                                  color: corDestaque.withValues(alpha: 0.5),
+                                ),
+                              ],
+                            ),
+                          ),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Divider(
+                                    color: corDestaque.withValues(alpha: 0.3),
+                                    thickness: 1,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    "Arma ${arma.tipo} • ${arma.proficiencia} • ${arma.empunhadura}",
+                                    style: const TextStyle(
+                                      color: Colors.grey,
+                                      fontStyle: FontStyle.italic,
+                                      fontSize: 12,
                                     ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          _mostrarDialogEditarAtaque(arma),
-                                      child: const Text(
-                                        "Ataque",
-                                        style: TextStyle(color: Colors.white),
-                                      ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    "Dano: ${arma.danoEfetivo}$modDano | Crítico: $margemExibida/x$multExibido \nTipo: ${arma.tipo}$alertaProf",
+                                    style: TextStyle(
+                                      color: isProficiente
+                                          ? Colors.grey
+                                          : Colors.redAccent,
                                     ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          _mostrarDialogSeletorModificacoes(
-                                            arma,
-                                            true,
-                                          ),
+                                  ),
+                                  if (arma.modificacoes.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 8.0),
                                       child: Text(
-                                        "Modificar",
+                                        "Mods: ${arma.modificacoes.join(', ')}",
                                         style: TextStyle(
                                           color: corDestaque,
+                                          fontSize: 12,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          _mostrarDialogEdicaoCompletaArma(
-                                            arma,
-                                            index,
+                                  const SizedBox(height: 16),
+
+                                  if (!block)
+                                    Wrap(
+                                      spacing: 4,
+                                      alignment: WrapAlignment.end,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      children: [
+                                        if (trilhaAtual == 'aniquilador' &&
+                                            nex >= 10 &&
+                                            !arma.modificacoes.contains(
+                                              "Arma Favorita",
+                                            ))
+                                          TextButton.icon(
+                                            onPressed: () {
+                                              setState(() {
+                                                for (var a in armas) {
+                                                  a.modificacoes = List.from(
+                                                    a.modificacoes,
+                                                  )..remove("Arma Favorita");
+                                                }
+                                                arma.modificacoes = List.from(
+                                                  arma.modificacoes,
+                                                )..add("Arma Favorita");
+                                                atualizarFicha();
+                                              });
+                                              _salvarSilencioso();
+                                              _mostrarNotificacao(
+                                                "Arma Favorita definida!",
+                                              );
+                                            },
+                                            icon: Icon(
+                                              Icons.star,
+                                              size: 16,
+                                              color: corDestaque,
+                                            ),
+                                            label: Text(
+                                              "Favorita",
+                                              style: TextStyle(
+                                                color: corDestaque,
+                                              ),
+                                            ),
                                           ),
-                                      child: const Text(
-                                        "Editar",
-                                        style: TextStyle(color: Colors.white),
-                                      ),
+                                        IconButton(
+                                          onPressed: () {
+                                            setState(
+                                              () => armas.removeAt(index),
+                                            );
+                                            atualizarFicha();
+                                            _salvarSilencioso();
+                                          },
+                                          icon: const Icon(
+                                            Icons.delete_outline,
+                                            color: Colors.redAccent,
+                                            size: 20,
+                                          ),
+                                          tooltip: "Excluir Arma",
+                                        ),
+                                        TextButton(
+                                          onPressed: () =>
+                                              _mostrarDialogEditarAtaque(arma),
+                                          child: const Text(
+                                            "Ataque",
+                                            style: TextStyle(
+                                              color: Colors.deepPurpleAccent,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        TextButton.icon(
+                                          icon: const Icon(
+                                            Icons.build,
+                                            size: 16,
+                                          ),
+                                          onPressed: () =>
+                                              _mostrarDialogSeletorModificacoes(
+                                                arma,
+                                                true,
+                                              ),
+                                          label: const Text(
+                                            "Aprimorar",
+                                            style: TextStyle(
+                                              color: Colors.blueAccent,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        TextButton(
+                                          onPressed: () =>
+                                              _mostrarDialogEdicaoCompletaArma(
+                                                arma,
+                                                index,
+                                              ),
+                                          child: const Text(
+                                            "Status",
+                                            style: TextStyle(
+                                              color: Colors.green,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                            ],
-                          ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                );
-              }),
+                      ),
+                    );
+                  }),
 
               // ================= ITENS EXPANSÍVEIS =================
               ...inventario.asMap().entries.map((entry) {
@@ -637,22 +695,22 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                         _salvarSilencioso();
                                       },
                                       icon: const Icon(
-                                        Icons.delete_outline,
+                                        Icons.delete,
                                         color: Colors.redAccent,
-                                        size: 20,
                                       ),
                                       tooltip: "Excluir Item",
                                     ),
-                                    TextButton(
+                                    TextButton.icon(
+                                      icon: const Icon(Icons.build, size: 16),
                                       onPressed: () =>
                                           _mostrarDialogSeletorModificacoes(
                                             item,
                                             false,
                                           ),
-                                      child: Text(
-                                        "Modificar",
+                                      label: const Text(
+                                        "Aprimorar",
                                         style: TextStyle(
-                                          color: corDestaque,
+                                          color: Colors.blueAccent,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -664,8 +722,11 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                             index,
                                           ),
                                       child: const Text(
-                                        "Editar",
-                                        style: TextStyle(color: Colors.white),
+                                        "Status",
+                                        style: TextStyle(
+                                          color: Colors.green,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -685,14 +746,7 @@ extension _EquipamentosFicha on _FichaAgenteState {
     );
   }
 
-  // =========================================================================
-  // SELETOR CATEGORIZADO DE MODIFICAÇÕES E MALDIÇÕES (NOVO DESIGN "ARSENAL")
-  // =========================================================================
-
-  // =========================================================================
-  // SELETOR CATEGORIZADO DE MODIFICAÇÕES E MALDIÇÕES
-  // =========================================================================
-
+  // Pop up escolher modificações
   void _mostrarDialogSeletorModificacoes(dynamic equipamento, bool isArma) {
     List<String> modsAtuais = List.from(equipamento.modificacoes);
     String filtroPrincipal = "Mundanas";
@@ -1014,43 +1068,74 @@ extension _EquipamentosFicha on _FichaAgenteState {
 
                                   return Container(
                                     decoration: BoxDecoration(
-                                      border: Border(bottom: BorderSide(color: Colors.grey.shade900)),
+                                      border: Border(
+                                        bottom: BorderSide(
+                                          color: Colors.grey.shade900,
+                                        ),
+                                      ),
                                     ),
                                     child: Theme(
-                                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                                      data: Theme.of(context).copyWith(
+                                        dividerColor: Colors.transparent,
+                                      ),
                                       child: ExpansionTile(
                                         iconColor: Colors.white,
                                         collapsedIconColor: Colors.white54,
-                                        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                        tilePadding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 4,
+                                        ),
                                         title: Row(
                                           children: [
                                             Expanded(
                                               child: Text(
                                                 mod,
                                                 style: TextStyle(
-                                                  color: isSelected ? corTemaLinha : Colors.white,
-                                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                  color: isSelected
+                                                      ? corTemaLinha
+                                                      : Colors.white,
+                                                  fontWeight: isSelected
+                                                      ? FontWeight.bold
+                                                      : FontWeight.normal,
                                                   fontSize: 16,
                                                 ),
                                               ),
                                             ),
                                             IconButton(
                                               icon: Icon(
-                                                isSelected ? Icons.remove_circle : Icons.add_circle,
-                                                color: isSelected ? Colors.redAccent : Colors.white,
+                                                isSelected
+                                                    ? Icons.remove_circle
+                                                    : Icons.add_circle,
+                                                color: isSelected
+                                                    ? Colors.redAccent
+                                                    : Colors.white,
                                                 size: 28,
                                               ),
                                               onPressed: () {
-                                                if (!isSelected && !podeAdicionarMaldicao(mod)) {
-                                                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      const SnackBar(
-                                                        content: Text("Opressão Elemental! Você não pode combinar esta maldição com o elemento atual."),
-                                                        backgroundColor: Colors.redAccent,
-                                                        behavior: SnackBarBehavior.floating, 
-                                                      )
-                                                    );
-                                                  });
+                                                if (!isSelected &&
+                                                    !podeAdicionarMaldicao(
+                                                      mod,
+                                                    )) {
+                                                  WidgetsBinding.instance
+                                                      .addPostFrameCallback((
+                                                        _,
+                                                      ) {
+                                                        ScaffoldMessenger.of(
+                                                          context,
+                                                        ).showSnackBar(
+                                                          const SnackBar(
+                                                            content: Text(
+                                                              "Opressão Elemental! Você não pode combinar esta maldição com o elemento atual.",
+                                                            ),
+                                                            backgroundColor:
+                                                                Colors
+                                                                    .redAccent,
+                                                            behavior:
+                                                                SnackBarBehavior
+                                                                    .floating,
+                                                          ),
+                                                        );
+                                                      });
                                                   return;
                                                 }
                                                 setDialogState(() {
@@ -1067,14 +1152,25 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                         // Sem a propriedade "trailing", a setinha original do Flutter volta a aparecer na extrema direita!
                                         children: [
                                           Padding(
-                                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                                            padding: const EdgeInsets.fromLTRB(
+                                              16,
+                                              0,
+                                              16,
+                                              16,
+                                            ),
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.stretch,
                                               children: [
-                                                Divider(color: corTemaLinha.withValues(alpha: 0.3), thickness: 1),
+                                                Divider(
+                                                  color: corTemaLinha
+                                                      .withValues(alpha: 0.3),
+                                                  thickness: 1,
+                                                ),
                                                 const SizedBox(height: 8),
                                                 Text(
-                                                  _descricoesModsEMaldicoes[mod] ?? "Descrição indisponível.",
+                                                  _descricoesModsEMaldicoes[mod] ??
+                                                      "Descrição indisponível.",
                                                   style: const TextStyle(
                                                     color: Colors.white70,
                                                     fontSize: 13,
@@ -1083,7 +1179,7 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                                 ),
                                               ],
                                             ),
-                                          )
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -1145,6 +1241,7 @@ extension _EquipamentosFicha on _FichaAgenteState {
       "Munições",
       "Proteções",
       "Itens Paranormais",
+      "Itens Amaldiçoados",
     ];
 
     showDialog(
@@ -1152,7 +1249,7 @@ extension _EquipamentosFicha on _FichaAgenteState {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            Widget buildFiltroArma(String label, List<String> opcoes) {
+            Widget buildSubFiltro(String label, List<String> opcoes) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1169,45 +1266,70 @@ extension _EquipamentosFicha on _FichaAgenteState {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: opcoes.map((sub) {
                       bool isSelected = subFiltrosAtivos.contains(sub);
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: FilterChip(
-                          label: Text(
-                            sub,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? Colors.black
-                                  : Colors.grey.shade400,
-                              fontSize: 11,
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
+
+                      Color corChip = Colors.grey.shade300;
+                      if (filtroAtual == "Itens Amaldiçoados") {
+                        if (sub == "Sangue") {
+                          corChip = const Color(0xFF990000);
+                        } else if (sub == "Morte") {
+                          corChip = Colors.grey.shade400;
+                        } else if (sub == "Energia") {
+                          corChip = const Color(0xFF9900FF);
+                        } else if (sub == "Conhecimento") {
+                          corChip = const Color(0xFFFFB300);
+                        } else if (sub == "Medo") {
+                          corChip = Colors.white;
+                        } else if (sub == "Varia") {
+                          corChip = Colors.deepPurpleAccent;
+                        }
+                      }
+
+                      Color txtCor = isSelected
+                          ? Colors.black
+                          : Colors.grey.shade400;
+                      if (filtroAtual == "Itens Amaldiçoados" && isSelected) {
+                        txtCor =
+                            (sub == 'Conhecimento' ||
+                                sub == 'Morte' ||
+                                sub == 'Medo')
+                            ? Colors.black
+                            : Colors.white;
+                      }
+
+                      return FilterChip(
+                        label: Text(
+                          sub,
+                          style: TextStyle(
+                            color: txtCor,
+                            fontSize: 11,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
-                          selected: isSelected,
-                          selectedColor: Colors.grey.shade300,
-                          backgroundColor: const Color(0xFF151515),
-                          side: BorderSide(
-                            color: isSelected
-                                ? Colors.grey.shade300
-                                : Colors.grey.shade800,
-                          ),
-                          onSelected: (val) {
-                            setDialogState(() {
-                              if (isSelected) {
-                                subFiltrosAtivos.remove(sub);
-                              } else {
-                                subFiltrosAtivos.removeWhere(
-                                  (e) => opcoes.contains(e),
-                                );
-                                subFiltrosAtivos.add(sub);
-                              }
-                            });
-                          },
                         ),
+                        selected: isSelected,
+                        selectedColor: corChip,
+                        backgroundColor: const Color(0xFF151515),
+                        side: BorderSide(
+                          color: isSelected ? corChip : Colors.grey.shade800,
+                        ),
+                        onSelected: (val) {
+                          setDialogState(() {
+                            if (isSelected) {
+                              subFiltrosAtivos.remove(sub);
+                            } else {
+                              subFiltrosAtivos.removeWhere(
+                                (e) => opcoes.contains(e),
+                              );
+                              subFiltrosAtivos.add(sub);
+                            }
+                          });
+                        },
                       );
                     }).toList(),
                   ),
@@ -1217,13 +1339,17 @@ extension _EquipamentosFicha on _FichaAgenteState {
 
             List<dynamic> todosEquipamentos = [
               ...catalogoArmasOrdem,
+              ...armasAmaldicoadas,
               ...catalogoItensOrdem,
+              ...itensAmaldicoados,
             ];
+
             List<dynamic> filtrados = todosEquipamentos.where((eq) {
               if (busca.isNotEmpty &&
                   !eq.nome.toLowerCase().contains(busca.toLowerCase())) {
                 return false;
               }
+
               if (filtroAtual != "Todos") {
                 if (filtroAtual == "Armas") {
                   if (eq is! Arma) return false;
@@ -1232,7 +1358,12 @@ extension _EquipamentosFicha on _FichaAgenteState {
                         eq.proficiencia != sub) {
                       return false;
                     }
-                    if (["Corpo a Corpo", "Fogo", "Disparo"].contains(sub) &&
+                    if ([
+                          "Corpo a Corpo",
+                          "Fogo",
+                          "Disparo",
+                          "Arremesso",
+                        ].contains(sub) &&
                         eq.tipo != sub) {
                       return false;
                     }
@@ -1240,33 +1371,57 @@ extension _EquipamentosFicha on _FichaAgenteState {
                         eq.empunhadura != sub) {
                       return false;
                     }
+                    // Lógica para filtrar especificamente armas amaldiçoadas
+                    if (sub == "Amaldiçoada" &&
+                        !eq.descricao.toLowerCase().contains("amaldiçoado")) {
+                      return false;
+                    }
+                  }
+                } else if (filtroAtual == "Itens Amaldiçoados") {
+                  if (!eq.descricao.toLowerCase().contains("amaldiçoado")) {
+                    return false;
+                  }
+
+                  if (subFiltrosAtivos.isNotEmpty) {
+                    bool temElemento = false;
+                    for (String sub in subFiltrosAtivos) {
+                      if (eq.descricao.toLowerCase().contains(
+                        "(${sub.toLowerCase()})",
+                      )) {
+                        temElemento = true;
+                        break;
+                      }
+                    }
+                    if (!temElemento) return false;
                   }
                 } else {
                   if (eq is Arma) return false;
                   if (eq is ItemInventario) {
+                    String descLower = eq.descricao.toLowerCase();
                     if (filtroAtual == "Acessórios" &&
-                        (!eq.descricao.contains("Acessório") &&
-                            !eq.nome.contains("Vestimenta"))) {
+                        (!descLower.contains("acessório") &&
+                            !eq.nome.toLowerCase().contains("vestimenta"))) {
                       return false;
                     }
                     if (filtroAtual == "Explosivos" &&
-                        !eq.descricao.contains("Explosivo")) {
+                        !descLower.contains("explosivo")) {
                       return false;
                     }
                     if (filtroAtual == "Itens Operacionais" &&
-                        !eq.descricao.contains("Item Operacional")) {
+                        !descLower.contains("item operacional")) {
                       return false;
                     }
                     if (filtroAtual == "Munições" &&
-                        !eq.descricao.contains("Munição")) {
+                        !descLower.contains("munição")) {
                       return false;
                     }
                     if (filtroAtual == "Proteções" &&
-                        !eq.descricao.contains("Proteção")) {
+                        !descLower.contains("proteção")) {
                       return false;
                     }
                     if (filtroAtual == "Itens Paranormais" &&
-                        !eq.descricao.contains("Item Paranormal")) {
+                        (!descLower.contains("item paranormal") ||
+                            descLower.contains("amaldiçoado"))) {
                       return false;
                     }
                   }
@@ -1370,7 +1525,7 @@ extension _EquipamentosFicha on _FichaAgenteState {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            buildFiltroArma("Proficiência", [
+                            buildSubFiltro("Proficiência", [
                               "Simples",
                               "Táticas",
                               "Pesadas",
@@ -1384,10 +1539,11 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                 vertical: 8,
                               ),
                             ),
-                            buildFiltroArma("Tipo", [
+                            buildSubFiltro("Tipo", [
                               "Corpo a Corpo",
                               "Fogo",
                               "Disparo",
+                              "Arremesso",
                             ]),
                             Container(
                               height: 40,
@@ -1398,16 +1554,50 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                 vertical: 8,
                               ),
                             ),
-                            buildFiltroArma("Empunhadura", [
+                            buildSubFiltro("Empunhadura", [
                               "Leve",
                               "Uma Mão",
                               "Duas Mãos",
+                            ]),
+                            Container(
+                              height: 40,
+                              width: 1,
+                              color: Colors.grey.shade800,
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                            ),
+                            buildSubFiltro("Paranormal", [
+                              "Amaldiçoada",
+                            ]), // <--- NOVO FILTRO ADICIONADO
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+
+                    if (filtroAtual == "Itens Amaldiçoados") ...[
+                      const SizedBox(height: 16),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            buildSubFiltro("Elemento da Maldição", [
+                              "Sangue",
+                              "Morte",
+                              "Energia",
+                              "Conhecimento",
+                              "Medo",
+                              "Varia",
                             ]),
                           ],
                         ),
                       ),
                       const SizedBox(height: 8),
                     ],
+
                     const SizedBox(height: 8),
                     Expanded(
                       child: Container(
@@ -1429,12 +1619,47 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                   var eq = filtrados[index];
                                   bool isArma = eq is Arma;
                                   String tipoItem = "", descLimpa = "";
+
                                   if (!isArma) {
                                     tipoItem = eq.descricao.split('.').first;
                                     descLimpa = eq.descricao
                                         .replaceFirst("$tipoItem.", "")
                                         .trim();
                                     if (descLimpa.isEmpty) descLimpa = tipoItem;
+                                  }
+
+                                  // ==========================================
+                                  // LÓGICA DA TAG VISUAL DE ELEMENTO
+                                  // ==========================================
+                                  String elementoTag = "";
+                                  Color corElemento = Colors.white;
+                                  String descLower = eq.descricao.toLowerCase();
+
+                                  if (descLower.contains("amaldiçoado")) {
+                                    if (descLower.contains("(sangue)")) {
+                                      elementoTag = "SANGUE";
+                                      corElemento = const Color(0xFF990000);
+                                    } else if (descLower.contains("(morte)")) {
+                                      elementoTag = "MORTE";
+                                      corElemento = Colors
+                                          .white54; // Cinza claro/Branco para destaque
+                                    } else if (descLower.contains(
+                                      "(energia)",
+                                    )) {
+                                      elementoTag = "ENERGIA";
+                                      corElemento = const Color(0xFF9900FF);
+                                    } else if (descLower.contains(
+                                      "(conhecimento)",
+                                    )) {
+                                      elementoTag = "CONHECIMENTO";
+                                      corElemento = const Color(0xFFFFB300);
+                                    } else if (descLower.contains("(medo)")) {
+                                      elementoTag = "MEDO";
+                                      corElemento = Colors.white;
+                                    } else if (descLower.contains("(varia)")) {
+                                      elementoTag = "VARIA";
+                                      corElemento = Colors.deepPurpleAccent;
+                                    }
                                   }
 
                                   return Container(
@@ -1457,38 +1682,79 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                           horizontal: 16,
                                           vertical: 4,
                                         ),
-                                        title: isArma
-                                            ? RichText(
-                                                text: TextSpan(
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.white,
-                                                    fontSize: 16,
-                                                  ),
-                                                  children: [
-                                                    TextSpan(
-                                                      text: "${eq.nome}  ",
-                                                    ),
-                                                    TextSpan(
-                                                      text:
-                                                          "${eq.proficiencia} - ${eq.tipo} - ${eq.empunhadura}",
-                                                      style: const TextStyle(
-                                                        fontSize: 10,
-                                                        color: Colors.grey,
-                                                        fontStyle:
-                                                            FontStyle.italic,
-                                                      ),
-                                                    ),
-                                                  ],
+
+                                        // AQUI ENTRA O TÍTULO COM A TAG!
+                                        title: Row(
+                                          children: [
+                                            if (elementoTag.isNotEmpty)
+                                              Container(
+                                                margin: const EdgeInsets.only(
+                                                  right: 8,
                                                 ),
-                                              )
-                                            : Text(
-                                                eq.nome,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  border: Border.all(
+                                                    color: corElemento,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  elementoTag,
+                                                  style: TextStyle(
+                                                    color: corElemento,
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
                                                 ),
                                               ),
+                                            Expanded(
+                                              child: isArma
+                                                  ? RichText(
+                                                      text: TextSpan(
+                                                        style: const TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color: Colors.white,
+                                                          fontSize: 16,
+                                                        ),
+                                                        children: [
+                                                          TextSpan(
+                                                            text:
+                                                                "${eq.nome}  ",
+                                                          ),
+                                                          TextSpan(
+                                                            text:
+                                                                "${eq.proficiencia} - ${eq.tipo} - ${eq.empunhadura}",
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontSize: 10,
+                                                                  color: Colors
+                                                                      .grey,
+                                                                  fontStyle:
+                                                                      FontStyle
+                                                                          .italic,
+                                                                ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    )
+                                                  : Text(
+                                                      eq.nome,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                            ),
+                                          ],
+                                        ),
+
                                         subtitle: RichText(
                                           text: TextSpan(
                                             style: TextStyle(
@@ -1582,10 +1848,19 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                                   size: 28,
                                                 ),
                                                 onPressed: () {
-                                                  // FORÇA A LISTA DE MODIFICAÇÕES A SER MUTÁVEL AO COPIAR O ITEM
                                                   if (eq is ItemInventario &&
                                                       (eq.nome ==
                                                               "Catalisador ritualístico" ||
+                                                          eq.descricao
+                                                              .toLowerCase()
+                                                              .contains(
+                                                                "amaldiçoado",
+                                                              ) ||
+                                                          eq.descricao
+                                                              .toLowerCase()
+                                                              .contains(
+                                                                "paranormal",
+                                                              ) ||
                                                           eq.nome.contains(
                                                             "(elemento)",
                                                           ))) {

@@ -847,11 +847,6 @@ final List<Poder> catalogoPoderesConhecimento = [
     descricao:
         "Você recebe +5 em testes de Percepção e enxerga no escuro.\nAfinidade: você ignora camuflagem.",
   ),
-  Poder(
-    nome: "Escolhido pelo Outro Lado",
-    tipo: "Ocultista",
-    descricao: "Você pode lançar rituais de 1º círculo. À medida que aumenta seu NEX, pode lançar rituais de círculos maiores. Você começa com três rituais de 1º círculo. Sempre que avança de NEX, aprende um ritual de qualquer círculo que possa lançar.",
-  ),
 ];
 
 // ENERGIA

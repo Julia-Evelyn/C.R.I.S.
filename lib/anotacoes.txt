@@ -45,10 +45,12 @@ FEITO:
 - Poder criar ritual personalizado ----- FEITO
 - Add poder criar poder geral, paranormal, de classe e  Fazer um pop-up com várias opções de que tipo de poder será criado. ----- FEITO
 - Lógica de Poderes Paranormais ----- FEITO
+- Add itens amaldiçoados ----- FEITO
 
 FALTA FAZER:
 
-- Add itens amaldiçoados
+- Poder equipar armas e proteções de itens amaldiçoados
+- Configurar melhoria pra munição
 - Concertar add componente de (elemento) e amarras de (elemento)
 - Concertar visualização dos atributos em telas maiores
 - Remover amaldiçoar arma de medo
@@ -77,5 +79,45 @@ BIBLIOTECÁRIO
 NEX 99% - A Força do Saber. Tanto tempo passado entre livros e textos fortaleceu sua mente. Seu Intelecto aumenta em +1 e você soma o valor desse atributo em seu total de PE. Além disso, escolha uma perícia qualquer. Você troca o atributo-base dessa perícia para Intelecto.
 
 MUAMBEIRO
-mo preguiss, dps vejo issae
+NEX 10% - Mascate. Você aprendeu um ofício útil e desenvolveu métodos para ter sempre à mão o que precisa para praticá-lo. Você recebe treinamento em uma Profissão à sua escolha entre armeiro, engenheiro ou químico, e recebe +5 em sua capacidade de carga. Além disso, quando fabrica um item improvisado a DT é reduzida em –10 (em vez de –5). 
+NEX 65% - Laboratório de Campo. Sua habilidade em reparar e fabricar itens permite que você lide com a complexidade de dispositivos paranormais. Você recebe treinamento em uma Profissão à sua escolha entre armeiro, engenheiro ou químico ou, se já for treinado em uma dessas perícias, recebe +5 nela. Além disso, você pode usar fabricação em campo para fabricar e consertar itens paranormais (fabricar um item paranormal exige três ações de interlúdio que não precisam ser consecutivas, veja p. 94).
+
+
+
+TRILHAS QUE PRECISAM DE LÓGICA POR TRÁS: (Ocultista)
+
+EXORCISTA
+NEX 10% - Revelação do Mal. Qualquer que seja sua fé, seus estudos teológicos o prepararam para perceber os sinais do paranormal. Você recebe treinamentoem Religião ou, se já for treinado nesta perícia, recebe +2 nela. Além disso, pode usar essa perícia no lugar de Investigação e Percepção para notar e encontrar seres, rastros ou pistas que tenham traços paranormaise no lugar de Ocultismo.
+NEX 40% - Poder da Fé. Sua fé e o estudo de suas doutrinas religiosas alimentam suas defesas mentais e espirituais. Você se torna veterano em Religião ou, se já for veterano, recebe +O nessa perícia. Quando falha em um teste de resistência, você pode gastar 2 PE para repetir o teste usando Religião, mas deve aceitar o resultado da segunda rolagem, mesmo que seja menor que a primeira.
+
+POSSUÍDO
+NEX 10% - Poder Não Desejado. Você sente o paranormal tomando forma em seu interior. Ele oferece um poder assustador, mas ao mesmo tempo exige que você siga o caminho que ele escolheu.Sempre que receber um novo poder de ocultista, em vez disso você recebe o poder Transcender. Entretanto, você possui uma reserva paranormal alimentada pela presença em seu interior. Essa reserva é representada por pontos de possessão (PP); seu total de PP é igual a 3, mais 2 pontos para cada poder Transcender que possui. O limite de PP que você pode gastar por turno é igual à sua Presença; para cada PP gasto, você recupera 10 PV ou 2 PE. Você recupera 1 PP a cada ação de interlúdio dormir.
+NEX 65% - Ele Me Ensina. Mais do que apenas uma força, o paranormal lentamente se torna uma voz, sussurrando segredos em sua mente. Escolha entre transcender ou receber o primeiro poder de uma trilha de ocultista que não a sua. Você precisa atender os pré-requisitos do poder.
+NEX 99% - Tornamo-nos Um. Desabrochando em seu interior, o paranormal se manifesta como uma dádiva poderosa. Baseado no elemento com que tem afinidade, você recebe um dos poderes a seguir.
+ . Presente da Obsessão (Sangue). Uma vez por rodada, você pode gastar 6 PE para recuperar 50 PV. Quando faz isso, até o início do seu próximo turno, os bônus por treinamento em suas perícias baseadas em Força e Vigor, e em Intimidação, mudam para +35. As demais perícias baseadas em Presença mudam para –10. Você pode ativar esse poder mesmo inconsciente.
+ . Presente do Tempo (Morte). Uma vez por rodada, você pode gastar 6 PE para receber um turno adicional na última contagem de iniciativa da rodada. Você pode ativar essa habilidade mesmo inconsciente.
+ . Presente do Saber (Conhecimento). Uma vez por cena, você pode gastar 6 PE para reescrever uma fração de seu próprio ser. Você recebe um poder qualquer até o fim da cena. Você deve cumprir os pré-requisitos do poder escolhido, e não pode escolher poderes de trilha de NEX 99%. A cada vez que usa este poder, você deve fazer um teste de Vontade (DT 15 + 5 para cada vez que usou este poder na mesma missão). Se falhar, perde 1d6 pontos de Sanidade para cada vez que usou esse poder nesta missão.
+ . Presente do Espaço (Energia). Uma vez por rodada, você pode gastar 6 PE para se teletransportar para outro ponto em alcance médio. Você não precisa conhecer o local para onde vai nem precisa vê-lo, mas se teletransportar-se para um espaço ocupado vai ser arremessado para o espaço disponível mais próximo.
+
+CONDUÍTE
+NEX 99% - Canalizar o Medo. Você aprende o ritual Canalizar o Medo.
+
+FLAGELADOR
+NEX 99% - Medo Tangível. Você aprende o ritual Medo Tangível.
+
+GRADUADO
+NEX 10% - Saber Ampliado. Você aprende um ritual de 1º círculo. Toda vez que ganha acesso a um novo círculo, aprende um ritual adicional daquele círculo. Esses rituais não contam no seu limite de rituais. 
+NEX 40% - Grimório Ritualístico. Você cria um grimório especial, que armazena rituais que sua mente não seria capaz de guardar. Você aprende uma quantidade de rituais de 1º ou 2º círculos igual ao seu Intelecto. Quando ganha acesso a um novo círculo, pode incluir um novo ritual desse círculo em seu grimório. Esses rituais não contam em seu limite de rituais conhecidos. Para conjurar um ritual armazenado em seu grimório, você precisa antes empunhar o grimório e gastar uma ação completa o folheando para relembrar o ritual. O grimório ocupa 1 espaço em seu inventário. Se perdê-lo, você pode replicá-lo com duas ações de interlúdio. 
+NEX 65% - Rituais Eficientes. A DT para resistir a todos os seus rituais aumenta em +5.
+NEX 99% - Conhecendo o Medo. Você aprende o ritual Conhecendo o Medo.
+
+INTUITIVO
+NEX 10% - Mente Sã. Você compreende melhor as entidades do Outro Lado, e passa a ser menos abalado por seus efeitos. Você recebe resistência paranormal +5 (+5 em testes de resistência contra efeitos paranormais).
+NEX 65% - Inabalável. Você recebe resistência a dano mental e paranormal 10. Além disso, quando é alvo de um efeito paranormal que permite um teste de Vontade para reduzir o dano à metade, você não sofre dano algum se passar.
+NEX 99% - Presença do Medo. Você aprende o ritual Presença do Medo.
+
+LÂMINA PARANORMAL
+NEX 10% - Lâmina Maldita. Você aprende o ritual Amaldiçoar Arma. Se já o conhece, pode gastar +1 PE quando o lança para reduzir seu tempo de conjuração para movimento. Além disso, quando conjura esse ritual, você pode usar Ocultismo, em vez de Luta ou Pontaria, para testes de ataque com a arma amaldiçoada.
+NEX 99% - Lâmina do Medo. Você aprende o ritual Lâmina do Medo.
+
 

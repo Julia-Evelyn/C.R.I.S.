@@ -69,6 +69,10 @@ class _FichaAgenteState extends State<FichaAgente> {
   bool armaDeSangueAtiva = false;
   bool encararAMorteAtivo = false;
 
+  String _idade = "", _genero = "", _nacionalidade = "", _aparencia = "";
+  String _historico = "", _objetivo = "", _extra = "";
+
+
   int pvMax = 0, peMax = 0, sanMax = 0, pvAtual = 0, peAtual = 0, sanAtual = 0;
   int defesa = 10, esquiva = 10, bloqueio = 0;
   String habNome = "", habDesc = "";
@@ -236,12 +240,7 @@ class _FichaAgenteState extends State<FichaAgente> {
     return limites;
   }
 
-  // ========================================================
-  // LÓGICA DE CATEGORIAS (COM MALDIÇÕES E MODS NORMAIS)
-  // ========================================================
-  // ========================================================
-  // LÓGICA DE CATEGORIAS (COM MALDIÇÕES E MODS NORMAIS)
-  // ========================================================
+  // Lógica de Categorias
   int _calcularAumentoCategoriaGeral(List<String> mods) {
     int qtdMaldicoes = 0;
     int qtdNormais = 0;
@@ -449,6 +448,13 @@ class _FichaAgenteState extends State<FichaAgente> {
       poderesEscolhidos = List.from(ag.poderes);
       rituaisConhecidos = List.from(ag.rituais);
       periciasClasse = List.from(ag.periciasClasse);
+      _idade = ag.idade;
+      _genero = ag.genero;
+      _nacionalidade = ag.nacionalidade;
+      _aparencia = ag.aparencia;
+      _historico = ag.historico;
+      _objetivo = ag.objetivo;
+      _extra = ag.extra;
 
       for (var p in listaPericias) {
         if (ag.pericias.containsKey(p.id)) p.treino = ag.pericias[p.id]!;
@@ -502,6 +508,13 @@ class _FichaAgenteState extends State<FichaAgente> {
       poderes: poderesEscolhidos,
       rituais: rituaisConhecidos,
       periciasClasse: periciasClasse,
+      idade: _idade,
+      genero: _genero,
+      nacionalidade: _nacionalidade,
+      aparencia: _aparencia,
+      historico: _historico,
+      objetivo: _objetivo,
+      extra: _extra,
     );
 
     List<AgenteDados> lista = [];

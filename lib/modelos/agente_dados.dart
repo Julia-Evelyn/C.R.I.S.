@@ -307,11 +307,20 @@ class AgenteDados {
   List<ItemInventario> inventario;
   List<Arma> armas;
 
-  List<Poder> poderes; 
+  List<Poder> poderes;
 
   final List<Ritual> rituais;
 
   List<String> periciasClasse;
+
+  // Informações de backstory (Lore)
+  String idade;
+  String genero;
+  String nacionalidade;
+  String aparencia;
+  String historico;
+  String objetivo;
+  String extra;
 
   AgenteDados({
     required this.nome,
@@ -336,6 +345,13 @@ class AgenteDados {
     this.poderes = const [],
     this.rituais = const [],
     this.periciasClasse = const [],
+    this.idade = "",
+    this.genero = "",
+    this.nacionalidade = "",
+    this.aparencia = "",
+    this.historico = "",
+    this.objetivo = "",
+    this.extra = "",
   });
 
   Map<String, dynamic> toJson() => {
@@ -359,13 +375,20 @@ class AgenteDados {
     'inventario': inventario.map((i) => i.toJson()).toList(),
     'armas': armas.map((a) => a.toJson()).toList(),
 
-    'poderes': poderes
-        .map((p) => p.toJson())
-        .toList(),
+    'poderes': poderes.map((p) => p.toJson()).toList(),
 
     'rituais': rituais.map((e) => e.toJson()).toList(),
 
     'periciasClasse': periciasClasse,
+
+    // Novas variáveis da Lore
+    'idade': idade,
+    'genero': genero,
+    'nacionalidade': nacionalidade,
+    'aparencia': aparencia,
+    'historico': historico,
+    'objetivo': objetivo,
+    'extra': extra,
   };
 
   factory AgenteDados.fromJson(Map<String, dynamic> json) => AgenteDados(
@@ -415,10 +438,21 @@ class AgenteDados {
           }).toList()
         : <Poder>[],
 
-    rituais: json['rituais'] != null ? (json['rituais'] as List).map((i) => Ritual.fromJson(i)).toList() : [],
+    rituais: json['rituais'] != null
+        ? (json['rituais'] as List).map((i) => Ritual.fromJson(i)).toList()
+        : [],
 
     periciasClasse: json['periciasClasse'] is List
         ? List<String>.from(json['periciasClasse'])
         : <String>[],
+
+    // Instanciação das novas variáveis de Lore
+    idade: json['idade']?.toString() ?? "",
+    genero: json['genero']?.toString() ?? "",
+    nacionalidade: json['nacionalidade']?.toString() ?? "",
+    aparencia: json['aparencia']?.toString() ?? "",
+    historico: json['historico']?.toString() ?? "",
+    objetivo: json['objetivo']?.toString() ?? "",
+    extra: json['extra']?.toString() ?? "",
   );
 }

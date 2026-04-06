@@ -422,6 +422,7 @@ class _TelaInicialState extends State<TelaInicial> {
                 );
               },
             ),
+            
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.white,
         child: const Icon(Icons.add, color: Colors.black),

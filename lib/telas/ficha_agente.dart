@@ -76,6 +76,19 @@ class _FichaAgenteState extends State<FichaAgente> {
   int defesa = 10, esquiva = 10, bloqueio = 0;
   String habNome = "", habDesc = "";
 
+  // ================= VARIAVEIS ROLADOR DE DADOS =================
+  final List<int> _tiposDados = [4, 6, 8, 10, 12, 20, 100];
+  final Map<int, int> _qtdDados = {
+    4: 1,
+    6: 1,
+    8: 1,
+    10: 1,
+    12: 1,
+    20: 1,
+    100: 1,
+  };
+  // ==============================================================
+
   int? _indiceAtual;
   bool _modoVisualizacao = false;
   int _abaAtual = 0;
@@ -1060,6 +1073,275 @@ class _FichaAgenteState extends State<FichaAgente> {
             child: Text("FECHAR", style: TextStyle(color: corDestaque)),
           ),
         ],
+      ),
+    );
+  }
+
+  void _rolarDadoAvulso(int faces, int quantidade) {
+    if (quantidade <= 0 || !_modoVisualizacao) return;
+
+    List<int> resultados = List.generate(
+      quantidade,
+      (_) => Random().nextInt(faces) + 1,
+    );
+    int soma = resultados.fold(0, (a, b) => a + b);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: Text(
+          "Rolagem de ${quantidade}d$faces",
+          textAlign: TextAlign.center,
+          style: TextStyle(color: corDestaque, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              "Resultados: [${resultados.join(', ')}]",
+              style: const TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              soma.toString(),
+              style: const TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("OK", style: TextStyle(color: corDestaque)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSessaoDados(Color corTema) {
+    // Lista de proteção para impedir que o jogador delete os dados oficias do RPG
+    List<int> dadosPadrao = [4, 6, 8, 10, 12, 20, 100];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF151515), 
+        border: Border.all(color: corTema.withValues(alpha: 0.3)), 
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          iconColor: corTema,
+          collapsedIconColor: corTema,
+          leading: Icon(Icons.casino_outlined, color: corTema, size: 28),
+          title: const Text(
+            "MESA DE DADOS",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+              color: Colors.white,
+              fontSize: 15,
+            ),
+          ),
+          subtitle: Text(
+            "Role dados avulsos ou customizados",
+            style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Divider(color: Colors.white24),
+                  const SizedBox(height: 12),
+                  
+                  // LISTA DOS DADOS
+                  ..._tiposDados.map((faces) {
+                    int qtd = _qtdDados[faces] ?? 1;
+                    bool isCustom = !dadosPadrao.contains(faces);
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: Row(
+                        children: [
+                          Container(
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0D0D0D),
+                              border: Border.all(color: Colors.grey.shade800),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                InkWell(
+                                  borderRadius: const BorderRadius.horizontal(left: Radius.circular(5)),
+                                  onTap: () {
+                                    if (qtd > 1) setState(() => _qtdDados[faces] = qtd - 1);
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 12.0),
+                                    child: Icon(Icons.remove, size: 18, color: Colors.white70),
+                                  ),
+                                ),
+                                Container(
+                                  width: 65, 
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1A1A1A),
+                                    border: Border.symmetric(
+                                      vertical: BorderSide(color: Colors.grey.shade800),
+                                    ),
+                                  ),
+                                  child: FittedBox( // Impede que o texto quebre a linha, reduzindo a fonte se necessário
+                                    fit: BoxFit.scaleDown,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                      child: Text(
+                                        "${qtd}d$faces",
+                                        style: TextStyle(
+                                          color: corTema, 
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                InkWell(
+                                  borderRadius: const BorderRadius.horizontal(right: Radius.circular(5)),
+                                  onTap: () {
+                                    setState(() => _qtdDados[faces] = qtd + 1);
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 12.0),
+                                    child: Icon(Icons.add, size: 18, color: Colors.white70),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Spacer(),
+
+                          // LIXEIRA APENAS PARA DADOS CUSTOMIZADOS
+                          if (isCustom)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 22),
+                                tooltip: "Remover Dado",
+                                onPressed: () {
+                                  setState(() {
+                                    _tiposDados.remove(faces);
+                                    _qtdDados.remove(faces);
+                                  });
+                                },
+                              ),
+                            ),
+
+                          // BOTÃO DE ROLAR
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: corTema,
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                              minimumSize: const Size(0, 38), 
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                            onPressed: _modoVisualizacao ? () => _rolarDadoAvulso(faces, qtd) : null,
+                            icon: const Icon(Icons.casino, size: 18),
+                            label: const Text("ROLAR", style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+
+                  const SizedBox(height: 8),
+                  
+                  // BOTÃO PARA CRIAR UM DADO NOVO (ex: d3, d7)
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: BorderSide(color: Colors.grey.shade800, width: 1.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () {
+                      TextEditingController facesCtrl = TextEditingController();
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          backgroundColor: const Color(0xFF1A1A1A),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: corTema.withValues(alpha: 0.3)),
+                          ),
+                          title: Row(
+                            children: [
+                              Icon(Icons.add_box, color: corTema),
+                              const SizedBox(width: 8),
+                              const Text("Dado Customizado", style: TextStyle(color: Colors.white, fontSize: 16)),
+                            ],
+                          ),
+                          content: TextField(
+                            controller: facesCtrl,
+                            keyboardType: TextInputType.number,
+                            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                            decoration: EstiloParanormal.customInputDeco(
+                              "Qtd de Lados (Ex: 3)",
+                              corTema,
+                              Icons.casino,
+                            ).copyWith(
+                               contentPadding: const EdgeInsets.symmetric(vertical: 16)
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(backgroundColor: corTema, foregroundColor: Colors.black),
+                              onPressed: () {
+                                int? f = int.tryParse(facesCtrl.text);
+                                if (f != null && f > 0) {
+                                  setState(() {
+                                    if (!_tiposDados.contains(f)) {
+                                      _tiposDados.add(f);
+                                      _tiposDados.sort(); // Mantém os dados sempre em ordem crescente
+                                    }
+                                    _qtdDados[f] = 1;
+                                  });
+                                }
+                                Navigator.pop(ctx);
+                              },
+                              child: const Text("ADICIONAR", style: TextStyle(fontWeight: FontWeight.bold)),
+                            )
+                          ],
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text("CRIAR NOVO DADO", style: TextStyle(letterSpacing: 1.2, fontSize: 12)),
+                  )
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -5144,7 +5426,8 @@ class _FichaAgenteState extends State<FichaAgente> {
             ],
           ),
 
-          const SizedBox(height: 16),
+          _buildSessaoDados(corDoPainel),
+
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -5162,6 +5445,8 @@ class _FichaAgenteState extends State<FichaAgente> {
             ),
             onPressed: () => _mostrarDialogAcoesCombate(),
           ),
+
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -5853,7 +6138,7 @@ class _FichaAgenteState extends State<FichaAgente> {
   }
 }
 
-// WIDGET CUSTOMIZADO: CARD DE RITUAL (COM ANIMAÇÃO DE MEDO)
+// CARD DE RITUAL (COM ANIMAÇÃO DE MEDO)
 class CardRitualAnimado extends StatefulWidget {
   final Ritual ritual;
   final Color corElemento;

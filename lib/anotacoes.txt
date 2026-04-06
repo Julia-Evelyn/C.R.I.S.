@@ -60,7 +60,7 @@ FEITO:
 
 FALTA FAZER:
 
-
+- Corrigir limite de categoria
 - Adicionar aba para dados
 - Bug cajado/ itens com dano diferente de empunhação
 - Lógica de cada poder (geral, de classe e trilha)

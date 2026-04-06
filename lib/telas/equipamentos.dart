@@ -278,6 +278,20 @@ extension _EquipamentosFicha on _FichaAgenteState {
                         arma.proficiencia == 'Simples' ||
                         (arma.proficiencia == 'Táticas' &&
                             classeAtual == 'combatente');
+
+                    if (trilhaAtual == 'atirador_de_elite' &&
+                        nex >= 10 &&
+                        arma.tipo == 'Fogo') {
+                      String descL = arma.descricao.toLowerCase();
+                      String nomeL = arma.nome.toLowerCase();
+                      if (descL.contains("balas longas") ||
+                          nomeL.contains("fuzil") ||
+                          nomeL.contains("sniper") ||
+                          nomeL.contains("rifle")) {
+                        isProficiente = true;
+                      }
+                    }
+
                     String alertaProf = isProficiente
                         ? ""
                         : "\n⚠️ Não proficiente: -2d20 no Ataque";
@@ -536,7 +550,7 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                                 index,
                                               ),
                                           child: const Text(
-                                            "Status",
+                                            "Editar",
                                             style: TextStyle(
                                               color: Colors.green,
                                               fontWeight: FontWeight.bold,
@@ -560,8 +574,11 @@ extension _EquipamentosFicha on _FichaAgenteState {
                 var item = entry.value;
 
                 bool isEquipavel =
+                    item.tipo == "Proteção" ||
+                    item.tipo.contains("Acessório") ||
                     item.descricao.toLowerCase().contains("proteção") ||
                     item.nome.toLowerCase().contains("vestimenta") ||
+                    item.nome.toLowerCase().contains("utensílio") ||
                     item.nome.toLowerCase().contains("escudo");
                 String tipoItem = item.descricao.split('.').first;
                 String descLimpa = item.descricao
@@ -722,7 +739,7 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                             index,
                                           ),
                                       child: const Text(
-                                        "Status",
+                                        "Editar",
                                         style: TextStyle(
                                           color: Colors.green,
                                           fontWeight: FontWeight.bold,
@@ -1220,9 +1237,7 @@ extension _EquipamentosFicha on _FichaAgenteState {
     );
   }
 
-  // =========================================================================
   // FUNÇÕES DE EQUIPAR, CATÁLOGO E CRIAR
-  // =========================================================================
 
   void _abrirCatalogoEquipamento({String filtroInicial = "Todos"}) {
     String filtroAtual = filtroInicial;
@@ -1628,9 +1643,7 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                     if (descLimpa.isEmpty) descLimpa = tipoItem;
                                   }
 
-                                  // ==========================================
                                   // LÓGICA DA TAG VISUAL DE ELEMENTO
-                                  // ==========================================
                                   String elementoTag = "";
                                   Color corElemento = Colors.white;
                                   String descLower = eq.descricao.toLowerCase();
@@ -1861,22 +1874,74 @@ extension _EquipamentosFicha on _FichaAgenteState {
                                                               .contains(
                                                                 "paranormal",
                                                               ) ||
-                                                          eq.nome.contains(
-                                                            "(elemento)",
-                                                          ))) {
-                                                    _processarNovoItem(
-                                                      ItemInventario(
-                                                        nome: eq.nome,
-                                                        categoria: eq.categoria,
-                                                        espaco: eq.espaco,
-                                                        descricao: eq.descricao,
-                                                        modificacoes:
-                                                            List<String>.from(
-                                                              eq.modificacoes,
-                                                            ),
-                                                      ),
-                                                    );
+                                                          eq.nome
+                                                              .toLowerCase()
+                                                              .contains(
+                                                                "(elemento)",
+                                                              ))) {
+                                                    // 1. Se for o Catalisador, chama o dialog de Catalisador
+                                                    if (eq.nome ==
+                                                        "Catalisador ritualístico") {
+                                                      mostrarDialogCatalisador(
+                                                        context: context,
+                                                        corDestaque:
+                                                            corDestaqueLocal,
+                                                        corTema: corTemaLocal,
+                                                        corTexto: corLetra,
+                                                        afinidadeAtual:
+                                                            afinidadeAtual,
+                                                        onConfirmar:
+                                                            (novoCatalisador) {
+                                                              _processarNovoItem(
+                                                                novoCatalisador,
+                                                              );
+                                                            },
+                                                      );
+                                                    }
+                                                    // 2. Se for um item genérico de Elemento (Componente, Amarras, etc), chama o dialog de Elemento
+                                                    else if (eq.nome
+                                                        .toLowerCase()
+                                                        .contains(
+                                                          "(elemento)",
+                                                        )) {
+                                                      mostrarDialogElementoItem(
+                                                        context: context,
+                                                        itemBase: eq,
+                                                        corDestaque:
+                                                            corDestaqueLocal,
+                                                        corTema: corTemaLocal,
+                                                        corTexto: corLetra,
+                                                        afinidadeAtual:
+                                                            afinidadeAtual,
+                                                        onConfirmar:
+                                                            (
+                                                              novoItemElementar,
+                                                            ) {
+                                                              _processarNovoItem(
+                                                                novoItemElementar,
+                                                              );
+                                                            },
+                                                      );
+                                                    }
+                                                    // 3. Se for só um item paranormal comum, processa direto
+                                                    else {
+                                                      _processarNovoItem(
+                                                        ItemInventario(
+                                                          nome: eq.nome,
+                                                          categoria:
+                                                              eq.categoria,
+                                                          espaco: eq.espaco,
+                                                          descricao:
+                                                              eq.descricao,
+                                                          modificacoes:
+                                                              List<String>.from(
+                                                                eq.modificacoes,
+                                                              ),
+                                                        ),
+                                                      );
+                                                    }
                                                   } else {
+                                                    // (O resto do código de armas/itens mundanos continua igual)
                                                     if (eq is Arma) {
                                                       setState(
                                                         () => armas.add(
@@ -2012,19 +2077,7 @@ extension _EquipamentosFicha on _FichaAgenteState {
                             ),
                             onPressed: () {
                               Navigator.pop(context);
-                              mostrarDialogCriacaoManual(
-                                context: context,
-                                isArma: false,
-                                corDestaque: corDestaqueLocal,
-                                corTema: corTemaLocal,
-                                corTexto: corLetra,
-                                afinidadeAtual: afinidadeAtual,
-                                onVoltar: () => _abrirCatalogoEquipamento(
-                                  filtroInicial: filtroAtual,
-                                ),
-                                onConfirmar: (novoItem) =>
-                                    _processarNovoItem(novoItem),
-                              );
+                              _mostrarDialogCriarItemLocal();
                             },
                           ),
                         ),
@@ -2211,16 +2264,29 @@ extension _EquipamentosFicha on _FichaAgenteState {
   }
 
   void _toggleEquiparItem(ItemInventario item) {
-    bool isVestimenta = item.nome.toLowerCase().contains("vestimenta");
-    bool isProtecao = item.descricao.toLowerCase().contains("proteção");
+    bool isVestimenta =
+        item.tipo == "Acessório (Vestimenta)" ||
+        item.nome.toLowerCase().contains("vestimenta");
+    bool isUtensilio =
+        item.tipo == "Acessório (Utensílio)" ||
+        item.nome.toLowerCase().contains("utensílio");
+    bool isProtecao =
+        item.tipo == "Proteção" ||
+        item.descricao.toLowerCase().contains("proteção");
     bool isEscudo = item.nome.toLowerCase().contains("escudo");
+
     if (!item.equipado) {
+      // REGRA DE LIMITE: VESTIMENTAS (Ocupam o corpo, máx 2 ou 3)
       if (isVestimenta) {
         int equipadas = inventario
             .where(
-              (i) => i.equipado && i.nome.toLowerCase().contains("vestimenta"),
+              (i) =>
+                  i.equipado &&
+                  (i.tipo == "Acessório (Vestimenta)" ||
+                      i.nome.toLowerCase().contains("vestimenta")),
             )
             .length;
+
         int limiteVestimentas =
             poderesEscolhidos.any((p) => p.nome == "Mochileiro") ? 3 : 2;
         if (equipadas >= limiteVestimentas) {
@@ -2235,13 +2301,30 @@ extension _EquipamentosFicha on _FichaAgenteState {
           return;
         }
       }
+
+      // REGRA DE LIMITE: UTENSÍLIOS (Ocupam as mãos)
+      if (isUtensilio) {
+        if (maosOcupadas + 1 > 2) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "Limite: Você não tem mãos livres suficientes para segurar este utensílio!",
+              ),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+          return;
+        }
+      }
+
+      // REGRA DE LIMITE: PROTEÇÕES E ESCUDOS
       if (isProtecao) {
         if (isEscudo) {
           if (maosOcupadas + 1 > 2) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
-                  "Limite: Você não tem mãos livres suficientes para equipar o Escudo!",
+                  "Limite: Você não tem mãos livres para equipar o Escudo!",
                 ),
                 backgroundColor: Colors.redAccent,
               ),
@@ -2263,13 +2346,14 @@ extension _EquipamentosFicha on _FichaAgenteState {
           if (inventario.any(
             (i) =>
                 i.equipado &&
-                i.descricao.toLowerCase().contains("proteção") &&
+                (i.tipo == "Proteção" ||
+                    i.descricao.toLowerCase().contains("proteção")) &&
                 !i.nome.toLowerCase().contains("escudo"),
           )) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
-                  "Limite: Você só pode usar 1 proteção por vez! (Mas pode usar 1 Escudo junto)",
+                  "Limite: Você só pode usar 1 armadura por vez! (Mas pode usar 1 Escudo junto)",
                 ),
                 backgroundColor: Colors.redAccent,
               ),
@@ -2279,6 +2363,7 @@ extension _EquipamentosFicha on _FichaAgenteState {
         }
       }
     }
+
     setState(() {
       item.equipado = !item.equipado;
       atualizarFicha();
@@ -2306,9 +2391,7 @@ extension _EquipamentosFicha on _FichaAgenteState {
     });
   }
 
-  // =========================================================================
   // EDIÇÃO DE STATUS (DANO, MARGEM, ETC)
-  // =========================================================================
 
   void _mostrarDialogEdicaoCompletaArma(Arma arma, int index) {
     TextEditingController nomeCtrl = TextEditingController(text: arma.nome);
@@ -2497,7 +2580,46 @@ extension _EquipamentosFicha on _FichaAgenteState {
     TextEditingController espacoCtrl = TextEditingController(
       text: item.espaco.toString(),
     );
+
+    // Controladores para os status numéricos
+    TextEditingController defesaCtrl = TextEditingController(
+      text: item.defesa.toString(),
+    );
+    TextEditingController bonusCargaCtrl = TextEditingController(
+      text: item.bonusCarga.toString(),
+    );
+    TextEditingController bonusPericiaCtrl = TextEditingController(
+      text: item.bonusPericia.toString(),
+    );
+
     String catAtual = item.categoria;
+    String tipoAtual = item.tipo;
+
+    // Atualiza os itens antigos do banco de dados automaticamente
+    if (tipoAtual == "Acessório (Vestimenta)" ||
+        tipoAtual == "Acessório (Utensílio)") {
+      tipoAtual = "Acessório";
+    }
+
+    // Lista oficial de Tipos
+    List<String> tiposValidos = [
+      "Item Operacional",
+      "Acessório",
+      "Proteção",
+      "Arma",
+      "Munição",
+      "Explosivo",
+      "Outro",
+    ];
+    if (!tiposValidos.contains(tipoAtual)) tiposValidos.add(tipoAtual);
+
+    // Estados dos Checkboxes baseados nos dados atuais do item
+    bool forneceBonusPericia =
+        item.periciaVinculada.isNotEmpty && item.bonusPericia > 0;
+    bool isArmazenamento = item.bonusCarga > 0;
+    String periciaAtual = item.periciaVinculada.isEmpty
+        ? "nenhuma"
+        : item.periciaVinculada;
 
     showDialog(
       context: context,
@@ -2506,7 +2628,10 @@ extension _EquipamentosFicha on _FichaAgenteState {
           builder: (context, setDialogState) {
             return AlertDialog(
               backgroundColor: const Color(0xFF1A1A1A),
-              title: Text("Editar Item", style: TextStyle(color: corDestaque)),
+              title: Text(
+                "Configurar Item",
+                style: TextStyle(color: corDestaque),
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -2525,12 +2650,13 @@ extension _EquipamentosFicha on _FichaAgenteState {
                       controller: descCtrl,
                       style: const TextStyle(color: Colors.white),
                       decoration: EstiloParanormal.customInputDeco(
-                        "Descrição / Tipo",
+                        "Descrição",
                         corDestaque,
                         Icons.description,
                       ),
                     ),
                     const SizedBox(height: 12),
+
                     Row(
                       children: [
                         Expanded(
@@ -2571,6 +2697,124 @@ extension _EquipamentosFicha on _FichaAgenteState {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 12),
+
+                    // ==========================================
+                    // TIPO DO ITEM
+                    // ==========================================
+                    DropdownFicha(
+                      label: "Tipo de Item",
+                      value: tipoAtual,
+                      options: tiposValidos,
+                      onChanged: (val) {
+                        setDialogState(() {
+                          tipoAtual = val!;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // ==========================================
+                    // LÓGICA DE ACESSÓRIO (Checkbox e Perícia)
+                    // ==========================================
+                    if (tipoAtual == "Acessório") ...[
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        title: const Text(
+                          "Fornecer bônus em perícia",
+                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                        ),
+                        value: forneceBonusPericia,
+                        activeColor: corDestaque,
+                        side: const BorderSide(color: Colors.grey),
+                        onChanged: (val) {
+                          setDialogState(
+                            () => forneceBonusPericia = val ?? false,
+                          );
+                        },
+                      ),
+                      if (forneceBonusPericia) ...[
+                        DropdownFicha(
+                          label: "Perícia Vinculada",
+                          value: periciaAtual,
+                          options: [
+                            "nenhuma",
+                            ...listaPericias.map((p) => p.id),
+                          ],
+                          onChanged: (val) {
+                            setDialogState(() => periciaAtual = val!);
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: bonusPericiaCtrl,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: EstiloParanormal.customInputDeco(
+                            "Bônus na Perícia (+)",
+                            Colors.greenAccent,
+                            Icons.star,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                    ],
+
+                    // ==========================================
+                    // LÓGICA DE ITEM OPERACIONAL (Armazenamento)
+                    // ==========================================
+                    if (tipoAtual == "Item Operacional") ...[
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        title: const Text(
+                          "Item de Armazenamento",
+                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                        ),
+                        subtitle: const Text(
+                          "Aumenta o limite de Carga (ex: Mochila)",
+                          style: TextStyle(color: Colors.grey, fontSize: 11),
+                        ),
+                        value: isArmazenamento,
+                        activeColor: corDestaque,
+                        side: const BorderSide(color: Colors.grey),
+                        onChanged: (val) {
+                          setDialogState(() => isArmazenamento = val ?? false);
+                        },
+                      ),
+                      if (isArmazenamento) ...[
+                        TextField(
+                          controller: bonusCargaCtrl,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: EstiloParanormal.customInputDeco(
+                            "Bônus de Capacidade (+)",
+                            Colors.orangeAccent,
+                            Icons.fitness_center,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                    ],
+
+                    // ==========================================
+                    // LÓGICA DE PROTEÇÃO
+                    // ==========================================
+                    if (tipoAtual == "Proteção" ||
+                        nomeCtrl.text.toLowerCase().contains("escudo")) ...[
+                      TextField(
+                        controller: defesaCtrl,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: EstiloParanormal.customInputDeco(
+                          "Bônus de Defesa (+)",
+                          Colors.blueAccent,
+                          Icons.shield,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                   ],
                 ),
               ),
@@ -2593,12 +2837,336 @@ extension _EquipamentosFicha on _FichaAgenteState {
                       item.descricao = descCtrl.text;
                       item.espaco = double.tryParse(espacoCtrl.text) ?? 1.0;
                       item.categoria = catAtual;
+                      item.tipo = tipoAtual;
+
+                      // Salva a Defesa apenas se for Proteção
+                      if (tipoAtual == "Proteção" ||
+                          item.nome.toLowerCase().contains("escudo")) {
+                        item.defesa = int.tryParse(defesaCtrl.text) ?? 0;
+                      } else {
+                        item.defesa = 0;
+                      }
+
+                      // Salva Perícia APENAS se for Acessório E o checkbox estiver marcado
+                      if (tipoAtual == "Acessório" &&
+                          forneceBonusPericia &&
+                          periciaAtual != "nenhuma") {
+                        item.periciaVinculada = periciaAtual;
+                        item.bonusPericia =
+                            int.tryParse(bonusPericiaCtrl.text) ?? 0;
+                      } else {
+                        item.periciaVinculada = "";
+                        item.bonusPericia = 0;
+                      }
+
+                      // Salva Carga APENAS se for Operacional E o checkbox estiver marcado
+                      if (tipoAtual == "Item Operacional" && isArmazenamento) {
+                        item.bonusCarga =
+                            int.tryParse(bonusCargaCtrl.text) ?? 0;
+                      } else {
+                        item.bonusCarga = 0;
+                      }
+
                       atualizarFicha();
                     });
                     _salvarSilencioso();
                     Navigator.pop(context);
                   },
-                  child: const Text("SALVAR"),
+                  child: const Text(
+                    "SALVAR",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogCriarItemLocal() {
+    String nomeNovo = "";
+    String categoriaNova = "0";
+    String espacoNovo = "1";
+    String descNova = "";
+    String tipoNovo = "Geral";
+
+    // Variáveis de controle
+    String periciaVinculadaNova = "nenhuma";
+    int defesaNova = 0;
+    int bonusPericiaNovo = 0;
+    int bonusCargaNovo = 0;
+
+    // Estados dos checkboxes
+    bool forneceBonusPericiaNovo = false;
+    bool isArmazenamentoNovo = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1A1A1A),
+              title: Text("Criar Item", style: TextStyle(color: corDestaque)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      style: const TextStyle(color: Colors.white),
+                      decoration: EstiloParanormal.customInputDeco(
+                        "Nome do Item",
+                        corDestaque,
+                        Icons.edit,
+                      ),
+                      onChanged: (val) => nomeNovo = val,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      style: const TextStyle(color: Colors.white),
+                      maxLines: 2,
+                      decoration: EstiloParanormal.customInputDeco(
+                        "Descrição Rápida",
+                        corDestaque,
+                        Icons.description,
+                      ),
+                      onChanged: (val) => descNova = val,
+                    ),
+                    const SizedBox(height: 12),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            style: const TextStyle(color: Colors.white),
+                            decoration: EstiloParanormal.customInputDeco(
+                              "Espaço",
+                              corDestaque,
+                              Icons.backpack,
+                            ),
+                            onChanged: (val) => espacoNovo = val,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: DropdownFicha(
+                            label: "Categoria",
+                            value: categoriaNova,
+                            options: const [
+                              "0",
+                              "I",
+                              "II",
+                              "III",
+                              "IV",
+                              "V",
+                              "VI",
+                              "VII",
+                              "VIII",
+                              "IX",
+                              "X",
+                            ],
+                            onChanged: (val) =>
+                                setDialogState(() => categoriaNova = val!),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // ==========================================
+                    // TIPO DO ITEM
+                    // ==========================================
+                    DropdownFicha(
+                      label: "Tipo de Item",
+                      value: tipoNovo,
+                      options: const [
+                        "Geral",
+                        "Proteção",
+                        "Acessório", // Agora apenas Acessório
+                        "Explosivo",
+                        "Item Operacional",
+                        "Medicamento",
+                        "Outro",
+                      ],
+                      onChanged: (val) => setDialogState(() => tipoNovo = val!),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // ==========================================
+                    // LÓGICA DE PROTEÇÃO
+                    // ==========================================
+                    if (tipoNovo == "Proteção") ...[
+                      TextField(
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: EstiloParanormal.customInputDeco(
+                          "Bônus de Defesa (+)",
+                          Colors.blueAccent,
+                          Icons.shield,
+                        ),
+                        onChanged: (val) => defesaNova = int.tryParse(val) ?? 0,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    // ==========================================
+                    // LÓGICA DE ACESSÓRIO
+                    // ==========================================
+                    if (tipoNovo == "Acessório") ...[
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        title: const Text(
+                          "Fornecer bônus em perícia",
+                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                        ),
+                        value: forneceBonusPericiaNovo,
+                        activeColor: corDestaque,
+                        side: const BorderSide(color: Colors.grey),
+                        onChanged: (val) {
+                          setDialogState(
+                            () => forneceBonusPericiaNovo = val ?? false,
+                          );
+                        },
+                      ),
+                      if (forneceBonusPericiaNovo) ...[
+                        DropdownFicha(
+                          label: "Perícia Vinculada",
+                          value: periciaVinculadaNova,
+                          options: [
+                            "nenhuma",
+                            ...listaPericias.map((p) => p.id),
+                          ],
+                          onChanged: (val) =>
+                              setDialogState(() => periciaVinculadaNova = val!),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: EstiloParanormal.customInputDeco(
+                            "Bônus na Perícia (+)",
+                            Colors.greenAccent,
+                            Icons.star,
+                          ),
+                          onChanged: (val) =>
+                              bonusPericiaNovo = int.tryParse(val) ?? 0,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                    ],
+
+                    // ==========================================
+                    // LÓGICA DE ITEM OPERACIONAL (Armazenamento)
+                    // ==========================================
+                    if (tipoNovo == "Item Operacional") ...[
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        title: const Text(
+                          "Item de Armazenamento",
+                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                        ),
+                        subtitle: const Text(
+                          "Aumenta o limite de Carga (ex: Mochila)",
+                          style: TextStyle(color: Colors.grey, fontSize: 11),
+                        ),
+                        value: isArmazenamentoNovo,
+                        activeColor: corDestaque,
+                        side: const BorderSide(color: Colors.grey),
+                        onChanged: (val) {
+                          setDialogState(
+                            () => isArmazenamentoNovo = val ?? false,
+                          );
+                        },
+                      ),
+                      if (isArmazenamentoNovo) ...[
+                        TextField(
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: EstiloParanormal.customInputDeco(
+                            "Bônus de Capacidade (+)",
+                            Colors.orangeAccent,
+                            Icons.fitness_center,
+                          ),
+                          onChanged: (val) =>
+                              bonusCargaNovo = int.tryParse(val) ?? 0,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "Cancelar",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: corDestaque,
+                    foregroundColor: Colors.black,
+                  ),
+                  onPressed: () {
+                    if (nomeNovo.trim().isEmpty) return;
+
+                    setState(() {
+                      // Processamento Seguro dos Valores
+                      String periciaFinal =
+                          (tipoNovo == "Acessório" &&
+                              forneceBonusPericiaNovo &&
+                              periciaVinculadaNova != "nenhuma")
+                          ? periciaVinculadaNova
+                          : "";
+                      int bonusPericiaFinal =
+                          (tipoNovo == "Acessório" &&
+                              forneceBonusPericiaNovo &&
+                              periciaVinculadaNova != "nenhuma")
+                          ? bonusPericiaNovo
+                          : 0;
+                      int bonusCargaFinal =
+                          (tipoNovo == "Item Operacional" &&
+                              isArmazenamentoNovo)
+                          ? bonusCargaNovo
+                          : 0;
+                      int defesaFinal = (tipoNovo == "Proteção")
+                          ? defesaNova
+                          : 0;
+
+                      inventario.add(
+                        ItemInventario(
+                          nome: nomeNovo,
+                          categoria: categoriaNova,
+                          espaco: double.tryParse(espacoNovo) ?? 1.0,
+                          descricao: descNova,
+                          tipo: tipoNovo,
+                          defesa: defesaFinal,
+                          periciaVinculada: periciaFinal,
+                          bonusPericia: bonusPericiaFinal,
+                          bonusCarga:
+                              bonusCargaFinal, // Passando o Bônus de Mochila!
+                        ),
+                      );
+                      atualizarFicha();
+                    });
+                    _salvarSilencioso();
+                    Navigator.pop(context);
+                    _mostrarNotificacao("$nomeNovo adicionado!");
+                  },
+                  child: const Text(
+                    "CRIAR ITEM",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             );

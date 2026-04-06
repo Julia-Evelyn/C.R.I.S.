@@ -46,49 +46,38 @@ FEITO:
 - Add poder criar poder geral, paranormal, de classe e  Fazer um pop-up com várias opções de que tipo de poder será criado. ----- FEITO
 - Lógica de Poderes Paranormais ----- FEITO
 - Add itens amaldiçoados ----- FEITO
+- Poder puxar um personagem pro lado na tela de início e aparecer opções de Duplicar personagem (talvez tela de edição de backstory?) ----- FEITO
+- Remover amaldiçoar arma de medo ----- FEITO
+- Melhorar criação de itens no arsenal ----- FEITO
+- Fazer cada ritual ter uma aparência diferente de acordo com elemento. O de medo é o que mais deve se destacar, possuindo fundo branco e aura que se mexe levemente. Colocar fundo de acordo com a cor de cada elemento. ----- FEITO
+- Concertar custo dos rituais ao clicar em conjurar ----- FEITO
+- Concertar add componente de (elemento) e amarras de (elemento) ----- FEITO
+- recuperar sanidade perdida ao deletar um poder paranormal ----- FEITO
+- Remover perícias escolhidas ao trocar de classe ----- FEITO
+- Concertar debuf de proficiência com proteção leve para especialistas ----- FEITO
+- Bug filtro escolhido pelo outro lsdo ----- FEITO
+- Concertar o bug na mochila (não reduz espaço dos itens) ----- FEITO
 
 FALTA FAZER:
 
+
+- Adicionar aba para dados
+- Bug cajado/ itens com dano diferente de empunhação
+- Lógica de cada poder (geral, de classe e trilha)
 - Poder equipar armas e proteções de itens amaldiçoados
 - Configurar melhoria pra munição
-- Concertar add componente de (elemento) e amarras de (elemento)
 - Concertar visualização dos atributos em telas maiores
-- Remover amaldiçoar arma de medo
-- Remover perícias escolhidas ao trocar de classe
-- recuperar sanidade perdida ao deletar um poder paranormal
-- Lógica de cada poder (geral, de classe e trilha)
-- Poder puxar um personagem pro lado na tela de início e aparecer opções de Duplicar personagem (talvez tela de edição de backstory?)
-- Fazer cada ritual ter uma aparência diferente de acordo com elemento. O de medo é o que mais deve se destacar, possuindo fundo branco e aura que se mexe levemente. Colocar fundo de acordo com a cor de cada elemento.
 - Configurar maldições
+- Adicionar nova classe "Mundano"
 - Fazer a área de detalhes do backstory do personagem (fazer opção de baixar versão pdf das anotações, 100% formatada e bonita pra enviar pro mestre)
 
 ========================================================================
-TRILHAS QUE PRECISAM DE LÓGICA POR TRÁS: (Especialista)
-
-ATIRADOR DE ELITE 
-NEX 10% - Mira de Elite. Você recebe proficiência com armas de fogo que usam balas longas e soma seu Intelecto em rolagens de dano com essas armas.
-NEX 99% - Atirar para Matar. Quando faz um acerto crítico com uma arma de fogo, você causa dano máximo, sem precisar rolar dados.
-
-INFILTRADOR
-NEX 40% - Gatuno. Você recebe +5 em Atletismo e Crime e pode percorrer seu deslocamento normal quando se esconder sem penalidade (veja a perícia Furtividade).
-
-TÉCNICO
-NEX 40% - Remendão. Você pode gastar uma ação completa e 1 PE para remover a condição quebrado de um equipamento adjacente até o final da cena. Além disso, qualquer equipamento geral tem sua categoria reduzida em I para você.
-
-BIBLIOTECÁRIO
-NEX 99% - A Força do Saber. Tanto tempo passado entre livros e textos fortaleceu sua mente. Seu Intelecto aumenta em +1 e você soma o valor desse atributo em seu total de PE. Além disso, escolha uma perícia qualquer. Você troca o atributo-base dessa perícia para Intelecto.
-
-MUAMBEIRO
-NEX 10% - Mascate. Você aprendeu um ofício útil e desenvolveu métodos para ter sempre à mão o que precisa para praticá-lo. Você recebe treinamento em uma Profissão à sua escolha entre armeiro, engenheiro ou químico, e recebe +5 em sua capacidade de carga. Além disso, quando fabrica um item improvisado a DT é reduzida em –10 (em vez de –5). 
-NEX 65% - Laboratório de Campo. Sua habilidade em reparar e fabricar itens permite que você lide com a complexidade de dispositivos paranormais. Você recebe treinamento em uma Profissão à sua escolha entre armeiro, engenheiro ou químico ou, se já for treinado em uma dessas perícias, recebe +5 nela. Além disso, você pode usar fabricação em campo para fabricar e consertar itens paranormais (fabricar um item paranormal exige três ações de interlúdio que não precisam ser consecutivas, veja p. 94).
-
-
-
+---- testar trilhas de ocultista ----
 TRILHAS QUE PRECISAM DE LÓGICA POR TRÁS: (Ocultista)
 
 EXORCISTA
 NEX 10% - Revelação do Mal. Qualquer que seja sua fé, seus estudos teológicos o prepararam para perceber os sinais do paranormal. Você recebe treinamentoem Religião ou, se já for treinado nesta perícia, recebe +2 nela. Além disso, pode usar essa perícia no lugar de Investigação e Percepção para notar e encontrar seres, rastros ou pistas que tenham traços paranormaise no lugar de Ocultismo.
-NEX 40% - Poder da Fé. Sua fé e o estudo de suas doutrinas religiosas alimentam suas defesas mentais e espirituais. Você se torna veterano em Religião ou, se já for veterano, recebe +O nessa perícia. Quando falha em um teste de resistência, você pode gastar 2 PE para repetir o teste usando Religião, mas deve aceitar o resultado da segunda rolagem, mesmo que seja menor que a primeira.
+NEX 40% - Poder da Fé. Sua fé e o estudo de suas doutrinas religiosas alimentam suas defesas mentais e espirituais. Você se torna veterano em Religião ou, se já for veterano, recebe +1d20 nessa perícia. Quando falha em um teste de resistência, você pode gastar 2 PE para repetir o teste usando Religião, mas deve aceitar o resultado da segunda rolagem, mesmo que seja menor que a primeira.
 
 POSSUÍDO
 NEX 10% - Poder Não Desejado. Você sente o paranormal tomando forma em seu interior. Ele oferece um poder assustador, mas ao mesmo tempo exige que você siga o caminho que ele escolheu.Sempre que receber um novo poder de ocultista, em vez disso você recebe o poder Transcender. Entretanto, você possui uma reserva paranormal alimentada pela presença em seu interior. Essa reserva é representada por pontos de possessão (PP); seu total de PP é igual a 3, mais 2 pontos para cada poder Transcender que possui. O limite de PP que você pode gastar por turno é igual à sua Presença; para cada PP gasto, você recupera 10 PV ou 2 PE. Você recupera 1 PP a cada ação de interlúdio dormir.

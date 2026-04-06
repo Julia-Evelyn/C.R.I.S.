@@ -28,11 +28,11 @@ void main() {
 
 class OrdoRealitasApp extends StatelessWidget {
   const OrdoRealitasApp({super.key});
-
+ 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Ordo Realitas - Ficha',
+      title: 'Terminal Ordo Realitas',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF0D0D0D),

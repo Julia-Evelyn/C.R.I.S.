@@ -72,7 +72,6 @@ class _FichaAgenteState extends State<FichaAgente> {
   String _idade = "", _genero = "", _nacionalidade = "", _aparencia = "";
   String _historico = "", _objetivo = "", _extra = "";
 
-
   int pvMax = 0, peMax = 0, sanMax = 0, pvAtual = 0, peAtual = 0, sanAtual = 0;
   int defesa = 10, esquiva = 10, bloqueio = 0;
   String habNome = "", habDesc = "";
@@ -104,6 +103,24 @@ class _FichaAgenteState extends State<FichaAgente> {
       return Colors.white;
     }
     return Colors.black;
+  }
+
+  Color _obterCorAfinidade(String? elemento) {
+    if (elemento == null) return Colors.white;
+    switch (elemento.toLowerCase()) {
+      case 'sangue':
+        return const Color(0xFF990000);
+      case 'energia':
+        return const Color(0xFF9900FF);
+      case 'morte':
+        return Colors.white54;
+      case 'conhecimento':
+        return const Color(0xFFFFB300);
+      case 'medo':
+        return Colors.white;
+      default:
+        return Colors.deepPurpleAccent; // Para "Variável" ou outros
+    }
   }
 
   int get limitePePorTurno {
@@ -152,7 +169,14 @@ class _FichaAgenteState extends State<FichaAgente> {
     int base = forc == 0 ? 2 : forc * 5;
     if (poderesEscolhidos.any((p) => p.nome == "Mochileiro")) base += 5;
     if (trilhaAtual == 'tecnico' && nex >= 10) base += (inte * 5);
-    return base;
+    if (trilhaAtual == 'muambeiro' && nex >= 10) base += 5;
+
+    int bonusItens = 0;
+    for (var item in inventario) {
+      bonusItens += item.bonusCarga;
+    }
+
+    return base + bonusItens;
   }
 
   double get espacoOcupado {
@@ -329,11 +353,27 @@ class _FichaAgenteState extends State<FichaAgente> {
     int idxAumentado = idxBase + aumento;
 
     int reducao = 0;
-    // O Aniquilador reduz a categoria final APÓS todos os aumentos
     if (eq is Arma &&
         trilhaAtual == 'aniquilador' &&
         eq.modificacoes.contains("Arma Favorita")) {
       reducao = nex >= 99 ? 3 : (nex >= 40 ? 2 : 1);
+    }
+
+    // TRILHA: TÉCNICO (NEX 40) - Remendão
+    if (trilhaAtual == 'tecnico' &&
+        nex >= 40 &&
+        eq is ItemInventario &&
+        eq is! Arma) {
+      String desc = eq.descricao.toLowerCase();
+      // Detecta se é "Equipamento Geral" lendo a descrição ou nome do item
+      if (desc.contains("acessório") ||
+          desc.contains("explosivo") ||
+          desc.contains("item operacional") ||
+          desc.contains("medicamento") ||
+          desc.contains("item paranormal") ||
+          eq.nome.toLowerCase().contains("vestimenta")) {
+        reducao += 1;
+      }
     }
 
     int idxFinal = max(0, idxAumentado - reducao);
@@ -764,6 +804,7 @@ class _FichaAgenteState extends State<FichaAgente> {
     int modAtaque = 0;
     int modMultExtra = 0;
     List<String> dadosDanoExtra = [];
+    int flatTotal = bonusDanoFixo;
 
     for (String mod in arma.modificacoes) {
       String mLower = mod.toLowerCase();
@@ -826,11 +867,15 @@ class _FichaAgenteState extends State<FichaAgente> {
     for (var v in inventario.where(
       (i) => i.periciaVinculada == periciaUsada && i.equipado,
     )) {
-      int b =
-          (v.modificacoes.contains("Aprimorado") ||
-              v.modificacoes.contains("Aprimorada"))
-          ? 5
-          : 2;
+      // Usa o bônus customizado numérico da vestimenta se houver (ex: +3, +10).
+      // Se for item antigo (0), cai na regra do Aprimorado (+5) ou Normal (+2).
+      int b = v.bonusPericia > 0
+          ? v.bonusPericia
+          : (v.modificacoes.contains("Aprimorado") ||
+                    v.modificacoes.contains("Aprimorada")
+                ? 5
+                : 2);
+
       if (b > bonusExtraItem) bonusExtraItem = b;
     }
     int totalBonus =
@@ -839,6 +884,22 @@ class _FichaAgenteState extends State<FichaAgente> {
         bonusExtraItem +
         modAtaque;
 
+    // ================== ATIRADOR DE ELITE (MIRA DE ELITE) ==================
+    if (trilhaAtual == 'atirador_de_elite' &&
+        nex >= 10 &&
+        arma.tipo == 'Fogo') {
+      String descL = arma.descricao.toLowerCase();
+      String nomeL = arma.nome.toLowerCase();
+      if (descL.contains("balas longas") ||
+          nomeL.contains("fuzil") ||
+          nomeL.contains("sniper") ||
+          nomeL.contains("rifle")) {
+        isProficiente = true; // Força a proficiência
+        flatTotal += efInt; // Soma Intelecto ao dano base!
+      }
+    }
+
+    // DEFINIDO APENAS UMA VEZ
     int dadosExtras = isProficiente ? 0 : -2;
     int qtdDados = valorAtrib + dadosExtras;
     bool rolarPior = false;
@@ -860,7 +921,6 @@ class _FichaAgenteState extends State<FichaAgente> {
 
     int totalDano = 0;
     List<int> rolagensDano = [];
-    int flatTotal = bonusDanoFixo;
 
     String stringDanoLimpo = arma.danoEfetivo
         .replaceAll(' ', '')
@@ -889,16 +949,26 @@ class _FichaAgenteState extends State<FichaAgente> {
 
           if (isCrit && !isFalhaCritica) qtd *= multFinal;
 
+          // TRILHA: ATIRADOR DE ELITE (Atirar para Matar)
+          bool atMaxCrit =
+              (trilhaAtual == 'atirador_de_elite' &&
+              nex >= 99 &&
+              arma.tipo == 'Fogo' &&
+              isCrit &&
+              !isFalhaCritica);
+
           for (int i = 0; i < qtd; i++) {
-            int r = Random().nextInt(faces) + 1;
+            // Dano máximo sem rolar, se tiver a habilidade do Sniper
+            int r = atMaxCrit ? faces : (Random().nextInt(faces) + 1);
             rolagensDano.add(r);
             totalDano += r;
           }
-        }
+        } // Adicionado o fechamento correto do if(dp.length == 2)
       } else {
         flatTotal += int.tryParse(parte) ?? 0;
       }
     }
+
     totalDano += flatTotal;
     if (isFalhaCritica) totalDano = 0;
 
@@ -969,11 +1039,12 @@ class _FichaAgenteState extends State<FichaAgente> {
                 modMultExtra > 0 ||
                 dadosDanoExtra.isNotEmpty ||
                 modMargemTrilha > 0 ||
-                aniquilador99)
+                aniquilador99 ||
+                (trilhaAtual == 'atirador_de_elite' && nex >= 10))
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),
                 child: Text(
-                  "Bônus de Trilhas e Efeitos Ativos.",
+                  "Bônus de Trilhas e Efeitos Ativos aplicados.",
                   style: TextStyle(
                     color: corDestaque,
                     fontSize: 10,
@@ -1486,6 +1557,13 @@ class _FichaAgenteState extends State<FichaAgente> {
                                             p.tipo == "Ocultista" ||
                                             p.tipo == "Sistema",
                                       );
+
+                                      for (var p in listaPericias) {
+                                        // Se não for perícia da Origem ele zera
+                                        if (!p.daOrigem) {
+                                          p.treino = 0;
+                                        }
+                                      }
 
                                       if (novaClasse == 'combatente') {
                                         poderesEscolhidos.add(
@@ -2755,6 +2833,17 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
       }
 
+      if (classeAtual.toLowerCase() == 'ocultista' && nex >= 5) {
+        // O sistema verifica se a tag de setup já existe. Se não existir, chama o pop-up!
+        if (!poderesEscolhidos.any(
+          (p) => p.nome == "Ocultista_Setup_Iniciais",
+        )) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _mostrarDialogEscolhidoPeloOutroLado(),
+          );
+        }
+      }
+
       if (trilhaAtual != 'cacador') {
         poderesEscolhidos.removeWhere((p) => p.nome.startsWith("Cacador_"));
       }
@@ -2762,6 +2851,144 @@ class _FichaAgenteState extends State<FichaAgente> {
         poderesEscolhidos.removeWhere(
           (p) => p.nome.startsWith("AgenteSecreto_"),
         );
+      }
+
+      // ==========================================
+      // TRILHAS DE OCULTISTA
+      // ==========================================
+
+      // INTUITIVO: Resistências Mentais e Paranormais
+      if (trilhaAtual == 'intuitivo') {
+        if (nex >= 10) {
+          resistencias['Paranormal'] = (resistencias['Paranormal'] ?? 0) + 5;
+        }
+        if (nex >= 65) {
+          resistencias['Mental'] = (resistencias['Mental'] ?? 0) + 10;
+          resistencias['Paranormal'] =
+              (resistencias['Paranormal'] ?? 0) + 10; // +10 cumulativo
+        }
+      }
+
+      // GRADUADO: Grimório e Rituais Eficientes
+      if (trilhaAtual == 'graduado') {
+        if (nex >= 40 &&
+            !inventario.any((i) => i.nome == "Grimório Ritualístico")) {
+          inventario.add(
+            ItemInventario(
+              nome: "Grimório Ritualístico",
+              categoria: "0",
+              espaco: 1,
+              descricao:
+                  "Armazena rituais extras. Requer ação completa para folhear.",
+            ),
+          );
+        }
+        if (nex >= 65) {
+          // A DT para resistir aos rituais aumenta em +5. Adicionamos como Passiva Visual.
+          poderesEscolhidos.removeWhere(
+            (p) => p.nome == "Rituais Eficientes (Passiva)",
+          );
+          poderesEscolhidos.add(
+            Poder(
+              nome: "Rituais Eficientes (Passiva)",
+              tipo: "Sistema",
+              descricao:
+                  "A DT para resistir a todos os seus rituais ganha um bônus de +5.",
+            ),
+          );
+        }
+      }
+
+      // EXORCISTA: Treinamento em Religião
+      if (trilhaAtual == 'exorcista') {
+        if (nex >= 10 &&
+            !poderesEscolhidos.any((p) => p.nome == "Exorcista_Setup_10")) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _mostrarDialogExorcista(10),
+          );
+        }
+        if (nex >= 40 &&
+            !poderesEscolhidos.any((p) => p.nome == "Exorcista_Setup_40")) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _mostrarDialogExorcista(40),
+          );
+        }
+      }
+
+      // POSSUÍDO: Reserva Paranormal e Presentes de Afinidade
+      if (trilhaAtual == 'possuido') {
+        int qtdTranscender = poderesEscolhidos
+            .where((p) => p.nome.contains("Transcender"))
+            .length;
+        int maxPP = 3 + (2 * qtdTranscender);
+
+        poderesEscolhidos.removeWhere(
+          (p) => p.nome.startsWith("Reserva Paranormal"),
+        );
+        poderesEscolhidos.add(
+          Poder(
+            nome: "Reserva Paranormal (PP: $maxPP)",
+            tipo: "Sistema",
+            descricao:
+                "Você possui $maxPP Pontos de Possessão. Limite por turno: $efPre PP. Cada PP = +10 PV ou +2 PE. Recupera 1 PP por dormir.",
+          ),
+        );
+
+        if (nex >= 99 &&
+            afinidadeAtual != null &&
+            !poderesEscolhidos.any((p) => p.nome == "Tornamo-nos Um")) {
+          String presente = afinidadeAtual == "Sangue"
+              ? "Presente da Obsessão: 6 PE para curar 50 PV e +35 nas perícias de FOR/VIG/Intimidação."
+              : afinidadeAtual == "Morte"
+              ? "Presente do Tempo: 6 PE para um turno adicional na rodada."
+              : afinidadeAtual == "Conhecimento"
+              ? "Presente do Saber: 6 PE para ganhar um poder (requer teste de Vontade)."
+              : "Presente do Espaço: 6 PE para se teletransportar (alcance médio).";
+          poderesEscolhidos.add(
+            Poder(nome: "Tornamo-nos Um", tipo: "Sistema", descricao: presente),
+          );
+        }
+      }
+
+      // RITUAIS AUTOMÁTICOS: NEX 99 e Lâmina Paranormal (NEX 10)
+      void aprenderRituaisAutomaticos(String nomeRitual) {
+        if (!rituaisConhecidos.any((r) => r.nome == nomeRitual)) {
+          var rEncontrado =
+              catalogoRituais.where((r) => r.nome == nomeRitual).firstOrNull ??
+              Ritual(
+                nome: nomeRitual,
+                elemento: "Medo",
+                circulo: 4,
+                execucao: "Padrão",
+                alcance: "Toque",
+                alvoAreaEfeito: "Alvo",
+                duracao: "Cena",
+                resistencia: "",
+                descricao: "Ritual automático aprendido pelo NEX 99 da trilha.",
+              );
+          rituaisConhecidos.add(rEncontrado);
+        }
+      }
+
+      if (trilhaAtual == 'lamina_paranormal' && nex >= 10) {
+        aprenderRituaisAutomaticos("Amaldiçoar Arma");
+      }
+      if (nex >= 99) {
+        if (trilhaAtual == 'conduite') {
+          aprenderRituaisAutomaticos("Canalizar o Medo");
+        }
+        if (trilhaAtual == 'flagelador') {
+          aprenderRituaisAutomaticos("Medo Tangível");
+        }
+        if (trilhaAtual == 'graduado') {
+          aprenderRituaisAutomaticos("Conhecendo o Medo");
+        }
+        if (trilhaAtual == 'intuitivo') {
+          aprenderRituaisAutomaticos("Presença do Medo");
+        }
+        if (trilhaAtual == 'lamina_paranormal') {
+          aprenderRituaisAutomaticos("Lâmina do Medo");
+        }
       }
 
       var origemData = dadosOrigens[origemAtual];
@@ -2883,6 +3110,46 @@ class _FichaAgenteState extends State<FichaAgente> {
         bonusOrigem['iniciativa'] = (bonusOrigem['iniciativa'] ?? 0) + 5;
       }
 
+      // TRILHA: INFILTRADOR (Gatuno)
+      if (trilhaAtual == 'infiltrador' && nex >= 40) {
+        bonusOrigem['atletismo'] = (bonusOrigem['atletismo'] ?? 0) + 5;
+        bonusOrigem['crime'] = (bonusOrigem['crime'] ?? 0) + 5;
+      }
+
+      // TRILHA: BIBLIOTECÁRIO (A Força do Saber)
+      if (trilhaAtual == 'bibliotecario' && nex >= 99) {
+        efInt += 1;
+        peMax += efInt;
+
+        if (!poderesEscolhidos.any(
+          (p) => p.nome.startsWith("Bibliotecario_Setup"),
+        )) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _mostrarDialogBibliotecario(),
+          );
+        }
+      }
+
+      // TRILHA: MUAMBEIRO (Mascate e Laboratório de Campo)
+      if (trilhaAtual == 'muambeiro') {
+        if (nex >= 10 &&
+            !poderesEscolhidos.any(
+              (p) => p.nome.startsWith("Muambeiro_Setup_10"),
+            )) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _mostrarDialogMuambeiro(10),
+          );
+        }
+        if (nex >= 65 &&
+            !poderesEscolhidos.any(
+              (p) => p.nome.startsWith("Muambeiro_Setup_65"),
+            )) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _mostrarDialogMuambeiro(65),
+          );
+        }
+      }
+
       var stats = dadosClasses[classeAtual];
       if (stats != null) {
         int nivel = (nex / 5).toInt();
@@ -2983,9 +3250,13 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
       }
 
+      // ==========================================
+      // VARIÁVEIS DE INVENTÁRIO E PROTEÇÃO
+      // ==========================================
       int defItens = 0, bonusBloqueioBracadeira = 0;
       bool usaProtecaoLeve = false;
-      bool usaProtecaoPesadaOuEscudo = false;
+      bool usaProtecaoPesada = false;
+      bool usaEscudo = false;
 
       maldicoesConhecimento = 0;
       maldicoesEnergia = 0;
@@ -3101,14 +3372,15 @@ class _FichaAgenteState extends State<FichaAgente> {
       }
 
       for (var item in inventario.where((i) => i.equipado)) {
-        String nomeLower = item.nome.toLowerCase();
-        String descLower = item.descricao.toLowerCase();
+        String nomeLower = item.nome.toLowerCase().trim();
+        String descLower = item.descricao.toLowerCase().trim();
 
         for (var mod in item.modificacoes) {
           processarMaldicao(mod);
         }
 
-        if (descLower.contains("proteção pesada")) {
+        if (descLower.contains("proteção pesada") ||
+            descLower.contains("protecao pesada")) {
           resistencias['Balístico'] = (resistencias['Balístico'] ?? 0) + 2;
           resistencias['Corte'] = (resistencias['Corte'] ?? 0) + 2;
           resistencias['Impacto'] = (resistencias['Impacto'] ?? 0) + 2;
@@ -3121,21 +3393,59 @@ class _FichaAgenteState extends State<FichaAgente> {
           resistencias['Químico'] = (resistencias['Químico'] ?? 0) + 20;
         }
 
-        if (descLower.contains("proteção") || nomeLower.contains("escudo")) {
-          if (nomeLower.contains("leve")) {
-            defItens += 5;
-            usaProtecaoLeve = true;
+        if (item.tipo == "Proteção" ||
+            descLower.contains("proteção") ||
+            descLower.contains("protecao") ||
+            nomeLower.contains("escudo")) {
+          int defItemLocal = item.defesa > 0 ? item.defesa : 0;
+
+          // Se for item antigo sem defesa salva:
+          if (defItemLocal == 0) {
+            if (nomeLower.contains("leve")) {
+              defItemLocal = 5;
+            } else if (nomeLower.contains("pesada")) {
+              defItemLocal = 10;
+            } else if (nomeLower.contains("escudo")) {
+              defItemLocal = 2;
+            } else if (descLower.contains("defesa +5")) {
+              defItemLocal = 5; // Proteção leve antiga
+            } else if (descLower.contains("defesa +10")) {
+              defItemLocal = 10; // Proteção pesada antiga
+            } else {
+              defItemLocal = 2;
+            }
           }
-          if (nomeLower.contains("pesada")) {
-            defItens += 10;
-            usaProtecaoPesadaOuEscudo = true;
-          }
-          if (nomeLower.contains("escudo")) {
-            defItens += 2;
-            usaProtecaoPesadaOuEscudo = true;
-          }
+
+          defItens += defItemLocal;
           if (item.modificacoes.contains("Reforçada")) defItens += 2;
+
+          // ==========================================
+          // CLASSIFICAÇÃO CORRIGIDA (IGNORANDO A DESCRIÇÃO)
+          // ==========================================
+          bool isEscudoItem = nomeLower.contains("escudo");
+          bool isPesadaItem = false;
+          bool isLeveItem = false;
+
+          if (!isEscudoItem) {
+            if (nomeLower.contains("leve")) {
+              isLeveItem = true;
+            } else if (nomeLower.contains("pesada")) {
+              isPesadaItem = true;
+            } else {
+              // Se o nome for customizado (ex: "Colete Tático"), usamos o valor da defesa para deduzir
+              if (defItemLocal > 7) {
+                isPesadaItem = true;
+              } else {
+                isLeveItem = true;
+              }
+            }
+          }
+
+          if (isEscudoItem) usaEscudo = true;
+          if (isPesadaItem) usaProtecaoPesada = true;
+          if (isLeveItem) usaProtecaoLeve = true;
         }
+
         if (nomeLower.contains("braçadeira reforçada")) {
           bonusBloqueioBracadeira += 2;
         }
@@ -3148,11 +3458,28 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
       }
 
+      // ==========================================
+      // APLICAÇÃO OFICIAL DE PENALIDADES DA CLASSE
+      // ==========================================
       sofrePenalidadeProtecao = false;
-      if (usaProtecaoPesadaOuEscudo) {
-        sofrePenalidadeProtecao = true;
-      } else if (usaProtecaoLeve && classeAtual == 'ocultista') {
-        sofrePenalidadeProtecao = true;
+      String cLimpa = classeAtual.toLowerCase().trim();
+
+      bool temPoderPesada = poderesEscolhidos.any(
+        (p) =>
+            p.nome.toLowerCase().contains('proteção pesada') ||
+            p.nome.toLowerCase().contains('protecao pesada'),
+      );
+
+      if (cLimpa == 'combatente') {
+        if (usaProtecaoPesada && !temPoderPesada) {
+          sofrePenalidadeProtecao = true;
+        }
+      } else if (cLimpa == 'especialista') {
+        if (usaProtecaoPesada || usaEscudo) sofrePenalidadeProtecao = true;
+      } else if (cLimpa == 'ocultista') {
+        if (usaProtecaoLeve || usaProtecaoPesada || usaEscudo) {
+          sofrePenalidadeProtecao = true;
+        }
       }
 
       int bReflexos = listaPericias
@@ -3294,14 +3621,28 @@ class _FichaAgenteState extends State<FichaAgente> {
       }
 
       if (!isInitialLoad) {
+        // PV
         if (pvMax > oldPvMax && oldPvMax > 0) {
-          pvAtual = min(pvMax, pvAtual + (pvMax - oldPvMax));
+          pvAtual = min(pvMax, pvAtual + (pvMax - oldPvMax)); // Devolve o PV
+        } else if (pvMax < oldPvMax) {
+          pvAtual = min(pvAtual, pvMax); // Corta o excesso
         }
+
+        // PE
         if (peMax > oldPeMax && oldPeMax > 0) {
-          peAtual = min(peMax, peAtual + (peMax - oldPeMax));
+          peAtual = min(peMax, peAtual + (peMax - oldPeMax)); // Devolve o PE
+        } else if (peMax < oldPeMax) {
+          peAtual = min(peAtual, peMax);
         }
+
+        // SANIDADE
         if (sanMax > oldSanMax && oldSanMax > 0) {
-          sanAtual = min(sanMax, sanAtual + (sanMax - oldSanMax));
+          sanAtual = min(
+            sanMax,
+            sanAtual + (sanMax - oldSanMax),
+          ); // Devolve a Sanidade Perdida
+        } else if (sanMax < oldSanMax) {
+          sanAtual = min(sanAtual, sanMax);
         }
       } else if (widget.agenteParaEditar == null) {
         pvAtual = pvMax;
@@ -3311,6 +3652,233 @@ class _FichaAgenteState extends State<FichaAgente> {
     });
 
     if (!isInitialLoad) _salvarSilencioso();
+  }
+
+  // Popup ocultista
+  void _mostrarDialogEscolhidoPeloOutroLado() {
+    List<Ritual> selecionados = [];
+    String filtroElemento = "Todos";
+    String busca = "";
+
+    // Pega apenas rituais de 1º círculo
+    List<Ritual> rituais1Circulo = catalogoRituais
+        .where((r) => r.circulo == 1)
+        .toList();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            // O Filtro poderoso e corrigido!
+            List<Ritual> filtrados = rituais1Circulo.where((r) {
+              if (filtroElemento != "Todos") {
+                String elRitual = r.elemento.trim().toLowerCase();
+                String elFiltro = filtroElemento.trim().toLowerCase();
+
+                // Se for Medo, bloqueia o Variável.
+                if (elFiltro == "medo" && elRitual == "variável") return false;
+
+                // Se não for o elemento filtrado e também não for Variável, bloqueia.
+                if (elRitual != elFiltro && elRitual != "variável") {
+                  return false;
+                }
+              }
+              // Verificação de Busca por Nome
+              if (busca.isNotEmpty &&
+                  !r.nome.toLowerCase().contains(busca.toLowerCase())) {
+                return false;
+              }
+              return true;
+            }).toList();
+
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1A1A1A),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Ocultista: Escolhido pelo Outro Lado",
+                    style: TextStyle(color: corDestaque, fontSize: 18),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    "Escolha 3 rituais de 1º Círculo:",
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: MediaQuery.of(context).size.height * 0.6,
+                child: Column(
+                  children: [
+                    TextField(
+                      style: const TextStyle(color: Colors.white),
+                      decoration: EstiloParanormal.customInputDeco(
+                        "Buscar ritual...",
+                        corDestaque,
+                        Icons.search,
+                      ),
+                      onChanged: (val) => setDialogState(() => busca = val),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Filtro de Elementos
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children:
+                            [
+                              "Todos",
+                              "Sangue",
+                              "Morte",
+                              "Energia",
+                              "Conhecimento",
+                              "Medo",
+                            ].map((el) {
+                              bool ativo = filtroElemento == el;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: ChoiceChip(
+                                  label: Text(
+                                    el,
+                                    style: TextStyle(
+                                      color: ativo
+                                          ? Colors.black
+                                          : Colors.white,
+                                    ),
+                                  ),
+                                  selected: ativo,
+                                  selectedColor: el == "Todos"
+                                      ? Colors.white
+                                      : _obterCorAfinidade(el),
+                                  backgroundColor: Colors.black,
+                                  onSelected: (val) {
+                                    if (val) {
+                                      setDialogState(() => filtroElemento = el);
+                                    }
+                                  },
+                                ),
+                              );
+                            }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Lista de Rituais Filtrados
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: filtrados.length,
+                        itemBuilder: (context, index) {
+                          Ritual r = filtrados[index];
+                          bool isSelected = selecionados.contains(r);
+                          Color corTag = _obterCorAfinidade(r.elemento);
+
+                          return CardRitualAnimado(
+                            ritual: r,
+                            corElemento: corTag,
+                            leading: Checkbox(
+                              activeColor: r.elemento.toLowerCase() == 'medo'
+                                  ? Colors.black
+                                  : Colors.white,
+                              checkColor: r.elemento.toLowerCase() == 'medo'
+                                  ? Colors.white
+                                  : Colors.black,
+                              side: BorderSide(color: Colors.grey.shade500),
+                              value: isSelected,
+                              onChanged: (bool? val) {
+                                setDialogState(() {
+                                  if (val == true) {
+                                    if (selecionados.length < 3) {
+                                      selecionados.add(r);
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "Você só pode escolher 3 rituais!",
+                                          ),
+                                          duration: Duration(seconds: 1),
+                                        ),
+                                      );
+                                    }
+                                  } else {
+                                    selecionados.remove(r);
+                                  }
+                                });
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    // Impede o jogador de sair sem escolher os 3 para não quebrar a ficha
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          "Você deve escolher 3 rituais para continuar.",
+                        ),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    "Pular",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: corDestaque,
+                    foregroundColor: Colors.black,
+                  ),
+                  onPressed: selecionados.length == 3
+                      ? () {
+                          setState(() {
+                            for (var r in selecionados) {
+                              if (r.elemento == "Variável") {
+                                // Se ele escolheu Amaldiçoar Arma aqui, a gente adiciona um genérico
+                                // (ele ajustará o elemento depois ou você pode chamar a função _escolherElementoVariavel)
+                                rituaisConhecidos.add(r);
+                              } else {
+                                rituaisConhecidos.add(r);
+                              }
+                            }
+                            rituaisConhecidos.sort(
+                              (a, b) => a.nome.compareTo(b.nome),
+                            );
+                            poderesEscolhidos.add(
+                              Poder(
+                                nome: "Ocultista_Setup_Iniciais",
+                                tipo: "Sistema",
+                                descricao: "",
+                              ),
+                            );
+                          });
+                          _salvarSilencioso();
+                          Navigator.pop(context);
+                        }
+                      : null,
+                  child: const Text(
+                    "CONFIRMAR",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void _mostrarDialogAgenteSecreto() {
@@ -3344,6 +3912,235 @@ class _FichaAgenteState extends State<FichaAgente> {
           ),
         ],
       ),
+    );
+  }
+
+  void _mostrarDialogBibliotecario() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: Text("A Força do Saber", style: TextStyle(color: corDestaque)),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 350,
+            child: Column(
+              children: [
+                const Text(
+                  "Sua mente se fortaleceu. Escolha uma perícia para mudar o atributo base para INTELECTO:",
+                  style: TextStyle(color: Colors.white, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: listaPericias.length,
+                    itemBuilder: (context, index) {
+                      var per = listaPericias[index];
+                      return ListTile(
+                        title: Text(
+                          per.nome.isEmpty ? per.id.toUpperCase() : per.nome,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        subtitle: Text(
+                          "Atributo Atual: ${per.atributo}",
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 10,
+                          ),
+                        ),
+                        trailing: const Icon(
+                          Icons.psychology,
+                          color: Colors.blueAccent,
+                        ),
+                        onTap: () {
+                          setState(() {
+                            per.atributo =
+                                'INT'; // Modifica o atributo da perícia!
+                            poderesEscolhidos.add(
+                              Poder(
+                                nome: "Bibliotecario_Setup",
+                                tipo: "Sistema",
+                                descricao: per.id,
+                              ),
+                            );
+                            atualizarFicha();
+                          });
+                          Navigator.pop(context);
+                          _salvarSilencioso();
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogMuambeiro(int nivelSetup) {
+    List<String> opcoesId = [
+      'profissao_armeiro',
+      'profissao_engenheiro',
+      'profissao_quimico',
+    ];
+    List<String> opcoesNome = [
+      'Profissão: Armeiro',
+      'Profissão: Engenheiro',
+      'Profissão: Químico',
+    ];
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: Text(
+            nivelSetup == 10 ? "Mascate" : "Laboratório de Campo",
+            style: TextStyle(color: corDestaque),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Escolha o ofício para receber +5 em treinamento:",
+                style: TextStyle(color: Colors.white),
+              ),
+              const SizedBox(height: 16),
+              ...List.generate(opcoesId.length, (index) {
+                // O margin agora fica aqui no Container!
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    tileColor: const Color(0xFF111111),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                      side: BorderSide(color: Colors.grey.shade800),
+                    ),
+                    title: Text(
+                      opcoesNome[index],
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.build, color: Colors.amber),
+                    onTap: () {
+                      setState(() {
+                        var per = listaPericias.firstWhere(
+                          (p) => p.id == opcoesId[index],
+                          orElse: () =>
+                              Pericia(id: '', nome: '', atributo: 'INT'),
+                        );
+                        if (per.id.isEmpty) {
+                          // Cria a profissão se não existir
+                          listaPericias.add(
+                            Pericia(
+                              id: opcoesId[index],
+                              nome: opcoesNome[index],
+                              atributo: 'INT',
+                              treino: 5,
+                            ),
+                          );
+                        } else {
+                          // Soma se já existir
+                          per.treino += 5;
+                        }
+                        poderesEscolhidos.add(
+                          Poder(
+                            nome: "Muambeiro_Setup_$nivelSetup",
+                            tipo: "Sistema",
+                            descricao: opcoesId[index],
+                          ),
+                        );
+                        atualizarFicha();
+                      });
+                      Navigator.pop(context);
+                      _salvarSilencioso();
+                    },
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogExorcista(int nivelSetup) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: Text(
+            nivelSetup == 10 ? "Revelação do Mal" : "Poder da Fé",
+            style: TextStyle(color: corDestaque),
+          ),
+          content: Text(
+            nivelSetup == 10
+                ? "Como Exorcista, você recebeu treinamento em Religião (+5). Se já era treinado, recebeu +2. Suas habilidades paranormais agora podem usar essa perícia."
+                : "Sua fé fortaleceu sua mente. Você se tornou Veterano (+10) em Religião.",
+            style: const TextStyle(color: Colors.white),
+          ),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: corDestaque,
+                foregroundColor: Colors.black,
+              ),
+              onPressed: () {
+                setState(() {
+                  var rel = listaPericias.firstWhere(
+                    (p) => p.id == 'religiao',
+                    orElse: () => Pericia(
+                      id: 'religiao',
+                      nome: 'Religião',
+                      atributo: 'PRE',
+                    ),
+                  );
+
+                  if (nivelSetup == 10) {
+                    if (rel.treino == 0) {
+                      rel.treino = 5;
+                    } else {
+                      bonusOrigem['religiao'] =
+                          (bonusOrigem['religiao'] ?? 0) + 2;
+                    }
+                  } else if (nivelSetup == 40) {
+                    if (rel.treino < 10) rel.treino = 10;
+                  }
+
+                  poderesEscolhidos.add(
+                    Poder(
+                      nome: "Exorcista_Setup_$nivelSetup",
+                      tipo: "Sistema",
+                      descricao: "Bônus de Religião aplicado.",
+                    ),
+                  );
+                  atualizarFicha();
+                });
+                Navigator.pop(context);
+                _salvarSilencioso();
+              },
+              child: const Text(
+                "RECEBER BÔNUS",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -4002,15 +4799,13 @@ class _FichaAgenteState extends State<FichaAgente> {
             ],
           ),
 
-          // ======== SEÇÃO DE ATRIBUTOS (COM VISUAL CORRIGIDO) ========
-          // ======== SEÇÃO DE ATRIBUTOS (COM VISUAL TOTALMENTE CORRIGIDO) ========
           SecaoFicha(
             titulo: "Atributos ${block ? '(Toque para Rolar)' : ''}",
             corTema: corFundoAfinidade,
             corTexto: corTextoAfinidade,
             isMorte: afinidadeAtual == 'Morte',
             filhos: [
-              // ======== CONTADOR DE ATRIBUTOS AQUI ========
+              // CONTADOR DE ATRIBUTOS
               if (!block) // Só mostra o contador se o modo de edição estiver ativado
                 Align(
                   alignment: Alignment.centerRight,
@@ -4041,7 +4836,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                   ),
                 ),
 
-              // ===========================================
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -4222,10 +5016,27 @@ class _FichaAgenteState extends State<FichaAgente> {
                 itemCount: armasEquipadas.length,
                 itemBuilder: (context, index) {
                   final arma = armasEquipadas[index];
+
                   bool isProficiente =
                       arma.proficiencia == 'Simples' ||
                       (arma.proficiencia == 'Táticas' &&
                           classeAtual == 'combatente');
+
+                  // TRILHA: ATIRADOR DE ELITE
+                  // Se ele for um Atirador de Elite NEX 10+, cancela a tag de Não Proficiente visualmente
+                  if (trilhaAtual == 'atirador_de_elite' &&
+                      nex >= 10 &&
+                      arma.tipo == 'Fogo') {
+                    String descL = arma.descricao.toLowerCase();
+                    String nomeL = arma.nome.toLowerCase();
+                    if (descL.contains("balas longas") ||
+                        nomeL.contains("fuzil") ||
+                        nomeL.contains("sniper") ||
+                        nomeL.contains("rifle")) {
+                      isProficiente = true;
+                    }
+                  }
+
                   String alertaProf = isProficiente
                       ? ""
                       : "\n⚠️ Não proficiente: -2d20 no Ataque";
@@ -4276,7 +5087,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                       modMultTrilha += 1;
                     }
                   }
-                  // ================================
 
                   int margemExibida =
                       arma.margemAmeacaEfetiva - modMargemTrilha;
@@ -5037,6 +5847,246 @@ class _FichaAgenteState extends State<FichaAgente> {
         child: Padding(
           padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
           child: _buildFloatingNavBar(block, corDoPainel),
+        ),
+      ),
+    );
+  }
+}
+
+// WIDGET CUSTOMIZADO: CARD DE RITUAL (COM ANIMAÇÃO DE MEDO)
+class CardRitualAnimado extends StatefulWidget {
+  final Ritual ritual;
+  final Color corElemento;
+  final Widget? trailing;
+  final Widget? leading;
+  final VoidCallback? onConjurar;
+
+  const CardRitualAnimado({
+    super.key,
+    required this.ritual,
+    required this.corElemento,
+    this.trailing,
+    this.leading,
+    this.onConjurar,
+  });
+
+  @override
+  State<CardRitualAnimado> createState() => _CardRitualAnimadoState();
+}
+
+class _CardRitualAnimadoState extends State<CardRitualAnimado>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _glowAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    // Configura a velocidade da pulsação da aura
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    // Configura o tamanho mínimo e máximo do brilho
+    _glowAnimation = Tween<double>(
+      begin: 2.0,
+      end: 12.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    bool isMedo = widget.ritual.elemento.toLowerCase() == 'medo';
+
+    // Inversão de Cores se for Medo
+    Color corFundo = isMedo
+        ? const Color.fromARGB(255, 223, 223, 223)
+        : const Color(0xFF0D0D0D);
+    Color corTextoPrincipal = isMedo ? Colors.black : Colors.white;
+    Color corTextoSecundario = isMedo ? Colors.black87 : Colors.grey;
+    Color corDivisoria = isMedo ? Colors.black26 : Colors.grey.shade900;
+
+    // Tenta ler o alvoAreaEfeito ou alvo (para compatibilidade com sua classe Ritual)
+    String alvoTexto = "";
+    try {
+      alvoTexto =
+          (widget.ritual as dynamic).alvoAreaEfeito ??
+          (widget.ritual as dynamic).alvo ??
+          "";
+    } catch (e) {
+      alvoTexto = "";
+    }
+
+    return AnimatedBuilder(
+      animation: _glowAnimation,
+      builder: (context, child) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: corFundo,
+            borderRadius: BorderRadius.circular(8),
+            border: isMedo
+                ? null
+                : Border.all(color: widget.corElemento, width: 1.5),
+            boxShadow: isMedo
+                ? [
+                    BoxShadow(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      blurRadius: _glowAnimation.value,
+                      spreadRadius: _glowAnimation.value / 2,
+                    ),
+                  ]
+                : [],
+          ),
+          child: child,
+        );
+      },
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          leading: widget.leading,
+          trailing: widget.trailing,
+          iconColor: corTextoPrincipal,
+          collapsedIconColor: corTextoSecundario,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+
+          // ==========================================
+          // TÍTULO COM O ELEMENTO ANTES DO NOME
+          // ==========================================
+          title: Row(
+            children: [
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color:
+                      (isMedo
+                              ? const Color.fromARGB(136, 255, 255, 255)
+                              : widget.corElemento)
+                          .withValues(alpha: 0.1),
+                  border: Border.all(
+                    color: isMedo
+                        ? const Color.fromARGB(136, 0, 0, 0)
+                        : widget.corElemento,
+                  ),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  widget.ritual.elemento.toUpperCase(),
+                  style: TextStyle(
+                    color: isMedo ? Colors.black87 : widget.corElemento,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  widget.ritual.nome,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: corTextoPrincipal,
+                    fontSize: 15,
+                  ),
+                  softWrap: true,
+                  overflow: TextOverflow.visible,
+                ),
+              ),
+            ],
+          ),
+
+          // ==========================================
+          // SUBTÍTULO COM INFORMAÇÕES RÁPIDAS
+          // ==========================================
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4.0),
+            child: Text(
+              "${widget.ritual.circulo}º Círculo • ${widget.ritual.execucao} • ${widget.ritual.alcance}",
+              style: TextStyle(
+                color: isMedo
+                    ? Colors.black54
+                    : const Color.fromARGB(255, 255, 255, 255),
+                fontSize: 11,
+              ),
+            ),
+          ),
+
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Divider(color: corDivisoria, thickness: 1),
+                  const SizedBox(height: 8),
+
+                  // ==========================================
+                  // INFORMAÇÕES TÉCNICAS COMPLETAS
+                  // ==========================================
+                  Text(
+                    "Círculo: ${widget.ritual.circulo}º | Execução: ${widget.ritual.execucao}\nAlcance: ${widget.ritual.alcance} | Alvo: $alvoTexto\nDuração: ${widget.ritual.duracao}",
+                    style: TextStyle(color: corTextoSecundario, fontSize: 12),
+                  ),
+                  if (widget.ritual.resistencia.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      "Resistência: ${widget.ritual.resistencia}",
+                      style: TextStyle(
+                        color: corTextoPrincipal,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 12),
+
+                  // ==========================================
+                  // DESCRIÇÃO DO RITUAL
+                  // ==========================================
+                  Text(
+                    widget.ritual.descricao,
+                    style: TextStyle(
+                      color: corTextoPrincipal,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+
+                  // ==========================================
+                  // O BOTÃO DE CONJURAR
+                  // ==========================================
+                  if (widget.onConjurar != null) ...[
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isMedo
+                              ? Colors.black
+                              : const Color.fromARGB(255, 255, 255, 255),
+                          foregroundColor: isMedo ? Colors.white : Colors.black,
+                        ),
+                        icon: const Icon(Icons.auto_awesome, size: 18),
+                        label: const Text(
+                          "CONJURAR",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: widget.onConjurar,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

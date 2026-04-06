@@ -1106,10 +1106,6 @@ void mostrarDialogCriarPoder({
                     ),
                   ),
                   const SizedBox(height: 24),
-
-                  // ============================================
-                  // NOVO SELETOR DE CATEGORIA (Geral vs Paranormal)
-                  // ============================================
                   Container(
                     height: 40,
                     decoration: BoxDecoration(
@@ -1191,9 +1187,6 @@ void mostrarDialogCriarPoder({
                   ),
                   const SizedBox(height: 16),
 
-                  // ============================================
-                  // ESCOLHA DE ELEMENTO (Só aparece na aba Paranormal)
-                  // ============================================
                   if (isParanormal) ...[
                     const Text(
                       "Elemento do Poder:",
@@ -1215,7 +1208,6 @@ void mostrarDialogCriarPoder({
                             : Colors.grey.shade400;
                         bool selected = elementoEscolhido == elem;
 
-                        // Garante que o texto de Morte e Conhecimento fique legível quando selecionado
                         Color txtCor = selected
                             ? (elem == 'Conhecimento' || elem == 'Morte'
                                   ? Colors.black
@@ -1312,7 +1304,7 @@ void mostrarDialogCriarPoder({
                       nome: nomeCtrl.text.isNotEmpty
                           ? nomeCtrl.text
                           : "Poder Desconhecido",
-                      // Se for paranormal, usa o elemento. Senão, vai pro filtro "Gerais"
+
                       tipo: isParanormal ? elementoEscolhido : "Gerais",
                       descricao: descCtrl.text,
                       preRequisitos: preReqCtrl.text.isNotEmpty

@@ -1,7 +1,8 @@
 import '../dados/rituais.dart';
 
 class Pericia {
-  final String nome, atributo, id;
+  final String nome, id;
+  String atributo;
   int treino;
   bool daOrigem;
   Pericia({
@@ -14,86 +15,77 @@ class Pericia {
 }
 
 class ItemInventario {
-  String nome, categoria, descricao;
+  String nome;
+  String categoria;
   double espaco;
+  int bonusCarga;
+  String descricao;
   List<String> modificacoes;
   bool equipado;
-  String? periciaVinculada;
+  String periciaVinculada;
+  String tipo; 
+  int defesa;
+  int bonusPericia;
 
   ItemInventario({
     required this.nome,
     required this.categoria,
     required this.espaco,
-    this.descricao = "",
+    required this.descricao,
+    this.bonusCarga = 0,
     this.modificacoes = const [],
     this.equipado = false,
-    this.periciaVinculada,
+    this.periciaVinculada = "",
+    this.tipo = "Geral",
+    this.defesa = 0,
+    this.bonusPericia = 0,
   });
 
-  String get categoriaEfetiva {
-    // Não conta a "Arma Favorita" nem outras tags de origem no aumento de categoria
-    int qtdMods = modificacoes
-        .where(
-          (m) =>
-              !m.contains("Ferramenta Favorita") &&
-              !m.contains("Explosão Solidária") &&
-              !m.contains("Arma Favorita"),
-        )
-        .length;
-
-    if (qtdMods == 0) return categoria;
-
-    List<String> niveis = ["0", "I", "II", "III", "IV", "V", "VI", "VII"];
-    int indexAtual = niveis.indexOf(categoria.trim());
-
-    if (indexAtual == -1) return categoria;
-
-    int novoIndex = indexAtual + qtdMods;
-    if (novoIndex >= niveis.length) return niveis.last;
-
-    return niveis[novoIndex];
-  }
-
-  double get espacoEfetivo {
-    double e = espaco;
-    if (modificacoes.contains("Discreta") ||
-        modificacoes.contains("Discreto")) {
-      e -= 1.0;
-    }
-    if (modificacoes.contains("Blindada")) e += 1.0;
-    if (modificacoes.contains("Reforçada")) e += 1.0;
-
-    if (espaco >= 0 && e < 0) return 0;
-    return e;
-  }
-
   Map<String, dynamic> toJson() => {
-    'nome': nome,
-    'categoria': categoria,
-    'espaco': espaco,
-    'descricao': descricao,
-    'modificacoes': modificacoes,
-    'equipado': equipado,
-    'periciaVinculada': periciaVinculada,
-  };
+        'nome': nome,
+        'categoria': categoria,
+        'espaco': espaco,
+        'descricao': descricao,
+        'bonusCarga': bonusCarga,
+        'modificacoes': modificacoes,
+        'equipado': equipado,
+        'periciaVinculada': periciaVinculada,
+        'tipo': tipo,
+        'defesa': defesa,
+        'bonusPericia': bonusPericia,
+      };
 
   factory ItemInventario.fromJson(Map<String, dynamic> json) {
     return ItemInventario(
-      nome: json['nome']?.toString() ?? 'Item Desconhecido',
-      categoria: json['categoria']?.toString() ?? '0',
-      espaco: json['espaco'] != null ? (json['espaco'] as num).toDouble() : 1.0,
-      descricao: json['descricao']?.toString() ?? "",
-      modificacoes: json['modificacoes'] is List
-          ? List<String>.from(json['modificacoes'])
-          : <String>[],
-      equipado: json['equipado'] == true,
-      periciaVinculada: json['periciaVinculada']?.toString(),
+      nome: json['nome'] ?? '',
+      categoria: json['categoria'] ?? '0',
+      espaco: (json['espaco'] ?? 0).toDouble(),
+      descricao: json['descricao'] ?? '',
+      bonusCarga: json['bonusCarga'] ?? 0,
+      modificacoes: List<String>.from(json['modificacoes'] ?? []),
+      equipado: json['equipado'] ?? false,
+      periciaVinculada: json['periciaVinculada'] ?? "",
+      tipo: json['tipo'] ?? "Geral", 
+      defesa: json['defesa'] ?? 0,
+      bonusPericia: json['bonusPericia'] ?? 0,
     );
+  }
+  
+  double get espacoEfetivo {
+    double e = espaco;
+    if (modificacoes.contains("Leve") || modificacoes.contains("Discreta") || modificacoes.contains("Discreto")) {
+      e -= 1.0;
+    }
+    // Se o usuário digitou um número negativo de propósito, o app respeita!
+    // Mas se o item era positivo e as modificações zeraram ele, ele trava no 0.
+    if (espaco >= 0 && e < 0) return 0;
+    
+    return e;
   }
 }
 
 class Arma extends ItemInventario {
-  String tipo;
+  // 'tipo' removido daqui, pois ele já existe em ItemInventario (o pai)
   String dano;
   int margemAmeaca;
   int multiplicadorCritico;
@@ -104,7 +96,7 @@ class Arma extends ItemInventario {
 
   Arma({
     required super.nome,
-    required this.tipo,
+    required super.tipo, // Passamos isso para o super
     required this.dano,
     this.margemAmeaca = 20,
     this.multiplicadorCritico = 2,
@@ -119,9 +111,9 @@ class Arma extends ItemInventario {
     this.periciaPersonalizada = '',
   });
 
-  @override
+  // Removi o @override de 'categoriaEfetiva' porque essa variável não existe em ItemInventario.
+  // Ela é exclusiva da Arma, então apenas 'get' é suficiente.
   String get categoriaEfetiva {
-    // Filtra a lista para não contar a "Ferramenta de Trabalho" e a "Arma Favorita"
     int qtdMods = modificacoes
         .where(
           (mod) =>
@@ -232,7 +224,7 @@ class Arma extends ItemInventario {
   Map<String, dynamic> toJson() {
     var map = super.toJson();
     map.addAll({
-      'tipo': tipo,
+      // Removido o 'tipo' daqui porque o super.toJson() já salvou ele!
       'dano': dano,
       'margemAmeaca': margemAmeaca,
       'multiplicadorCritico': multiplicadorCritico,
@@ -247,18 +239,17 @@ class Arma extends ItemInventario {
   factory Arma.fromJson(Map<String, dynamic> json) {
     return Arma(
       nome: json['nome'] ?? '',
-      tipo: json['tipo'] ?? '',
-      dano: json['dano'] ?? '',
+      tipo: json['tipo'] ?? 'Corpo a Corpo', // Lê o tipo
+      dano: json['dano'] ?? '1d4',
       margemAmeaca: json['margemAmeaca'] ?? 20,
       multiplicadorCritico: json['multiplicadorCritico'] ?? 2,
-      categoria: json['categoria'] ?? '',
+      categoria: json['categoria'] ?? '0',
       espaco: (json['espaco'] ?? 1).toDouble(),
-      proficiencia: json['proficiencia'] ?? '',
-      empunhadura: json['empunhadura'] ?? '',
+      proficiencia: json['proficiencia'] ?? 'Simples',
+      empunhadura: json['empunhadura'] ?? 'Leve',
       descricao: json['descricao'] ?? '',
       modificacoes: List<String>.from(json['modificacoes'] ?? []),
       equipado: json['equipado'] ?? false,
-
       atributoPersonalizado: json['atributoPersonalizado'] ?? '',
       periciaPersonalizada: json['periciaPersonalizada'] ?? '',
     );

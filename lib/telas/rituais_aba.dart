@@ -209,270 +209,121 @@ extension _RituaisFicha on _FichaAgenteState {
                 itemCount: rituaisConhecidos.length,
                 itemBuilder: (context, index) {
                   Ritual r = rituaisConhecidos[index];
-                  Color corTag = _corElementoRitual(r.elemento);
+                  Color corTag = _obterCorAfinidade(r.elemento);
 
-                  // Extrai o valor adicional e usa as variáveis corretamente
-                  int aditivoDiscente =
-                      r.custoDiscente ??
-                      (int.tryParse(
-                            RegExp(
-                                  r'\+(\d+)',
-                                ).firstMatch(r.discente)?.group(1) ??
-                                '0',
-                          ) ??
-                          0);
-                  int aditivoVerdadeiro =
-                      r.custoVerdadeiro ??
-                      (int.tryParse(
-                            RegExp(
-                                  r'\+(\d+)',
-                                ).firstMatch(r.verdadeiro)?.group(1) ??
-                                '0',
-                          ) ??
-                          0);
+                  return CardRitualAnimado(
+                    ritual: r,
+                    corElemento: corTag,
+                    onConjurar: () {
+                      int peBasico = r.custoPE;
+                      int peDiscente =
+                          peBasico + (r.custoAdicionalDiscente ?? 0);
+                      int peVerdadeiro =
+                          peBasico + (r.custoAdicionalVerdadeiro ?? 0);
 
-                  String sigla = r.elemento == 'Medo' ? "SAN" : "PE";
-                  Color corBotao = r.elemento == 'Medo'
-                      ? Colors.blueGrey
-                      : Colors.blue;
-
-                  return Container(
-                    margin: const EdgeInsets.only(top: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0D0D0D),
-                      border: Border.all(color: Colors.grey.shade800),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Theme(
-                      data: Theme.of(
-                        context,
-                      ).copyWith(dividerColor: Colors.transparent),
-                      child: ExpansionTile(
-                        iconColor: corTag,
-                        collapsedIconColor: Colors.grey,
-                        tilePadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 4,
-                        ),
-                        title: Row(
-                          children: [
-                            Container(
-                              margin: const EdgeInsets.only(right: 8),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: corTag),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                r.elemento.toUpperCase(),
-                                style: TextStyle(
-                                  color: corTag,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                r.nome,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 4.0),
-                          child: Text(
-                            "${r.circulo}º Círculo • Execução: ${r.execucao} • Alcance: ${r.alcance}",
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 11,
-                            ),
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          backgroundColor: const Color(0xFF1A1A1A),
+                          title: Text(
+                            "Conjurar: ${r.nome}",
+                            style: TextStyle(color: corDestaque),
                           ),
-                        ),
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Divider(
-                                  color: corTag.withValues(alpha: 0.3),
-                                  thickness: 1,
-                                ),
-                                const SizedBox(height: 8),
-                                _buildRitualDetailRow(
-                                  "Alvo/Área",
-                                  r.alvoAreaEfeito,
-                                ),
-                                _buildRitualDetailRow("Duração", r.duracao),
-                                _buildRitualDetailRow(
-                                  "Resistência",
-                                  r.resistencia,
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  r.descricao,
-                                  style: const TextStyle(
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListTile(
+                                title: const Text(
+                                  "Básico",
+                                  style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 13,
-                                    height: 1.4,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                const SizedBox(height: 12),
-                                if (r.discente != "Nenhum")
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 8.0),
-                                    child: RichText(
-                                      text: TextSpan(
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 12,
-                                          height: 1.4,
-                                        ),
-                                        children: [
-                                          const TextSpan(
-                                            text: "Discente ",
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          TextSpan(text: r.discente),
-                                        ],
-                                      ),
+                                trailing: Text(
+                                  "$peBasico PE",
+                                  style: const TextStyle(
+                                    color: Colors.blueAccent,
+                                  ),
+                                ),
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  _conjurarRitual(r, peBasico, "Básico");
+                                },
+                              ),
+                              if (r.discente.isNotEmpty)
+                                ListTile(
+                                  title: const Text(
+                                    "Discente",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                if (r.verdadeiro != "Nenhum")
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 8.0),
-                                    child: RichText(
-                                      text: TextSpan(
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 12,
-                                          height: 1.4,
-                                        ),
-                                        children: [
-                                          const TextSpan(
-                                            text: "Verdadeiro ",
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          TextSpan(text: r.verdadeiro),
-                                        ],
-                                      ),
+                                  subtitle: Text(
+                                    r.discente,
+                                    style: const TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 11,
                                     ),
                                   ),
-                                const SizedBox(height: 16),
-
-                                // Botões para conjurar ritual só aparecem no modo visualização
-                                if (block)
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    alignment: WrapAlignment.center,
-                                    children: [
-                                      ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: corBotao.withValues(
-                                            alpha: 0.2,
-                                          ),
-                                          foregroundColor: corBotao,
-                                        ),
-                                        onPressed: () => _conjurarRitual(
-                                          r,
-                                          r.custoPE,
-                                          "Normal",
-                                        ),
-                                        child: Text(
-                                          "Normal (-${r.custoPE} $sigla)",
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                      ),
-                                      if (r.discente != "Nenhum" ||
-                                          r.custoDiscente != null)
-                                        ElevatedButton(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: corBotao
-                                                .withValues(alpha: 0.2),
-                                            foregroundColor: corBotao,
-                                          ),
-                                          onPressed: () => _conjurarRitual(
-                                            r,
-                                            r.custoPE + aditivoDiscente,
-                                            "Discente",
-                                          ),
-                                          child: Text(
-                                            "Discente (-${r.custoPE + aditivoDiscente} $sigla)",
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ),
-                                      if (r.verdadeiro != "Nenhum" ||
-                                          r.custoVerdadeiro != null)
-                                        ElevatedButton(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: corBotao
-                                                .withValues(alpha: 0.2),
-                                            foregroundColor: corBotao,
-                                          ),
-                                          onPressed: () => _conjurarRitual(
-                                            r,
-                                            r.custoPE + aditivoVerdadeiro,
-                                            "Verdadeiro",
-                                          ),
-                                          child: Text(
-                                            "Verdadeiro (-${r.custoPE + aditivoVerdadeiro} $sigla)",
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-
-                                // Esquecer ritual só aparece no modo de edição
-                                if (!block)
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: TextButton.icon(
-                                      onPressed: () {
-                                        setState(
-                                          () =>
-                                              rituaisConhecidos.removeAt(index),
-                                        );
-                                        _salvarSilencioso();
-                                      },
-                                      icon: const Icon(
-                                        Icons.delete,
-                                        color: Colors.redAccent,
-                                        size: 16,
-                                      ),
-                                      label: const Text(
-                                        "Esquecer Ritual",
-                                        style: TextStyle(
-                                          color: Colors.redAccent,
-                                          fontSize: 12,
-                                        ),
-                                      ),
+                                  trailing: Text(
+                                    "$peDiscente PE",
+                                    style: const TextStyle(
+                                      color: Colors.blueAccent,
                                     ),
                                   ),
-                              ],
-                            ),
+                                  onTap: () {
+                                    Navigator.pop(ctx);
+                                    _conjurarRitual(r, peDiscente, "Discente");
+                                  },
+                                ),
+                              if (r.verdadeiro.isNotEmpty)
+                                ListTile(
+                                  title: const Text(
+                                    "Verdadeiro",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    r.verdadeiro,
+                                    style: const TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                  trailing: Text(
+                                    "$peVerdadeiro PE",
+                                    style: const TextStyle(
+                                      color: Colors.blueAccent,
+                                    ),
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(ctx);
+                                    _conjurarRitual(
+                                      r,
+                                      peVerdadeiro,
+                                      "Verdadeiro",
+                                    );
+                                  },
+                                ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      );
+                    },
+
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.redAccent),
+                      onPressed: () {
+                        setState(() {
+                          rituaisConhecidos.removeAt(index);
+                          atualizarFicha();
+                        });
+                        _salvarSilencioso();
+                      },
                     ),
                   );
                 },
@@ -480,27 +331,6 @@ extension _RituaisFicha on _FichaAgenteState {
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildRitualDetailRow(String titulo, String valor) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4.0),
-      child: RichText(
-        text: TextSpan(
-          style: const TextStyle(color: Colors.grey, fontSize: 12),
-          children: [
-            TextSpan(
-              text: "$titulo: ",
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.white70,
-              ),
-            ),
-            TextSpan(text: valor),
-          ],
-        ),
       ),
     );
   }
@@ -537,10 +367,15 @@ extension _RituaisFicha on _FichaAgenteState {
                   !r.nome.toLowerCase().contains(busca.toLowerCase())) {
                 return false;
               }
-              if (filtroElemento != "Todos" &&
-                  r.elemento != filtroElemento &&
-                  r.elemento != "Variável") {
-                return false;
+              if (filtroElemento != "Todos") {
+                // Se for Medo, bloqueia o Variável
+                if (filtroElemento == "Medo" && r.elemento == "Variável") {
+                  return false;
+                }
+                // Se não for Medo, mostra a cor certa e os Variáveis
+                if (r.elemento != filtroElemento && r.elemento != "Variável") {
+                  return false;
+                }
               }
 
               if (filtroCirculo != "Todos") {
@@ -684,87 +519,45 @@ extension _RituaisFicha on _FichaAgenteState {
                                 itemCount: filtrados.length,
                                 itemBuilder: (context, index) {
                                   Ritual r = filtrados[index];
-                                  Color corTag = _corElementoRitual(r.elemento);
+                                  Color corTag = _obterCorAfinidade(r.elemento);
+                                  bool isMedo =
+                                      r.elemento.toLowerCase() == 'medo';
 
-                                  return Container(
-                                    decoration: BoxDecoration(
-                                      border: Border(
-                                        bottom: BorderSide(
-                                          color: Colors.grey.shade900,
-                                        ),
+                                  // Substitua a partir daqui:
+                                  return CardRitualAnimado(
+                                    ritual: r,
+                                    corElemento: corTag,
+                                    trailing: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: isMedo
+                                            ? Colors.black
+                                            : corTemaLocal,
+                                        foregroundColor: isMedo
+                                            ? Colors.white
+                                            : corTextoAfinidade,
                                       ),
-                                    ),
-                                    child: ListTile(
-                                      title: Row(
-                                        children: [
-                                          Container(
-                                            margin: const EdgeInsets.only(
-                                              right: 8,
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              border: Border.all(color: corTag),
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              r.elemento.toUpperCase(),
-                                              style: TextStyle(
-                                                color: corTag,
-                                                fontSize: 9,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            child: Text(
-                                              r.nome,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      subtitle: Text(
-                                        "${r.circulo}º Círculo • ${r.execucao}",
-                                        style: const TextStyle(
-                                          color: Colors.grey,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                      trailing: ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: corTemaLocal,
-                                          foregroundColor: corTextoAfinidade,
-                                        ),
-                                        onPressed: () {
-                                          if (r.elemento == "Variável") {
-                                            _escolherElementoVariavel(r);
-                                          } else {
-                                            setState(() {
-                                              rituaisConhecidos.add(r);
-                                              rituaisConhecidos.sort(
-                                                (a, b) =>
-                                                    a.nome.compareTo(b.nome),
-                                              );
-                                            });
-                                            _salvarSilencioso();
-                                            Navigator.pop(context);
-                                            _mostrarNotificacao(
-                                              "Ritual ${r.nome} aprendido!",
+                                      onPressed: () {
+                                        if (r.elemento == "Variável") {
+                                          _escolherElementoVariavel(r);
+                                        } else {
+                                          setState(() {
+                                            rituaisConhecidos.add(r);
+                                            rituaisConhecidos.sort(
+                                              (a, b) =>
+                                                  a.nome.compareTo(b.nome),
                                             );
-                                          }
-                                        },
-                                        child: const Text(
-                                          "APRENDER",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                          });
+                                          _salvarSilencioso();
+                                          Navigator.pop(context);
+                                          _mostrarNotificacao(
+                                            "Ritual ${r.nome} aprendido!",
+                                          );
+                                        }
+                                      },
+                                      child: const Text(
+                                        "APRENDER",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
@@ -811,6 +604,7 @@ extension _RituaisFicha on _FichaAgenteState {
                         ? Colors.black
                         : Colors.white,
                   ),
+
                   onPressed: () {
                     Ritual novoRitual = Ritual(
                       nome: "${rOriginal.nome} ($el)",
@@ -818,16 +612,19 @@ extension _RituaisFicha on _FichaAgenteState {
                       circulo: rOriginal.circulo,
                       execucao: rOriginal.execucao,
                       alcance: rOriginal.alcance,
-                      alvoAreaEfeito: rOriginal.alvoAreaEfeito,
+                      alvo: rOriginal.alvo,
                       duracao: rOriginal.duracao,
                       resistencia: rOriginal.resistencia,
                       descricao: rOriginal.descricao,
+                      // Variáveis renomeadas aqui:
+                      custoPE: rOriginal.custoPE,
+                      custoAdicionalDiscente: rOriginal.custoAdicionalDiscente,
+                      custoAdicionalVerdadeiro:
+                          rOriginal.custoAdicionalVerdadeiro,
                       discente: rOriginal.discente,
                       verdadeiro: rOriginal.verdadeiro,
-                      custoPE: rOriginal.custoPE,
-                      custoDiscente: rOriginal.custoDiscente,
-                      custoVerdadeiro: rOriginal.custoVerdadeiro,
                     );
+
                     setState(() {
                       rituaisConhecidos.add(novoRitual);
                       rituaisConhecidos.sort(
@@ -839,6 +636,7 @@ extension _RituaisFicha on _FichaAgenteState {
                     Navigator.pop(context);
                     _mostrarNotificacao("Ritual ${novoRitual.nome} aprendido!");
                   },
+
                   child: Text(
                     el.toUpperCase(),
                     style: const TextStyle(fontWeight: FontWeight.bold),
@@ -1103,19 +901,15 @@ extension _RituaisFicha on _FichaAgenteState {
                       descricao: descCtrl.text.trim().isEmpty
                           ? "Efeito customizado do jogador."
                           : descCtrl.text.trim(),
-                      discente: discenteCtrl.text.trim().isEmpty
-                          ? "Nenhum"
-                          : discenteCtrl.text.trim(),
-                      verdadeiro: verdadeiroCtrl.text.trim().isEmpty
-                          ? "Nenhum"
-                          : verdadeiroCtrl.text.trim(),
                       custoPE: custoCalculado,
-                      custoDiscente: custoDiscCtrl.text.isNotEmpty
-                          ? int.tryParse(custoDiscCtrl.text.trim())
-                          : null,
-                      custoVerdadeiro: custoVerdCtrl.text.isNotEmpty
-                          ? int.tryParse(custoVerdCtrl.text.trim())
-                          : null,
+                      discente: discenteCtrl.text,
+                      verdadeiro: verdadeiroCtrl.text,
+                      custoAdicionalDiscente: discenteCtrl.text.isNotEmpty
+                          ? (int.tryParse(custoDiscCtrl.text.trim()) ?? 0)
+                          : 0,
+                      custoAdicionalVerdadeiro: verdadeiroCtrl.text.isNotEmpty
+                          ? (int.tryParse(custoVerdCtrl.text.trim()) ?? 0)
+                          : 0,
                     );
 
                     setState(() {

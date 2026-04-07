@@ -231,7 +231,8 @@ final List<ItemInventario> catalogoItensOrdem = [
   ItemInventario(
     nome: "Mochila Militar",
     categoria: "I",
-    espaco: -2.0,
+    espaco: 0,
+    bonusCarga: 2,
     descricao:
         "Item Operacional. Uma mochila leve e de alta qualidade. Ela não usa nenhum espaço e aumenta sua capacidade de carga em 2 espaços.",
   ),

@@ -563,7 +563,7 @@ extension PericiasFicha on _FichaAgenteState {
             ),
             if (modDados != 0) 
               Text(
-                "Modificador Monstruoso: ${modDados > 0 ? '+' : ''}${modDados}d20",
+                "Modificador: ${modDados > 0 ? '+' : ''}${modDados}d20",
                 style: const TextStyle(color: Colors.orangeAccent, fontSize: 11, fontStyle: FontStyle.italic),
               ),
             const SizedBox(height: 8),

@@ -23,7 +23,7 @@ class ItemInventario {
   List<String> modificacoes;
   bool equipado;
   String periciaVinculada;
-  String tipo; 
+  String tipo;
   int defesa;
   int bonusPericia;
 
@@ -42,18 +42,18 @@ class ItemInventario {
   });
 
   Map<String, dynamic> toJson() => {
-        'nome': nome,
-        'categoria': categoria,
-        'espaco': espaco,
-        'descricao': descricao,
-        'bonusCarga': bonusCarga,
-        'modificacoes': modificacoes,
-        'equipado': equipado,
-        'periciaVinculada': periciaVinculada,
-        'tipo': tipo,
-        'defesa': defesa,
-        'bonusPericia': bonusPericia,
-      };
+    'nome': nome,
+    'categoria': categoria,
+    'espaco': espaco,
+    'descricao': descricao,
+    'bonusCarga': bonusCarga,
+    'modificacoes': modificacoes,
+    'equipado': equipado,
+    'periciaVinculada': periciaVinculada,
+    'tipo': tipo,
+    'defesa': defesa,
+    'bonusPericia': bonusPericia,
+  };
 
   factory ItemInventario.fromJson(Map<String, dynamic> json) {
     return ItemInventario(
@@ -65,21 +65,23 @@ class ItemInventario {
       modificacoes: List<String>.from(json['modificacoes'] ?? []),
       equipado: json['equipado'] ?? false,
       periciaVinculada: json['periciaVinculada'] ?? "",
-      tipo: json['tipo'] ?? "Geral", 
+      tipo: json['tipo'] ?? "Geral",
       defesa: json['defesa'] ?? 0,
       bonusPericia: json['bonusPericia'] ?? 0,
     );
   }
-  
+
   double get espacoEfetivo {
     double e = espaco;
-    if (modificacoes.contains("Leve") || modificacoes.contains("Discreta") || modificacoes.contains("Discreto")) {
+    if (modificacoes.contains("Leve") ||
+        modificacoes.contains("Discreta") ||
+        modificacoes.contains("Discreto")) {
       e -= 1.0;
     }
     // Se o usuário digitou um número negativo de propósito, o app respeita!
     // Mas se o item era positivo e as modificações zeraram ele, ele trava no 0.
     if (espaco >= 0 && e < 0) return 0;
-    
+
     return e;
   }
 }
@@ -298,13 +300,14 @@ class AgenteDados {
   List<ItemInventario> inventario;
   List<Arma> armas;
 
-  List<Poder> poderes;
+  int? ppAtual;
 
+  List<Poder> poderes;
   final List<Ritual> rituais;
+  List<Ritual> rituaisGrimorio;
 
   List<String> periciasClasse;
 
-  // Informações de backstory (Lore)
   String idade;
   String genero;
   String nacionalidade;
@@ -330,11 +333,13 @@ class AgenteDados {
     this.pvAtual,
     this.peAtual,
     this.sanAtual,
+    this.ppAtual,
     required this.pericias,
     required this.inventario,
     required this.armas,
     this.poderes = const [],
     this.rituais = const [],
+    this.rituaisGrimorio = const [], 
     this.periciasClasse = const [],
     this.idade = "",
     this.genero = "",
@@ -362,17 +367,16 @@ class AgenteDados {
     'pvAtual': pvAtual,
     'peAtual': peAtual,
     'sanAtual': sanAtual,
+    'ppAtual': ppAtual,
     'pericias': pericias,
     'inventario': inventario.map((i) => i.toJson()).toList(),
     'armas': armas.map((a) => a.toJson()).toList(),
-
     'poderes': poderes.map((p) => p.toJson()).toList(),
-
     'rituais': rituais.map((e) => e.toJson()).toList(),
-
+    'rituaisGrimorio': rituaisGrimorio
+        .map((e) => e.toJson())
+        .toList(), // Salvando!
     'periciasClasse': periciasClasse,
-
-    // Novas variáveis da Lore
     'idade': idade,
     'genero': genero,
     'nacionalidade': nacionalidade,
@@ -403,6 +407,7 @@ class AgenteDados {
     sanAtual: json['sanAtual'] != null
         ? (json['sanAtual'] as num).toInt()
         : null,
+    ppAtual: json['ppAtual'] != null ? (json['ppAtual'] as num).toInt() : null,
     pericias: json['pericias'] != null
         ? Map<String, int>.from(json['pericias'])
         : <String, int>{},
@@ -416,28 +421,24 @@ class AgenteDados {
         : <Arma>[],
     poderes: json['poderes'] != null
         ? (json['poderes'] as List).map((p) {
-            if (p is Map<String, dynamic>) {
-              return Poder.fromJson(p);
-            } else if (p is String) {
-              return Poder(
-                nome: p,
-                tipo: "Legado",
-                descricao: "Poder antigo. Re-adicione para ver o custo.",
-              );
-            }
+            if (p is Map<String, dynamic>) return Poder.fromJson(p);
             return Poder(nome: "Erro", tipo: "Erro", descricao: "");
           }).toList()
         : <Poder>[],
-
     rituais: json['rituais'] != null
         ? (json['rituais'] as List).map((i) => Ritual.fromJson(i)).toList()
+        : [],
+
+    // ==== LENDO O GRIMÓRIO AO ABRIR O APP ====
+    rituaisGrimorio: json['rituaisGrimorio'] != null
+        ? (json['rituaisGrimorio'] as List)
+              .map((i) => Ritual.fromJson(i))
+              .toList()
         : [],
 
     periciasClasse: json['periciasClasse'] is List
         ? List<String>.from(json['periciasClasse'])
         : <String>[],
-
-    // Instanciação das novas variáveis de Lore
     idade: json['idade']?.toString() ?? "",
     genero: json['genero']?.toString() ?? "",
     nacionalidade: json['nacionalidade']?.toString() ?? "",

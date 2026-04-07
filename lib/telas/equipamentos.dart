@@ -586,172 +586,182 @@ extension _EquipamentosFicha on _FichaAgenteState {
                     .trim();
                 if (descLimpa.isEmpty) descLimpa = tipoItem;
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF151515),
-                    border: Border.all(color: Colors.grey.shade900),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Theme(
-                    data: Theme.of(
-                      context,
-                    ).copyWith(dividerColor: Colors.transparent),
-                    child: ExpansionTile(
-                      iconColor: corDestaque,
-                      collapsedIconColor: Colors.grey,
-                      tilePadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      title: Text(
-                        item.nome,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                return GestureDetector(
+                  onDoubleTap: () {
+                    if (item.nome.contains("Grimório Ritualístico")) {
+                      setState(() {
+                        _abaAtual = 3; // 3 é o índice da Aba de Rituais!
+                      });
+                      _mostrarNotificacao("Folheando o Grimório...");
+                    }
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF151515),
+                      border: Border.all(color: Colors.grey.shade900),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Theme(
+                      data: Theme.of(
+                        context,
+                      ).copyWith(dividerColor: Colors.transparent),
+                      child: ExpansionTile(
+                        iconColor: corDestaque,
+                        collapsedIconColor: Colors.grey,
+                        tilePadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
                         ),
-                      ),
-                      subtitle: RichText(
-                        text: TextSpan(
-                          style: TextStyle(color: corDestaque, fontSize: 13),
-                          children: [
-                            const TextSpan(text: "Categoria: "),
-                            TextSpan(
-                              text: "${_obterCategoriaCalculada(item)}   ",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const TextSpan(text: "Espaços: "),
-                            TextSpan(
-                              text: item.espacoEfetivo.toString().replaceAll(
-                                '.0',
-                                '',
-                              ),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                        title: Text(
+                          item.nome,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                      trailing: isEquipavel
-                          ? SizedBox(
-                              width: 100,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  Checkbox(
-                                    value: item.equipado,
-                                    activeColor: corDestaque,
-                                    onChanged: (val) =>
-                                        _toggleEquiparItem(item),
-                                  ),
-                                  Icon(
-                                    Icons.expand_more,
-                                    color: corDestaque.withValues(alpha: 0.5),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : Icon(
-                              Icons.expand_more,
-                              color: corDestaque.withValues(alpha: 0.5),
-                            ),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                        subtitle: RichText(
+                          text: TextSpan(
+                            style: TextStyle(color: corDestaque, fontSize: 13),
                             children: [
-                              Divider(
-                                color: corDestaque.withValues(alpha: 0.3),
-                                thickness: 1,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                tipoItem,
+                              const TextSpan(text: "Categoria: "),
+                              TextSpan(
+                                text: "${_obterCategoriaCalculada(item)}   ",
                                 style: const TextStyle(
-                                  color: Colors.grey,
-                                  fontStyle: FontStyle.italic,
-                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                descLimpa,
+                              const TextSpan(text: "Espaços: "),
+                              TextSpan(
+                                text: item.espacoEfetivo.toString().replaceAll(
+                                  '.0',
+                                  '',
+                                ),
                                 style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              if (item.modificacoes.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    "Mods: ${item.modificacoes.join(', ')}",
-                                    style: TextStyle(
-                                      color: corDestaque,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              const SizedBox(height: 16),
-
-                              if (!block)
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    IconButton(
-                                      onPressed: () {
-                                        setState(
-                                          () => inventario.removeAt(index),
-                                        );
-                                        atualizarFicha();
-                                        _salvarSilencioso();
-                                      },
-                                      icon: const Icon(
-                                        Icons.delete,
-                                        color: Colors.redAccent,
-                                      ),
-                                      tooltip: "Excluir Item",
-                                    ),
-                                    TextButton.icon(
-                                      icon: const Icon(Icons.build, size: 16),
-                                      onPressed: () =>
-                                          _mostrarDialogSeletorModificacoes(
-                                            item,
-                                            false,
-                                          ),
-                                      label: const Text(
-                                        "Aprimorar",
-                                        style: TextStyle(
-                                          color: Colors.blueAccent,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          _mostrarDialogEdicaoCompletaItem(
-                                            item,
-                                            index,
-                                          ),
-                                      child: const Text(
-                                        "Editar",
-                                        style: TextStyle(
-                                          color: Colors.green,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
                             ],
                           ),
                         ),
-                      ],
+                        trailing: isEquipavel
+                            ? SizedBox(
+                                width: 100,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Checkbox(
+                                      value: item.equipado,
+                                      activeColor: corDestaque,
+                                      onChanged: (val) =>
+                                          _toggleEquiparItem(item),
+                                    ),
+                                    Icon(
+                                      Icons.expand_more,
+                                      color: corDestaque.withValues(alpha: 0.5),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : Icon(
+                                Icons.expand_more,
+                                color: corDestaque.withValues(alpha: 0.5),
+                              ),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Divider(
+                                  color: corDestaque.withValues(alpha: 0.3),
+                                  thickness: 1,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  tipoItem,
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontStyle: FontStyle.italic,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  descLimpa,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                if (item.modificacoes.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8.0),
+                                    child: Text(
+                                      "Mods: ${item.modificacoes.join(', ')}",
+                                      style: TextStyle(
+                                        color: corDestaque,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(height: 16),
+
+                                if (!block)
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      IconButton(
+                                        onPressed: () {
+                                          setState(
+                                            () => inventario.removeAt(index),
+                                          );
+                                          atualizarFicha();
+                                          _salvarSilencioso();
+                                        },
+                                        icon: const Icon(
+                                          Icons.delete,
+                                          color: Colors.redAccent,
+                                        ),
+                                        tooltip: "Excluir Item",
+                                      ),
+                                      TextButton.icon(
+                                        icon: const Icon(Icons.build, size: 16),
+                                        onPressed: () =>
+                                            _mostrarDialogSeletorModificacoes(
+                                              item,
+                                              false,
+                                            ),
+                                        label: const Text(
+                                          "Aprimorar",
+                                          style: TextStyle(
+                                            color: Colors.blueAccent,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            _mostrarDialogEdicaoCompletaItem(
+                                              item,
+                                              index,
+                                            ),
+                                        child: const Text(
+                                          "Editar",
+                                          style: TextStyle(
+                                            color: Colors.green,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );

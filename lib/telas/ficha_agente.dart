@@ -46,6 +46,7 @@ class _FichaAgenteState extends State<FichaAgente> {
 
   List<Poder> poderesEscolhidos = [];
   List<Ritual> rituaisConhecidos = [];
+  List<Ritual> rituaisGrimorio = [];
   List<String> periciasClasse = [];
 
   Map<String, int> resistencias = {};
@@ -75,6 +76,8 @@ class _FichaAgenteState extends State<FichaAgente> {
   int pvMax = 0, peMax = 0, sanMax = 0, pvAtual = 0, peAtual = 0, sanAtual = 0;
   int defesa = 10, esquiva = 10, bloqueio = 0;
   String habNome = "", habDesc = "";
+
+  int ppAtual = 0, ppMax = 0;
 
   // ================= VARIAVEIS ROLADOR DE DADOS =================
   final List<int> _tiposDados = [4, 6, 8, 10, 12, 20, 100];
@@ -500,6 +503,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       armas = List.from(ag.armas);
       poderesEscolhidos = List.from(ag.poderes);
       rituaisConhecidos = List.from(ag.rituais);
+      rituaisGrimorio = List.from(ag.rituaisGrimorio);
       periciasClasse = List.from(ag.periciasClasse);
       _idade = ag.idade;
       _genero = ag.genero;
@@ -560,6 +564,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       armas: armas,
       poderes: poderesEscolhidos,
       rituais: rituaisConhecidos,
+      rituaisGrimorio: rituaisGrimorio,
       periciasClasse: periciasClasse,
       idade: _idade,
       genero: _genero,
@@ -1130,8 +1135,8 @@ class _FichaAgenteState extends State<FichaAgente> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF151515), 
-        border: Border.all(color: corTema.withValues(alpha: 0.3)), 
+        color: const Color(0xFF151515),
+        border: Border.all(color: corTema.withValues(alpha: 0.3)),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Theme(
@@ -1161,7 +1166,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                 children: [
                   const Divider(color: Colors.white24),
                   const SizedBox(height: 12),
-                  
+
                   // LISTA DOS DADOS
                   ..._tiposDados.map((faces) {
                     int qtd = _qtdDados[faces] ?? 1;
@@ -1182,32 +1187,49 @@ class _FichaAgenteState extends State<FichaAgente> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 InkWell(
-                                  borderRadius: const BorderRadius.horizontal(left: Radius.circular(5)),
+                                  borderRadius: const BorderRadius.horizontal(
+                                    left: Radius.circular(5),
+                                  ),
                                   onTap: () {
-                                    if (qtd > 1) setState(() => _qtdDados[faces] = qtd - 1);
+                                    if (qtd > 1) {
+                                      setState(
+                                        () => _qtdDados[faces] = qtd - 1,
+                                      );
+                                    }
                                   },
                                   child: const Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: 12.0),
-                                    child: Icon(Icons.remove, size: 18, color: Colors.white70),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 12.0,
+                                    ),
+                                    child: Icon(
+                                      Icons.remove,
+                                      size: 18,
+                                      color: Colors.white70,
+                                    ),
                                   ),
                                 ),
                                 Container(
-                                  width: 65, 
+                                  width: 65,
                                   alignment: Alignment.center,
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF1A1A1A),
                                     border: Border.symmetric(
-                                      vertical: BorderSide(color: Colors.grey.shade800),
+                                      vertical: BorderSide(
+                                        color: Colors.grey.shade800,
+                                      ),
                                     ),
                                   ),
-                                  child: FittedBox( // Impede que o texto quebre a linha, reduzindo a fonte se necessário
+                                  child: FittedBox(
+                                    // Impede que o texto quebre a linha, reduzindo a fonte se necessário
                                     fit: BoxFit.scaleDown,
                                     child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4.0,
+                                      ),
                                       child: Text(
                                         "${qtd}d$faces",
                                         style: TextStyle(
-                                          color: corTema, 
+                                          color: corTema,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 14,
                                         ),
@@ -1216,13 +1238,21 @@ class _FichaAgenteState extends State<FichaAgente> {
                                   ),
                                 ),
                                 InkWell(
-                                  borderRadius: const BorderRadius.horizontal(right: Radius.circular(5)),
+                                  borderRadius: const BorderRadius.horizontal(
+                                    right: Radius.circular(5),
+                                  ),
                                   onTap: () {
                                     setState(() => _qtdDados[faces] = qtd + 1);
                                   },
                                   child: const Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: 12.0),
-                                    child: Icon(Icons.add, size: 18, color: Colors.white70),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 12.0,
+                                    ),
+                                    child: Icon(
+                                      Icons.add,
+                                      size: 18,
+                                      color: Colors.white70,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1235,7 +1265,11 @@ class _FichaAgenteState extends State<FichaAgente> {
                             Padding(
                               padding: const EdgeInsets.only(right: 8.0),
                               child: IconButton(
-                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 22),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.redAccent,
+                                  size: 22,
+                                ),
                                 tooltip: "Remover Dado",
                                 onPressed: () {
                                   setState(() {
@@ -1251,15 +1285,23 @@ class _FichaAgenteState extends State<FichaAgente> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: corTema,
                               foregroundColor: Colors.black,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                              minimumSize: const Size(0, 38), 
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 0,
+                              ),
+                              minimumSize: const Size(0, 38),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(6),
                               ),
                             ),
-                            onPressed: _modoVisualizacao ? () => _rolarDadoAvulso(faces, qtd) : null,
+                            onPressed: _modoVisualizacao
+                                ? () => _rolarDadoAvulso(faces, qtd)
+                                : null,
                             icon: const Icon(Icons.casino, size: 18),
-                            label: const Text("ROLAR", style: TextStyle(fontWeight: FontWeight.bold)),
+                            label: const Text(
+                              "ROLAR",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ],
                       ),
@@ -1267,7 +1309,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                   }),
 
                   const SizedBox(height: 8),
-                  
+
                   // BOTÃO PARA CRIAR UM DADO NOVO (ex: d3, d7)
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
@@ -1286,57 +1328,85 @@ class _FichaAgenteState extends State<FichaAgente> {
                           backgroundColor: const Color(0xFF1A1A1A),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(color: corTema.withValues(alpha: 0.3)),
+                            side: BorderSide(
+                              color: corTema.withValues(alpha: 0.3),
+                            ),
                           ),
                           title: Row(
                             children: [
                               Icon(Icons.add_box, color: corTema),
                               const SizedBox(width: 8),
-                              const Text("Dado Customizado", style: TextStyle(color: Colors.white, fontSize: 16)),
+                              const Text(
+                                "Dado Customizado",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                ),
+                              ),
                             ],
                           ),
                           content: TextField(
                             controller: facesCtrl,
                             keyboardType: TextInputType.number,
-                            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                            textAlign: TextAlign.center,
-                            decoration: EstiloParanormal.customInputDeco(
-                              "Qtd de Lados (Ex: 3)",
-                              corTema,
-                              Icons.casino,
-                            ).copyWith(
-                               contentPadding: const EdgeInsets.symmetric(vertical: 16)
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
                             ),
+                            textAlign: TextAlign.center,
+                            decoration:
+                                EstiloParanormal.customInputDeco(
+                                  "Qtd de Lados (Ex: 3)",
+                                  corTema,
+                                  Icons.casino,
+                                ).copyWith(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                ),
                           ),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx),
-                              child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+                              child: const Text(
+                                "Cancelar",
+                                style: TextStyle(color: Colors.grey),
+                              ),
                             ),
                             ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: corTema, foregroundColor: Colors.black),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: corTema,
+                                foregroundColor: Colors.black,
+                              ),
                               onPressed: () {
                                 int? f = int.tryParse(facesCtrl.text);
                                 if (f != null && f > 0) {
                                   setState(() {
                                     if (!_tiposDados.contains(f)) {
                                       _tiposDados.add(f);
-                                      _tiposDados.sort(); // Mantém os dados sempre em ordem crescente
+                                      _tiposDados
+                                          .sort(); // Mantém os dados sempre em ordem crescente
                                     }
                                     _qtdDados[f] = 1;
                                   });
                                 }
                                 Navigator.pop(ctx);
                               },
-                              child: const Text("ADICIONAR", style: TextStyle(fontWeight: FontWeight.bold)),
-                            )
+                              child: const Text(
+                                "ADICIONAR",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
                           ],
                         ),
                       );
                     },
                     icon: const Icon(Icons.add, size: 18),
-                    label: const Text("CRIAR NOVO DADO", style: TextStyle(letterSpacing: 1.2, fontSize: 12)),
-                  )
+                    label: const Text(
+                      "CRIAR NOVO DADO",
+                      style: TextStyle(letterSpacing: 1.2, fontSize: 12),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1853,7 +1923,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                                             nome: "Ataque Especial",
                                             tipo: "Combatente",
                                             descricao:
-                                                "Quando faz um ataque, você pode gastar 2 PE para receber +5...",
+                                                "Quando faz um ataque, você pode gastar 2 PE para receber +5 no teste de ataque ou na rolagem de dano. NEX 25% (3 PE, +10), NEX 55% (4 PE, +15) e NEX 85% (5 PE, +20)",
                                             custoPE: 2,
                                           ),
                                         );
@@ -1863,7 +1933,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                                             nome: "Eclético",
                                             tipo: "Especialista",
                                             descricao:
-                                                "Quando faz um teste de uma perícia, você pode gastar 2 PE para...",
+                                                "Quando faz um teste de uma perícia, você pode gastar 2 PE para receber os benefícios de ser treinado nesta perícia.",
                                             custoPE: 2,
                                           ),
                                         );
@@ -1883,7 +1953,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                                                 "Perito (${nomesPerito.join(', ')})",
                                             tipo: "Especialista",
                                             descricao:
-                                                "Gaste 2 PE para somar +1d6...",
+                                                "Quando faz um teste de uma dessas perícias, você pode gastar 2 PE para somar +1d6 no resultado do teste. Em NEX 25%, pode gastar 3 PE para receber +1d8, NEX 55% gasta 4 PE para receber +1d10 e em NEX 85% gasta Perito 5 PE para +1d12)",
                                             custoPE: 2,
                                           ),
                                         );
@@ -1893,7 +1963,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                                             nome: "Escolhido pelo Outro Lado",
                                             tipo: "Ocultista",
                                             descricao:
-                                                "Você pode lançar rituais de 1º círculo...",
+                                                "Você pode lançar rituais de 1º círculo. À medida que aumenta seu NEX, pode lançar rituais de círculos maiores (2º círculo em NEX 25%, 3º círculo em NEX 55% e 4º círculo em NEX 85%). Você começa com três rituais de 1º círculo. Sempre que avança de NEX, aprende um ritual de qualquer círculo que possa lançar.",
                                           ),
                                         );
                                       }
@@ -1944,10 +2014,19 @@ class _FichaAgenteState extends State<FichaAgente> {
     );
   }
 
-  void _abrirCatalogoPoderes() {
+  void _abrirCatalogoPoderes({String? filtroInicial}) {
     String busca = "";
-    String filtroPrincipal = "Gerais";
-    String filtroParanormal = "Conhecimento";
+
+    // Se o filtro inicial for "Poderes Paranormais", a gente já seta tudo pras tags certas.
+    String filtroPrincipal = filtroInicial ?? "Gerais";
+    String filtroParanormal = "Conhecimento"; // Elemento padrão ao abrir
+
+    // Se ele já tiver afinidade e a aba paranormal abrir direto, ele já cai na aba da afinidade dele!
+    if (filtroInicial == "Poderes Paranormais" &&
+        afinidadeAtual != null &&
+        afinidadeAtual != "Variável") {
+      filtroParanormal = afinidadeAtual!;
+    }
 
     Color corTemaLocal = corFundoAfinidade;
     Color corLetra = corTextoAfinidade;
@@ -1960,9 +2039,11 @@ class _FichaAgenteState extends State<FichaAgente> {
       if (classeAtual == 'ocultista') "Ocultista",
       "Poderes Paranormais",
     ];
+
     if (!categoriasPrincipais.contains(filtroPrincipal)) {
       filtroPrincipal = "Gerais";
     }
+    
     List<String> categoriasParanormais = [
       "Conhecimento",
       "Energia",
@@ -2060,6 +2141,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                     ),
                     const SizedBox(height: 16),
                     TextField(
+                      style: const TextStyle(color: Colors.white),
                       decoration: EstiloParanormal.customInputDeco(
                         "Pesquisar poder...",
                         corDestaqueLocal,
@@ -3141,9 +3223,6 @@ class _FichaAgenteState extends State<FichaAgente> {
 
       // INTUITIVO: Resistências Mentais e Paranormais
       if (trilhaAtual == 'intuitivo') {
-        if (nex >= 10) {
-          resistencias['Paranormal'] = (resistencias['Paranormal'] ?? 0) + 5;
-        }
         if (nex >= 65) {
           resistencias['Mental'] = (resistencias['Mental'] ?? 0) + 10;
           resistencias['Paranormal'] =
@@ -3151,37 +3230,7 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
       }
 
-      // GRADUADO: Grimório e Rituais Eficientes
-      if (trilhaAtual == 'graduado') {
-        if (nex >= 40 &&
-            !inventario.any((i) => i.nome == "Grimório Ritualístico")) {
-          inventario.add(
-            ItemInventario(
-              nome: "Grimório Ritualístico",
-              categoria: "0",
-              espaco: 1,
-              descricao:
-                  "Armazena rituais extras. Requer ação completa para folhear.",
-            ),
-          );
-        }
-        if (nex >= 65) {
-          // A DT para resistir aos rituais aumenta em +5. Adicionamos como Passiva Visual.
-          poderesEscolhidos.removeWhere(
-            (p) => p.nome == "Rituais Eficientes (Passiva)",
-          );
-          poderesEscolhidos.add(
-            Poder(
-              nome: "Rituais Eficientes (Passiva)",
-              tipo: "Sistema",
-              descricao:
-                  "A DT para resistir a todos os seus rituais ganha um bônus de +5.",
-            ),
-          );
-        }
-      }
-
-      // EXORCISTA: Treinamento em Religião
+      // EXORCISTA: Treinamento e Bônus em Religião
       if (trilhaAtual == 'exorcista') {
         if (nex >= 10 &&
             !poderesEscolhidos.any((p) => p.nome == "Exorcista_Setup_10")) {
@@ -3195,40 +3244,153 @@ class _FichaAgenteState extends State<FichaAgente> {
             (_) => _mostrarDialogExorcista(40),
           );
         }
+
+        // Aplica os bônus caso o jogador já fosse treinado/veterano antes da trilha
+        if (poderesEscolhidos.any(
+          (p) => p.nome == "Exorcista_BonusNum_Religiao",
+        )) {
+          bonusOrigem['religiao'] = (bonusOrigem['religiao'] ?? 0) + 2;
+        }
+        if (poderesEscolhidos.any(
+          (p) => p.nome == "Exorcista_BonusDado_Religiao",
+        )) {
+          dadosExtrasPericias['religiao'] =
+              (dadosExtrasPericias['religiao'] ?? 0) + 1;
+        }
       }
 
-      // POSSUÍDO: Reserva Paranormal e Presentes de Afinidade
+      // TRILHA: GRADUADO (Saber Ampliado e Grimório)
+      if (trilhaAtual == 'graduado') {
+        // SABER AMPLIADO (1 ritual de graça em cada novo círculo)
+        if (nex >= 10 &&
+            !poderesEscolhidos.any(
+              (p) => p.nome == "Graduado_SaberAmpliado_1",
+            )) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _mostrarDialogSaberAmpliado(1, "Graduado_SaberAmpliado_1"),
+          );
+        }
+        if (nex >= 25 &&
+            !poderesEscolhidos.any(
+              (p) => p.nome == "Graduado_SaberAmpliado_2",
+            )) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _mostrarDialogSaberAmpliado(2, "Graduado_SaberAmpliado_2"),
+          );
+        }
+        if (nex >= 55 &&
+            !poderesEscolhidos.any(
+              (p) => p.nome == "Graduado_SaberAmpliado_3",
+            )) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _mostrarDialogSaberAmpliado(3, "Graduado_SaberAmpliado_3"),
+          );
+        }
+        if (nex >= 85 &&
+            !poderesEscolhidos.any(
+              (p) => p.nome == "Graduado_SaberAmpliado_4",
+            )) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _mostrarDialogSaberAmpliado(4, "Graduado_SaberAmpliado_4"),
+          );
+        }
+
+        // GRIMÓRIO RITUALÍSTICO (NEX 40)
+        if (nex >= 40 &&
+            !inventario.any((i) => i.nome == "Grimório Ritualístico")) {
+          inventario.add(
+            ItemInventario(
+              nome: "Grimório Ritualístico",
+              categoria: "0",
+              espaco: 1.0,
+              descricao:
+                  "Armazena rituais extras baseados no seu Intelecto. Requer ação completa para folhear antes de conjurar.",
+            ),
+          );
+        }
+
+        // RITUAIS EFICIENTES (NEX 65)
+        if (nex >= 65 &&
+            !poderesEscolhidos.any(
+              (p) => p.nome == "Rituais Eficientes (Passiva)",
+            )) {
+          poderesEscolhidos.add(
+            Poder(
+              nome: "Rituais Eficientes (Passiva)",
+              tipo: "Sistema",
+              descricao:
+                  "A DT para resistir a todos os seus rituais ganha um bônus de +5.",
+            ),
+          );
+        }
+      }
+
+      // LÂMINA PARANORMAL: Amaldiçoar Arma Elementar
+      if (trilhaAtual == 'lamina_paranormal' && nex >= 10) {
+        if (!poderesEscolhidos.any((p) => p.nome == "Lamina_Setup_10")) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _mostrarDialogLaminaParanormal(),
+          );
+        }
+      }
+
+      // TRILHA: POSSUÍDO (PPs e Afinidade Final)
       if (trilhaAtual == 'possuido') {
+        // 1. Cálculo do Limite de PPs
+        // Conta quantos poderes de Transcender (ou variações) o jogador tem
         int qtdTranscender = poderesEscolhidos
             .where((p) => p.nome.contains("Transcender"))
             .length;
-        int maxPP = 3 + (2 * qtdTranscender);
+        ppMax = 3 + (2 * qtdTranscender);
 
-        poderesEscolhidos.removeWhere(
-          (p) => p.nome.startsWith("Reserva Paranormal"),
-        );
-        poderesEscolhidos.add(
-          Poder(
-            nome: "Reserva Paranormal (PP: $maxPP)",
-            tipo: "Sistema",
-            descricao:
-                "Você possui $maxPP Pontos de Possessão. Limite por turno: $efPre PP. Cada PP = +10 PV ou +2 PE. Recupera 1 PP por dormir.",
-          ),
-        );
+        // Garante que o PP atual não ultrapasse o novo máximo se o jogador remover um poder
+        if (ppAtual > ppMax) ppAtual = ppMax;
+        if (isInitialLoad && widget.agenteParaEditar == null) ppAtual = ppMax;
 
+        // 2. Gatilho NEX 65% - Ele Me Ensina
+        if (nex >= 65 &&
+            !poderesEscolhidos.any((p) => p.nome == "Possuido_Setup_65")) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _mostrarDialogEleMeEnsina(),
+          );
+        }
+
+        // 3. Gatilho NEX 99% - Tornamo-nos Um
         if (nex >= 99 &&
             afinidadeAtual != null &&
             !poderesEscolhidos.any((p) => p.nome == "Tornamo-nos Um")) {
-          String presente = afinidadeAtual == "Sangue"
-              ? "Presente da Obsessão: 6 PE para curar 50 PV e +35 nas perícias de FOR/VIG/Intimidação."
-              : afinidadeAtual == "Morte"
-              ? "Presente do Tempo: 6 PE para um turno adicional na rodada."
-              : afinidadeAtual == "Conhecimento"
-              ? "Presente do Saber: 6 PE para ganhar um poder (requer teste de Vontade)."
-              : "Presente do Espaço: 6 PE para se teletransportar (alcance médio).";
-          poderesEscolhidos.add(
-            Poder(nome: "Tornamo-nos Um", tipo: "Sistema", descricao: presente),
-          );
+          String nomePoder = "";
+          String descPoder = "";
+          switch (afinidadeAtual) {
+            case 'Sangue':
+              nomePoder = "Presente da Obsessão";
+              descPoder =
+                  "Gaste 6 PE: Recupera 50 PV. Perícias de FOR/VIG e Intimidação viram +35. Demais de Presença viram -10.";
+              break;
+            case 'Morte':
+              nomePoder = "Presente do Tempo";
+              descPoder =
+                  "Gaste 6 PE: Recebe um turno adicional na última contagem de iniciativa da rodada.";
+              break;
+            case 'Conhecimento':
+              nomePoder = "Presente do Saber";
+              descPoder =
+                  "Gaste 6 PE: Recebe um poder qualquer até o fim da cena (requer Vontade DT 15+).";
+              break;
+            case 'Energia':
+              nomePoder = "Presente do Espaço";
+              descPoder = "Gaste 6 PE: Teletransporte em alcance médio.";
+              break;
+          }
+          if (nomePoder.isNotEmpty) {
+            poderesEscolhidos.add(
+              Poder(
+                nome: "Tornamo-nos Um ($nomePoder)",
+                tipo: "Sistema",
+                descricao: descPoder,
+              ),
+            );
+          }
         }
       }
 
@@ -3252,9 +3414,6 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
       }
 
-      if (trilhaAtual == 'lamina_paranormal' && nex >= 10) {
-        aprenderRituaisAutomaticos("Amaldiçoar Arma");
-      }
       if (nex >= 99) {
         if (trilhaAtual == 'conduite') {
           aprenderRituaisAutomaticos("Canalizar o Medo");
@@ -3936,13 +4095,11 @@ class _FichaAgenteState extends State<FichaAgente> {
     if (!isInitialLoad) _salvarSilencioso();
   }
 
-  // Popup ocultista
   void _mostrarDialogEscolhidoPeloOutroLado() {
     List<Ritual> selecionados = [];
     String filtroElemento = "Todos";
     String busca = "";
 
-    // Pega apenas rituais de 1º círculo
     List<Ritual> rituais1Circulo = catalogoRituais
         .where((r) => r.circulo == 1)
         .toList();
@@ -3953,21 +4110,12 @@ class _FichaAgenteState extends State<FichaAgente> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            // O Filtro poderoso e corrigido!
             List<Ritual> filtrados = rituais1Circulo.where((r) {
               if (filtroElemento != "Todos") {
-                String elRitual = r.elemento.trim().toLowerCase();
-                String elFiltro = filtroElemento.trim().toLowerCase();
-
-                // Se for Medo, bloqueia o Variável.
-                if (elFiltro == "medo" && elRitual == "variável") return false;
-
-                // Se não for o elemento filtrado e também não for Variável, bloqueia.
-                if (elRitual != elFiltro && elRitual != "variável") {
+                if (r.elemento.toLowerCase() != filtroElemento.toLowerCase()) {
                   return false;
                 }
               }
-              // Verificação de Busca por Nome
               if (busca.isNotEmpty &&
                   !r.nome.toLowerCase().contains(busca.toLowerCase())) {
                 return false;
@@ -4006,8 +4154,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                       onChanged: (val) => setDialogState(() => busca = val),
                     ),
                     const SizedBox(height: 12),
-
-                    // Filtro de Elementos
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
@@ -4048,19 +4194,16 @@ class _FichaAgenteState extends State<FichaAgente> {
                       ),
                     ),
                     const SizedBox(height: 8),
-
-                    // Lista de Rituais Filtrados
                     Expanded(
                       child: ListView.builder(
                         itemCount: filtrados.length,
                         itemBuilder: (context, index) {
                           Ritual r = filtrados[index];
                           bool isSelected = selecionados.contains(r);
-                          Color corTag = _obterCorAfinidade(r.elemento);
 
                           return CardRitualAnimado(
                             ritual: r,
-                            corElemento: corTag,
+                            corElemento: _obterCorAfinidade(r.elemento),
                             leading: Checkbox(
                               activeColor: r.elemento.toLowerCase() == 'medo'
                                   ? Colors.black
@@ -4103,7 +4246,6 @@ class _FichaAgenteState extends State<FichaAgente> {
               actions: [
                 TextButton(
                   onPressed: () {
-                    // Impede o jogador de sair sem escolher os 3 para não quebrar a ficha
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
@@ -4126,15 +4268,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                   onPressed: selecionados.length == 3
                       ? () {
                           setState(() {
-                            for (var r in selecionados) {
-                              if (r.elemento == "Variável") {
-                                // Se ele escolheu Amaldiçoar Arma aqui, a gente adiciona um genérico
-                                // (ele ajustará o elemento depois ou você pode chamar a função _escolherElementoVariavel)
-                                rituaisConhecidos.add(r);
-                              } else {
-                                rituaisConhecidos.add(r);
-                              }
-                            }
+                            rituaisConhecidos.addAll(selecionados);
                             rituaisConhecidos.sort(
                               (a, b) => a.nome.compareTo(b.nome),
                             );
@@ -4371,9 +4505,9 @@ class _FichaAgenteState extends State<FichaAgente> {
           ),
           content: Text(
             nivelSetup == 10
-                ? "Como Exorcista, você recebeu treinamento em Religião (+5). Se já era treinado, recebeu +2. Suas habilidades paranormais agora podem usar essa perícia."
-                : "Sua fé fortaleceu sua mente. Você se tornou Veterano (+10) em Religião.",
-            style: const TextStyle(color: Colors.white),
+                ? "Sua fé revelou os sinais do paranormal.\n\nVocê recebe treinamento em Religião. Se já for treinado, recebe um bônus de +2 na perícia."
+                : "Sua mente se fortaleceu.\n\nVocê se torna Veterano em Religião. Se já for, você passa a rolar +1d20 em testes de Religião.",
+            style: const TextStyle(color: Colors.white, height: 1.4),
           ),
           actions: [
             ElevatedButton(
@@ -4393,14 +4527,31 @@ class _FichaAgenteState extends State<FichaAgente> {
                   );
 
                   if (nivelSetup == 10) {
-                    if (rel.treino == 0) {
-                      rel.treino = 5;
+                    if (rel.treino >= 5) {
+                      // Já é treinado! Salva uma tag para darmos o bônus de +2
+                      poderesEscolhidos.add(
+                        Poder(
+                          nome: "Exorcista_BonusNum_Religiao",
+                          tipo: "Sistema",
+                          descricao: "",
+                        ),
+                      );
                     } else {
-                      bonusOrigem['religiao'] =
-                          (bonusOrigem['religiao'] ?? 0) + 2;
+                      rel.treino = 5;
                     }
                   } else if (nivelSetup == 40) {
-                    if (rel.treino < 10) rel.treino = 10;
+                    if (rel.treino >= 10) {
+                      // Já é veterano! Salva uma tag para darmos +1 Dado
+                      poderesEscolhidos.add(
+                        Poder(
+                          nome: "Exorcista_BonusDado_Religiao",
+                          tipo: "Sistema",
+                          descricao: "",
+                        ),
+                      );
+                    } else {
+                      rel.treino = 10;
+                    }
                   }
 
                   poderesEscolhidos.add(
@@ -4414,6 +4565,11 @@ class _FichaAgenteState extends State<FichaAgente> {
                 });
                 Navigator.pop(context);
                 _salvarSilencioso();
+                _mostrarNotificacao(
+                  nivelSetup == 10
+                      ? "Treinamento em Religião recebido!"
+                      : "Mente fortalecida na Fé!",
+                );
               },
               child: const Text(
                 "RECEBER BÔNUS",
@@ -4421,6 +4577,701 @@ class _FichaAgenteState extends State<FichaAgente> {
               ),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogLaminaParanormal() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: Text("Lâmina Maldita", style: TextStyle(color: corDestaque)),
+          content: const Text(
+            "Escolha o elemento do ritual Amaldiçoar Arma que você aprendeu com sua trilha.\n\nSe você já possuir esse ritual, o custo dele será reduzido em -1 PE permanentemente.",
+            style: TextStyle(color: Colors.white, height: 1.4),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _btnElementoLamina("Sangue", const Color(0xFF990000)),
+                _btnElementoLamina(
+                  "Morte",
+                  Colors.white54,
+                ), // Cinza/Branco para não sumir no fundo preto
+                _btnElementoLamina("Energia", const Color(0xFF9900FF)),
+                _btnElementoLamina("Conhecimento", const Color(0xFFFFB300)),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _btnElementoLamina(String elemento, Color cor) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: cor,
+          foregroundColor: elemento == 'Conhecimento'
+              ? Colors.black
+              : Colors.white,
+        ),
+        onPressed: () {
+          setState(() {
+            String nomeBusca = "Amaldiçoar Arma ($elemento)";
+            int indexExistente = rituaisConhecidos.indexWhere(
+              (r) => r.nome == nomeBusca,
+            );
+
+            if (indexExistente != -1) {
+              // ===============================================
+              // JÁ POSSUÍA O RITUAL: Ganha a Tag de Desconto!
+              // ===============================================
+              poderesEscolhidos.add(
+                Poder(
+                  nome: "Lamina_Desconto_$elemento",
+                  tipo: "Sistema",
+                  descricao: "",
+                ),
+              );
+            } else {
+              // NÃO POSSUÍA O RITUAL: Apenas aprende do Catálogo (sem desconto)
+              var rOriginal = catalogoRituais.firstWhere(
+                (r) => r.nome == nomeBusca,
+                orElse: () => Ritual(
+                  nome: nomeBusca,
+                  elemento: elemento,
+                  circulo: 1,
+                  execucao: "Padrão",
+                  alcance: "Toque",
+                  duracao: "Cena",
+                  resistencia: "Nenhuma",
+                  descricao: "Amaldiçoa a arma...",
+                  custoPE: 1,
+                ),
+              );
+
+              Ritual novoRitual = Ritual(
+                nome: rOriginal.nome,
+                elemento: rOriginal.elemento,
+                circulo: rOriginal.circulo,
+                execucao: rOriginal.execucao,
+                alcance: rOriginal.alcance,
+                alvoAreaEfeito: rOriginal.alvoAreaEfeito,
+                duracao: rOriginal.duracao,
+                resistencia: rOriginal.resistencia,
+                descricao: rOriginal.descricao,
+                custoPE: rOriginal.custoPE,
+                custoAdicionalDiscente: rOriginal.custoAdicionalDiscente,
+                custoAdicionalVerdadeiro: rOriginal.custoAdicionalVerdadeiro,
+                discente: rOriginal.discente,
+                verdadeiro: rOriginal.verdadeiro,
+              );
+              rituaisConhecidos.add(novoRitual);
+              rituaisConhecidos.sort((a, b) => a.nome.compareTo(b.nome));
+            }
+
+            poderesEscolhidos.add(
+              Poder(nome: "Lamina_Setup_10", tipo: "Sistema", descricao: ""),
+            );
+            atualizarFicha();
+          });
+          _salvarSilencioso();
+          Navigator.pop(context);
+          _mostrarNotificacao("Lâmina Maldita ($elemento) configurada!");
+        },
+        child: Text(
+          elemento.toUpperCase(),
+          style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1),
+        ),
+      ),
+    );
+  }
+
+  // =======================================================
+  // POP-UP: SABER AMPLIADO (Aprender Ritual bônus de Círculo)
+  // =======================================================
+  void _mostrarDialogSaberAmpliado(int circulo, String tagPoder) {
+    Ritual? selecionado;
+    String filtroElemento = "Todos";
+    String busca = "";
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            List<Ritual> filtrados = catalogoRituais.where((r) {
+              if (r.circulo != circulo) return false;
+              if (filtroElemento != "Todos" &&
+                  r.elemento.toLowerCase() != filtroElemento.toLowerCase()) {
+                return false;
+              }
+              if (busca.isNotEmpty &&
+                  !r.nome.toLowerCase().contains(busca.toLowerCase())) {
+                return false;
+              }
+              // Impede selecionar rituais que o jogador já conheça de cabeça
+              if (rituaisConhecidos.any(
+                (conhecido) => conhecido.nome == r.nome,
+              )) {
+                return false;
+              }
+              return true;
+            }).toList();
+
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1A1A1A),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Saber Ampliado",
+                    style: TextStyle(
+                      color: corDestaque,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Escolha 1 ritual bônus de $circuloº Círculo:",
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 400,
+                child: Column(
+                  children: [
+                    TextField(
+                      style: const TextStyle(color: Colors.white),
+                      decoration: EstiloParanormal.customInputDeco(
+                        "Buscar...",
+                        corDestaque,
+                        Icons.search,
+                      ),
+                      onChanged: (val) => setDialogState(() => busca = val),
+                    ),
+                    const SizedBox(height: 12),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children:
+                            [
+                              "Todos",
+                              "Sangue",
+                              "Morte",
+                              "Energia",
+                              "Conhecimento",
+                            ].map((el) {
+                              bool ativo = filtroElemento == el;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: ChoiceChip(
+                                  label: Text(
+                                    el,
+                                    style: TextStyle(
+                                      color: ativo
+                                          ? Colors.black
+                                          : Colors.white,
+                                    ),
+                                  ),
+                                  selected: ativo,
+                                  selectedColor: el == "Todos"
+                                      ? Colors.white
+                                      : _obterCorAfinidade(el),
+                                  backgroundColor: Colors.black,
+                                  onSelected: (val) {
+                                    if (val) {
+                                      setDialogState(() => filtroElemento = el);
+                                    }
+                                  },
+                                ),
+                              );
+                            }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: filtrados.length,
+                        itemBuilder: (context, index) {
+                          Ritual r = filtrados[index];
+
+                          bool isSelected = selecionado == r;
+
+                          return CardRitualAnimado(
+                            ritual: r,
+                            corElemento: _obterCorAfinidade(r.elemento),
+                            leading: IconButton(
+                              icon: Icon(
+                                isSelected
+                                    ? Icons.radio_button_checked
+                                    : Icons.radio_button_unchecked,
+                                color: isSelected ? corDestaque : Colors.grey,
+                              ),
+                              onPressed: () {
+                                setDialogState(() => selecionado = r);
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Obrigatório escolher o ritual!"),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    "Pular",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: corDestaque,
+                    foregroundColor: Colors.black,
+                  ),
+                  onPressed: selecionado != null
+                      ? () {
+                          setState(() {
+                            rituaisConhecidos.add(selecionado!);
+                            rituaisConhecidos.sort(
+                              (a, b) => a.nome.compareTo(b.nome),
+                            );
+                            poderesEscolhidos.add(
+                              Poder(
+                                nome: tagPoder,
+                                tipo: "Sistema",
+                                descricao: "",
+                              ),
+                            );
+                          });
+                          _salvarSilencioso();
+                          Navigator.pop(context);
+                        }
+                      : null,
+                  child: const Text(
+                    "CONFIRMAR",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogEleMeEnsina() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: Text("Ele Me Ensina", style: TextStyle(color: corDestaque)),
+          content: const Text(
+            "O paranormal sussurra segredos. Escolha entre Transcender mais uma vez ou aprender o segredo inicial de outra trilha de Ocultista.",
+            style: TextStyle(color: Colors.white, fontSize: 13),
+          ),
+          actions: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF222222),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _abrirCatalogoPoderes(filtroInicial: "Poderes Paranormais");
+                    setState(
+                      () => poderesEscolhidos.add(
+                        Poder(
+                          nome: "Possuido_Setup_65",
+                          tipo: "Sistema",
+                          descricao: "",
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    "TRANSCENDER",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: corDestaque),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _mostrarDialogEscolherOutraTrilha();
+                  },
+                  child: const Text(
+                    "APRENDER OUTRA TRILHA",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogEscolherOutraTrilha() {
+    // Lista das habilidades de NEX 10% das outras trilhas
+    Map<String, String> trilhasExtras = {
+      "Conduíte": "Gaste 1 PE para aumentar alcance ou mudar alvo de ritual.",
+      "Flagelador": "Pode usar PV no lugar de PE para conjurar rituais.",
+      "Graduado":
+          "Saber Ampliado: Aprende um ritual adicional de cada círculo.",
+      "Intuitivo": "Recebe Resistência Paranormal +5.",
+      "Lâmina Paranormal":
+          "Aprende Amaldiçoar Arma e usa Ocultismo para atacar.",
+    };
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: const Text(
+          "Escolha o Conhecimento",
+          style: TextStyle(color: Colors.white),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: trilhasExtras.entries
+                .map(
+                  (e) => ListTile(
+                    title: Text(
+                      e.key,
+                      style: TextStyle(
+                        color: corDestaque,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    subtitle: Text(
+                      e.value,
+                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                    ),
+                    onTap: () {
+                      setState(() {
+                        poderesEscolhidos.add(
+                          Poder(
+                            nome: "Ele Me Ensina: ${e.key}",
+                            tipo: "Trilha Extra",
+                            descricao: e.value,
+                          ),
+                        );
+                        poderesEscolhidos.add(
+                          Poder(
+                            nome: "Possuido_Setup_65",
+                            tipo: "Sistema",
+                            descricao: "",
+                          ),
+                        );
+                      });
+                      Navigator.pop(context);
+                      _mostrarNotificacao(
+                        "Você aprendeu os segredos do ${e.key}!",
+                      );
+                    },
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Adicionar rituais no Grimório (Graduado)
+  void _mostrarDialogAdicionarGrimorio(List<int> circulosPermitidos) {
+    String filtroElemento = "Todos";
+    String filtroCirculo = "Todos";
+    String busca = "";
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            // Lógica de filtragem atualizada com o Filtro de Círculos
+            List<Ritual> filtrados = catalogoRituais.where((r) {
+              if (!circulosPermitidos.contains(r.circulo)) return false;
+              if (filtroCirculo != "Todos" &&
+                  r.circulo.toString() != filtroCirculo) {
+                return false;
+              }
+              if (filtroElemento != "Todos" &&
+                  r.elemento.toLowerCase() != filtroElemento.toLowerCase()) {
+                return false;
+              }
+              if (busca.isNotEmpty &&
+                  !r.nome.toLowerCase().contains(busca.toLowerCase())) {
+                return false;
+              }
+
+              // Bloqueia rituais que já estão na lista de rituais
+              if (rituaisGrimorio.any((rg) => rg.nome == r.nome)) return false;
+              if (rituaisConhecidos.any((rc) => rc.nome == r.nome)) {
+                return false;
+              }
+              return true;
+            }).toList();
+
+            return Dialog(
+              backgroundColor: const Color(0xFF1A1A1A),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: corDestaque.withValues(alpha: 0.3)),
+              ),
+              insetPadding: const EdgeInsets.all(16),
+              child: Container(
+                width: double.maxFinite,
+                height: MediaQuery.of(context).size.height * 0.85,
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // CABEÇALHO COM BOTÃO FECHAR
+                    Row(
+                      children: [
+                        Icon(Icons.menu_book, color: corDestaque, size: 28),
+                        const SizedBox(width: 12),
+                        Text(
+                          "GRIMÓRIO",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: corDestaque,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.grey),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      style: const TextStyle(color: Colors.white),
+                      decoration: EstiloParanormal.customInputDeco(
+                        "Buscar ritual...",
+                        corDestaque,
+                        Icons.search,
+                      ),
+                      onChanged: (val) => setDialogState(() => busca = val),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // FILTRO DE CÍRCULOS (Só mostra os que a trilha desbloqueou)
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children:
+                            [
+                              "Todos",
+                              ...circulosPermitidos.map((c) => c.toString()),
+                            ].map((circ) {
+                              bool ativo = filtroCirculo == circ;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: ChoiceChip(
+                                  label: Text(
+                                    circ == "Todos"
+                                        ? "Todos Círculos"
+                                        : "$circº Círculo",
+                                    style: TextStyle(
+                                      color: ativo
+                                          ? Colors.black
+                                          : Colors.white,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  selected: ativo,
+                                  selectedColor: Colors.white,
+                                  backgroundColor: Colors.black,
+                                  onSelected: (val) {
+                                    if (val) {
+                                      setDialogState(
+                                        () => filtroCirculo = circ,
+                                      );
+                                    }
+                                  },
+                                ),
+                              );
+                            }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // FILTRO DE ELEMENTOS
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children:
+                            [
+                              "Todos",
+                              "Sangue",
+                              "Morte",
+                              "Energia",
+                              "Conhecimento",
+                              "Medo",
+                            ].map((el) {
+                              bool ativo = filtroElemento == el;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: ChoiceChip(
+                                  label: Text(
+                                    el,
+                                    style: TextStyle(
+                                      color: ativo
+                                          ? Colors.black
+                                          : Colors.white,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  selected: ativo,
+                                  selectedColor: el == "Todos"
+                                      ? Colors.white
+                                      : _obterCorAfinidade(el),
+                                  backgroundColor: Colors.black,
+                                  onSelected: (val) {
+                                    if (val) {
+                                      setDialogState(() => filtroElemento = el);
+                                    }
+                                  },
+                                ),
+                              );
+                            }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // LISTA DOS RITUAIS
+                    Expanded(
+                      child: filtrados.isEmpty
+                          ? const Center(
+                              child: Text(
+                                "Nenhum ritual encontrado.",
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: filtrados.length,
+                              itemBuilder: (context, index) {
+                                Ritual r = filtrados[index];
+                                return CardRitualAnimado(
+                                  ritual: r,
+                                  corElemento: _obterCorAfinidade(r.elemento),
+                                  // O botão '+' ao lado de cada ritual
+                                  trailing: IconButton(
+                                    icon: Icon(
+                                      Icons.add_circle,
+                                      color: corDestaque,
+                                    ),
+                                    onPressed: () {
+                                      // ===========================================
+                                      // VERIFICAÇÃO INSTANTÂNEA DOS LIMITES
+                                      // ===========================================
+                                      int limite1e2 = inte;
+                                      int limite3 = nex >= 55 ? 1 : 0;
+                                      int limite4 = nex >= 85 ? 1 : 0;
+
+                                      int count1e2 = rituaisGrimorio
+                                          .where((rit) => rit.circulo <= 2)
+                                          .length;
+                                      int count3 = rituaisGrimorio
+                                          .where((rit) => rit.circulo == 3)
+                                          .length;
+                                      int count4 = rituaisGrimorio
+                                          .where((rit) => rit.circulo == 4)
+                                          .length;
+
+                                      bool canAdd = false;
+                                      if (r.circulo <= 2 &&
+                                          count1e2 < limite1e2) {
+                                        canAdd = true;
+                                      } else if (r.circulo == 3 &&
+                                          count3 < limite3) {
+                                        canAdd = true;
+                                      } else if (r.circulo == 4 &&
+                                          count4 < limite4) {
+                                        canAdd = true;
+                                      }
+
+                                      if (canAdd) {
+                                        setState(() {
+                                          rituaisGrimorio.add(r);
+                                          rituaisGrimorio.sort(
+                                            (a, b) => a.nome.compareTo(b.nome),
+                                          );
+                                          atualizarFicha();
+                                        });
+                                        setDialogState(
+                                          () {},
+                                        ); // Remove o ritual recém-comprado da lista instantaneamente
+                                        _salvarSilencioso();
+                                        _mostrarNotificacao(
+                                          "${r.nome} escrito!",
+                                        );
+                                      } else {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              "Limite de rituais de ${r.circulo}º Círculo atingido! Aumente seu Intelecto (INT).",
+                                            ),
+                                            backgroundColor: Colors.redAccent,
+                                            duration: const Duration(
+                                              seconds: 2,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -5458,64 +6309,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. EXIBIÇÃO DA TRILHA
-          if (trilhaAtual != '--')
-            SecaoFicha(
-              titulo:
-                  "Trilha: ${trilhasOrdem[trilhaAtual]?.nome ?? trilhaAtual.toUpperCase()}",
-              corTema: corFundoAfinidade,
-              corTexto: corTextoAfinidade,
-              isMorte: afinidadeAtual == 'Morte',
-              filhos: [
-                Text(
-                  trilhasOrdem[trilhaAtual]?.descricao ??
-                      "Descrição da trilha indisponível.",
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontStyle: FontStyle.italic,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Divider(color: Colors.grey),
-                const SizedBox(height: 8),
-
-                if (trilhasOrdem.containsKey(trilhaAtual))
-                  ...trilhasOrdem[trilhaAtual]!.habilidades.entries
-                      .where((e) => nex >= e.key)
-                      .map((e) {
-                        String nomeHab = e.value.keys.first;
-                        String descHab = e.value.values.first;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "NEX ${e.key}% - $nomeHab",
-                                style: TextStyle(
-                                  color: corDestaque,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                descHab,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-              ],
-            ),
-
-          // 2. EXIBIÇÃO DA ORIGEM
+          // EXIBIÇÃO DA ORIGEM
           if (origemAtual != '--')
             SecaoFicha(
               titulo:
@@ -5654,40 +6448,154 @@ class _FichaAgenteState extends State<FichaAgente> {
               ],
             ),
 
-          // 3. EXIBIÇÃO DA AFINIDADE ELEMENTAL
-          if (afinidadeAtual != null && afinidadeAtual!.isNotEmpty && nex >= 50)
+          // EXIBIÇÃO DA TRILHA
+          if (trilhaAtual != '--')
             SecaoFicha(
-              titulo: "Afinidade Elemental",
+              titulo:
+                  "Trilha: ${trilhasOrdem[trilhaAtual]?.nome ?? trilhaAtual.toUpperCase()}",
               corTema: corFundoAfinidade,
               corTexto: corTextoAfinidade,
               isMorte: afinidadeAtual == 'Morte',
               filhos: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0D0D0D),
-                    border: Border.all(color: corDestaque, width: 1),
-                    borderRadius: BorderRadius.circular(4),
+                Text(
+                  trilhasOrdem[trilhaAtual]?.descricao ??
+                      "Descrição da trilha indisponível.",
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.white,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Afinidade: ${afinidadeAtual!.toUpperCase()} | Opressor: ${_obterOpressor(afinidadeAtual!).toUpperCase()}",
-                        style: TextStyle(
-                          color: corDestaque,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                ),
+                const SizedBox(height: 16),
+                const Divider(color: Colors.grey),
+                const SizedBox(height: 8),
+
+                if (trilhasOrdem.containsKey(trilhaAtual))
+                  ...trilhasOrdem[trilhaAtual]!.habilidades.entries
+                      .where((e) => nex >= e.key)
+                      .map((e) {
+                        String nomeHab = e.value.keys.first;
+                        String descHab = e.value.values.first;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "NEX ${e.key}% - $nomeHab",
+                                style: TextStyle(
+                                  color: corDestaque,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                descHab,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+              ],
+            ),
+
+          // EXIBIÇÃO DA RESERVA PARANORMAL (POSSUÍDO)
+          if (trilhaAtual == 'possuido' && nex >= 10)
+            SecaoFicha(
+              titulo: "Reserva Paranormal",
+              corTema: corFundoAfinidade,
+              corTexto: corTextoAfinidade,
+              isMorte: afinidadeAtual == 'Morte',
+              filhos: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "PONTOS DE POSSESSÃO (PP)",
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: corDestaque.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: corDestaque.withValues(alpha: 0.5),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        "• Não precisa de componentes ritualísticos para conjurar rituais do elemento com o qual tem afinidade. Além disso, pode aprender rituais que exijam afinidade com esse elemento.\n\n• Recebe +2d20 em testes contra efeitos do seu elemento, mas sofre –2d20 em testes contra efeitos do seu elemento opressor.\n\n• Pode escolher poderes paranormais do seu elemento uma segunda vez para receber o benefício listado na linha “Afinidade”.",
+                      child: Text(
+                        "GASTO MÁX: $efPre PP",
                         style: TextStyle(
-                          color: Colors.grey,
-                          height: 1.4,
-                          fontSize: 13,
+                          color: corDestaque,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D0D0D),
+                    border: Border.all(color: Colors.grey.shade800),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Reserva Atual",
+                        style: TextStyle(color: Colors.white, fontSize: 13),
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(
+                              Icons.remove_circle_outline,
+                              color: Colors.white70,
+                            ),
+                            onPressed: () => setState(() {
+                              if (ppAtual > 0) ppAtual--;
+                              _salvarSilencioso();
+                            }),
+                          ),
+                          Text(
+                            "$ppAtual / $ppMax",
+                            style: TextStyle(
+                              color: corDestaque,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.add_circle_outline,
+                              color: Colors.white70,
+                            ),
+                            onPressed: () => setState(() {
+                              if (ppAtual < ppMax) ppAtual++;
+                              _salvarSilencioso();
+                            }),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -5695,7 +6603,7 @@ class _FichaAgenteState extends State<FichaAgente> {
               ],
             ),
 
-          // 4. EXIBIÇÃO DA LISTA DE PODERES
+          // EXIBIÇÃO DA LISTA DE PODERES
           SecaoFicha(
             titulo: "Poderes",
             corTema: corFundoAfinidade,
@@ -5729,7 +6637,16 @@ class _FichaAgenteState extends State<FichaAgente> {
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton.icon(
-                      onPressed: _abrirCatalogoPoderes,
+                      onPressed: () {
+                        // Trava o filtro para Possuídos abrirem direto nos paranormais
+                        if (trilhaAtual == 'possuido') {
+                          _abrirCatalogoPoderes(
+                            filtroInicial: "Poderes Paranormais",
+                          );
+                        } else {
+                          _abrirCatalogoPoderes();
+                        }
+                      },
                       icon: const Icon(Icons.search, size: 18),
                       label: const Text("Poder"),
                       style: ElevatedButton.styleFrom(
@@ -5903,7 +6820,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                             p.nome.startsWith("Perito") ||
                             p.nome == "Escolhido pelo Outro Lado";
 
-                        // Mostra o Switch Vermelho se a Arma de Sangue estiver Ativa!
                         if (block &&
                             p.nome.contains("Arma de Sangue") &&
                             armaDeSangueAtiva) {
@@ -5939,7 +6855,6 @@ class _FichaAgenteState extends State<FichaAgente> {
                           );
                         }
 
-                        // NOVO: Switch Branco para Encarar a Morte!
                         if (block && p.nome.contains("Encarar a Morte")) {
                           return Switch(
                             value: encararAMorteAtivo,
@@ -5947,7 +6862,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                             onChanged: (val) {
                               setState(() {
                                 encararAMorteAtivo = val;
-                                atualizarFicha(); // Atualiza o PE/Turno visualmente
+                                atualizarFicha();
                               });
                             },
                           );
@@ -5987,6 +6902,47 @@ class _FichaAgenteState extends State<FichaAgente> {
               ),
             ],
           ),
+
+          // 3. EXIBIÇÃO DA AFINIDADE ELEMENTAL
+          if (afinidadeAtual != null && afinidadeAtual!.isNotEmpty && nex >= 50)
+            SecaoFicha(
+              titulo: "Afinidade Elemental",
+              corTema: corFundoAfinidade,
+              corTexto: corTextoAfinidade,
+              isMorte: afinidadeAtual == 'Morte',
+              filhos: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D0D0D),
+                    border: Border.all(color: corDestaque, width: 1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Afinidade: ${afinidadeAtual!.toUpperCase()} | Opressor: ${_obterOpressor(afinidadeAtual!).toUpperCase()}",
+                        style: TextStyle(
+                          color: corDestaque,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        "• Não precisa de componentes ritualísticos para conjurar rituais do elemento com o qual tem afinidade. Além disso, pode aprender rituais que exijam afinidade com esse elemento.\n\n• Recebe +2d20 em testes contra efeitos do seu elemento, mas sofre –2d20 em testes contra efeitos do seu elemento opressor.\n\n• Pode escolher poderes paranormais do seu elemento uma segunda vez para receber o benefício listado na linha “Afinidade”.",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          height: 1.4,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -6242,13 +7198,13 @@ class _CardRitualAnimadoState extends State<CardRitualAnimado>
           collapsedIconColor: corTextoSecundario,
           tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
 
-          // ==========================================
-          // TÍTULO COM O ELEMENTO ANTES DO NOME
-          // ==========================================
-          title: Row(
+          // TÍTULO DOS RITUAIS
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                margin: const EdgeInsets.only(right: 8),
+                margin: const EdgeInsets.only(bottom: 6),
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color:
@@ -6272,24 +7228,21 @@ class _CardRitualAnimadoState extends State<CardRitualAnimado>
                   ),
                 ),
               ),
-              Expanded(
-                child: Text(
-                  widget.ritual.nome,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: corTextoPrincipal,
-                    fontSize: 15,
-                  ),
-                  softWrap: true,
-                  overflow: TextOverflow.visible,
+              Text(
+                widget.ritual.nome,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: corTextoPrincipal,
+                  fontSize: 15,
+                  height: 1.2,
                 ),
+                softWrap: true,
+                overflow: TextOverflow.visible,
               ),
             ],
           ),
 
-          // ==========================================
           // SUBTÍTULO COM INFORMAÇÕES RÁPIDAS
-          // ==========================================
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 4.0),
             child: Text(

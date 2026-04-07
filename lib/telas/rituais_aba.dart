@@ -115,16 +115,21 @@ extension _RituaisFicha on _FichaAgenteState {
   }
 
   Widget _buildAbaRituais(bool block, Color corDoPainel) {
-    // Cálculo da DT de Rituais = 10 + Limite de PE do Turno + PRE
+    // Cálculo da DT de Rituais Oficial = 10 + Limite de PE + PRE
     int dtRitual = 10 + limitePePorTurno + pre;
+    // RITUais Eficientes do Graduado: +5 na DT!
+    if (trilhaAtual == 'graduado' && nex >= 65) {
+      dtRitual += 5;
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 150),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // SESSÃO DE RITUAIS CONHECIDOS 
           SecaoFicha(
-            titulo: "Grimório",
+            titulo: "Rituais",
             corTema: corFundoAfinidade,
             corTexto: corTextoAfinidade,
             isMorte: afinidadeAtual == 'Morte',
@@ -195,7 +200,7 @@ extension _RituaisFicha on _FichaAgenteState {
                 const Padding(
                   padding: EdgeInsets.only(top: 8.0),
                   child: Text(
-                    "Seu grimório está vazio. Aprenda rituais do Outro Lado para conjurá-los.",
+                    "Sua mente está vazia. Aprenda rituais do Outro Lado.",
                     style: TextStyle(
                       color: Colors.grey,
                       fontStyle: FontStyle.italic,
@@ -215,11 +220,25 @@ extension _RituaisFicha on _FichaAgenteState {
                     ritual: r,
                     corElemento: corTag,
                     onConjurar: () {
-                      int peBasico = r.custoPE;
-                      int peDiscente =
-                          peBasico + (r.custoAdicionalDiscente ?? 0);
-                      int peVerdadeiro =
-                          peBasico + (r.custoAdicionalVerdadeiro ?? 0);
+                      int custoBruto = r.custoPE;
+                      if (trilhaAtual == 'lamina_paranormal' &&
+                          nex >= 10 &&
+                          r.nome.startsWith("Amaldiçoar Arma") &&
+                          poderesEscolhidos.any(
+                            (p) => p.nome == "Lamina_Desconto_${r.elemento}",
+                          )) {
+                        custoBruto -= 1;
+                      }
+
+                      int peBasico = max(1, custoBruto);
+                      int peDiscente = max(
+                        1,
+                        custoBruto + (r.custoAdicionalDiscente ?? 0),
+                      );
+                      int peVerdadeiro = max(
+                        1,
+                        custoBruto + (r.custoAdicionalVerdadeiro ?? 0),
+                      );
 
                       showDialog(
                         context: context,
@@ -314,24 +333,323 @@ extension _RituaisFicha on _FichaAgenteState {
                         ),
                       );
                     },
-
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.redAccent),
-                      onPressed: () {
-                        setState(() {
-                          rituaisConhecidos.removeAt(index);
-                          atualizarFicha();
-                        });
-                        _salvarSilencioso();
-                      },
-                    ),
+                    trailing: block
+                        ? null
+                        : IconButton(
+                            icon: const Icon(
+                              Icons.delete,
+                              color: Colors.redAccent,
+                            ),
+                            onPressed: () {
+                              setState(() => rituaisConhecidos.removeAt(index));
+                              _salvarSilencioso();
+                            },
+                          ),
                   );
                 },
               ),
             ],
           ),
+
+          const SizedBox(height: 16),
+
+          // ===============================================
+          // SESSÃO DO GRIMÓRIO FÍSICO DO GRADUADO
+          // ===============================================
+          if (trilhaAtual == 'graduado' && nex >= 40)
+            Builder(
+              builder: (context) {
+                int limite1e2 = inte;
+                int limite3 = nex >= 55 ? 1 : 0;
+                int limite4 = nex >= 85 ? 1 : 0;
+
+                int count1e2 = rituaisGrimorio
+                    .where((r) => r.circulo <= 2)
+                    .length;
+                int count3 = rituaisGrimorio
+                    .where((r) => r.circulo == 3)
+                    .length;
+                int count4 = rituaisGrimorio
+                    .where((r) => r.circulo == 4)
+                    .length;
+
+                return SecaoFicha(
+                  titulo: "Grimório Ritualístico",
+                  corTema: corFundoAfinidade, // Agora puxa a cor do app
+                  corTexto: corTextoAfinidade,
+                  isMorte: afinidadeAtual == 'Morte',
+                  filhos: [
+                    const Text(
+                      "⚠️ Rituais físicos exigem empunhar o livro e gastar uma ação completa folheando antes de conjurar.",
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Contadores de Limites
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _contadorGrimorio(
+                          "1º/2º Círculo",
+                          count1e2,
+                          limite1e2,
+                          corDestaque,
+                        ),
+                        if (nex >= 55)
+                          _contadorGrimorio(
+                            "3º Círculo",
+                            count3,
+                            limite3,
+                            corDestaque,
+                          ),
+                        if (nex >= 85)
+                          _contadorGrimorio(
+                            "4º Círculo",
+                            count4,
+                            limite4,
+                            corDestaque,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Botões de Adicionar (Aparecem APENAS no Modo Edição!)
+                    if (!block)
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          if (count1e2 < limite1e2)
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF151515),
+                                foregroundColor: corDestaque,
+                                side: BorderSide(
+                                  color: corDestaque.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              icon: const Icon(Icons.add, size: 16),
+                              label: const Text(
+                                "1º/2º Círculo",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              onPressed: () =>
+                                  _mostrarDialogAdicionarGrimorio([1, 2]),
+                            ),
+                          if (nex >= 55 && count3 < limite3)
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF151515),
+                                foregroundColor: corDestaque,
+                                side: BorderSide(
+                                  color: corDestaque.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              icon: const Icon(Icons.add, size: 16),
+                              label: const Text(
+                                "3º Círculo",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              onPressed: () =>
+                                  _mostrarDialogAdicionarGrimorio([3]),
+                            ),
+                          if (nex >= 85 && count4 < limite4)
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF151515),
+                                foregroundColor: corDestaque,
+                                side: BorderSide(
+                                  color: corDestaque.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              icon: const Icon(Icons.add, size: 16),
+                              label: const Text(
+                                "4º Círculo",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              onPressed: () =>
+                                  _mostrarDialogAdicionarGrimorio([4]),
+                            ),
+                        ],
+                      ),
+
+                    const SizedBox(height: 12),
+
+                    // Lista de Rituais no Grimório
+                    if (rituaisGrimorio.isEmpty)
+                      const Text(
+                        "Nenhum ritual escrito no Grimório Físico.",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+
+                    ...rituaisGrimorio.map(
+                      (r) => CardRitualAnimado(
+                        ritual: r,
+                        corElemento: _obterCorAfinidade(r.elemento),
+
+                        // ADICIONEI O BOTÃO DE CONJURAR AQUI TAMBÉM!
+                        onConjurar: () {
+                          int peBasico = max(1, r.custoPE);
+                          int peDiscente = max(
+                            1,
+                            r.custoPE + (r.custoAdicionalDiscente ?? 0),
+                          );
+                          int peVerdadeiro = max(
+                            1,
+                            r.custoPE + (r.custoAdicionalVerdadeiro ?? 0),
+                          );
+
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              backgroundColor: const Color(0xFF1A1A1A),
+                              title: Text(
+                                "Conjurar: ${r.nome}",
+                                style: TextStyle(color: corDestaque),
+                              ),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ListTile(
+                                    title: const Text(
+                                      "Básico",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    trailing: Text(
+                                      "$peBasico PE",
+                                      style: const TextStyle(
+                                        color: Colors.blueAccent,
+                                      ),
+                                    ),
+                                    onTap: () {
+                                      Navigator.pop(ctx);
+                                      _conjurarRitual(r, peBasico, "Básico");
+                                    },
+                                  ),
+                                  if (r.discente.isNotEmpty)
+                                    ListTile(
+                                      title: const Text(
+                                        "Discente",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        r.discente,
+                                        style: const TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                      trailing: Text(
+                                        "$peDiscente PE",
+                                        style: const TextStyle(
+                                          color: Colors.blueAccent,
+                                        ),
+                                      ),
+                                      onTap: () {
+                                        Navigator.pop(ctx);
+                                        _conjurarRitual(
+                                          r,
+                                          peDiscente,
+                                          "Discente",
+                                        );
+                                      },
+                                    ),
+                                  if (r.verdadeiro.isNotEmpty)
+                                    ListTile(
+                                      title: const Text(
+                                        "Verdadeiro",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        r.verdadeiro,
+                                        style: const TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                      trailing: Text(
+                                        "$peVerdadeiro PE",
+                                        style: const TextStyle(
+                                          color: Colors.blueAccent,
+                                        ),
+                                      ),
+                                      onTap: () {
+                                        Navigator.pop(ctx);
+                                        _conjurarRitual(
+                                          r,
+                                          peVerdadeiro,
+                                          "Verdadeiro",
+                                        );
+                                      },
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+
+                        // A Lixeira só aparece se NÃO estiver no modo de visualização (block == false)
+                        trailing: block
+                            ? null
+                            : IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.redAccent,
+                                ),
+                                onPressed: () {
+                                  setState(() => rituaisGrimorio.remove(r));
+                                  _salvarSilencioso();
+                                },
+                              ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
         ],
       ),
+    );
+  }
+
+  // Widget auxiliar para os contadores do Grimório
+  Widget _contadorGrimorio(String label, int atual, int max, Color corTema) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 10)),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: atual >= max ? Colors.red.shade900 : const Color(0xFF0D0D0D),
+            border: Border.all(color: corTema.withValues(alpha: 0.5)),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text("$atual / $max", style: TextStyle(color: atual >= max ? Colors.white : corTema, fontWeight: FontWeight.bold)),
+        )
+      ],
     );
   }
 

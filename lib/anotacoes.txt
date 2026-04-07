@@ -62,15 +62,16 @@ FEITO:
 
 FALTA FAZER:
 
+- Adiconar custo nas habilidades de origem
 - Concertar mochila (só aumenta o espaço se for item personalizado)
+- Contador de limite de rituais
 - Corrigir limite de categoria
 - Bug cajado/ itens com dano diferente de empunhação
 - Histórico dos dados jogados na Mesa de dados
-- Lógica de cada poder (geral, de classe e trilha)
+- Lógica de cada poder (geral, de classe)
 - Poder equipar armas e proteções de itens amaldiçoados
 - Configurar melhoria pra munição
 - Concertar visualização dos atributos em telas maiores
 - Configurar maldições
 - Fazer a área de detalhes do backstory do personagem (fazer opção de baixar versão pdf das anotações, 100% formatada e bonita pra enviar pro mestre)
 - Adicionar nova classe "Mundano"
-

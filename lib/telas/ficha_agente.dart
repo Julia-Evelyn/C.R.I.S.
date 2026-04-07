@@ -499,6 +499,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       pvAtual = ag.pvAtual ?? 0;
       peAtual = ag.peAtual ?? 0;
       sanAtual = ag.sanAtual ?? 0;
+      ppAtual = ag.ppAtual ?? 0;
       inventario = List.from(ag.inventario);
       armas = List.from(ag.armas);
       poderesEscolhidos = List.from(ag.poderes);
@@ -559,6 +560,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       pvAtual: pvAtual,
       peAtual: peAtual,
       sanAtual: sanAtual,
+      ppAtual: ppAtual,
       pericias: periciasTreinadas,
       inventario: inventario,
       armas: armas,
@@ -2017,12 +2019,15 @@ class _FichaAgenteState extends State<FichaAgente> {
   void _abrirCatalogoPoderes({String? filtroInicial}) {
     String busca = "";
 
-    // Se o filtro inicial for "Poderes Paranormais", a gente já seta tudo pras tags certas.
-    String filtroPrincipal = filtroInicial ?? "Gerais";
+    // Se a trilha for Possuído, forçamos o filtro para Poderes Paranormais
+    String filtroPrincipal = (trilhaAtual == 'possuido')
+        ? "Poderes Paranormais"
+        : (filtroInicial ?? "Gerais");
+
     String filtroParanormal = "Conhecimento"; // Elemento padrão ao abrir
 
     // Se ele já tiver afinidade e a aba paranormal abrir direto, ele já cai na aba da afinidade dele!
-    if (filtroInicial == "Poderes Paranormais" &&
+    if (filtroPrincipal == "Poderes Paranormais" &&
         afinidadeAtual != null &&
         afinidadeAtual != "Variável") {
       filtroParanormal = afinidadeAtual!;
@@ -2032,18 +2037,22 @@ class _FichaAgenteState extends State<FichaAgente> {
     Color corLetra = corTextoAfinidade;
     Color corDestaqueLocal = corDestaque;
 
-    List<String> categoriasPrincipais = [
-      "Gerais",
-      if (classeAtual == 'combatente') "Combatente",
-      if (classeAtual == 'especialista') "Especialista",
-      if (classeAtual == 'ocultista') "Ocultista",
-      "Poderes Paranormais",
-    ];
+    // Se for Possuído, só mostra a opção de Poderes Paranormais nas abas principais
+    List<String> categoriasPrincipais = trilhaAtual == 'possuido'
+        ? ["Poderes Paranormais"]
+        : [
+            "Gerais",
+            if (classeAtual == 'combatente') "Combatente",
+            if (classeAtual == 'especialista') "Especialista",
+            if (classeAtual == 'ocultista') "Ocultista",
+            "Poderes Paranormais",
+          ];
 
+    // Se por acaso a classe for nula ou o filtroInicial bugar (e não for possuído), voltamos para Gerais
     if (!categoriasPrincipais.contains(filtroPrincipal)) {
       filtroPrincipal = "Gerais";
     }
-    
+
     List<String> categoriasParanormais = [
       "Conhecimento",
       "Energia",
@@ -3107,6 +3116,7 @@ class _FichaAgenteState extends State<FichaAgente> {
       int oldPvMax = pvMax;
       int oldPeMax = peMax;
       int oldSanMax = sanMax;
+      int oldPpMax = ppMax;
 
       if (nex < 10 || classeAtual == '--') trilhaAtual = '--';
       if (nex < 50 && afinidadeAtual != null && trilhaAtual != 'monstruoso') {
@@ -3337,15 +3347,22 @@ class _FichaAgenteState extends State<FichaAgente> {
       // TRILHA: POSSUÍDO (PPs e Afinidade Final)
       if (trilhaAtual == 'possuido') {
         // 1. Cálculo do Limite de PPs
-        // Conta quantos poderes de Transcender (ou variações) o jogador tem
-        int qtdTranscender = poderesEscolhidos
-            .where((p) => p.nome.contains("Transcender"))
+        int qtdPoderesParanormais = poderesEscolhidos
+            .where((p) => ["Conhecimento", "Energia", "Morte", "Sangue", "Medo"].contains(p.tipo))
             .length;
-        ppMax = 3 + (2 * qtdTranscender);
+        ppMax = 3 + (2 * qtdPoderesParanormais);
 
-        // Garante que o PP atual não ultrapasse o novo máximo se o jogador remover um poder
+        // Corta os excessos se ele perder um poder
         if (ppAtual > ppMax) ppAtual = ppMax;
-        if (isInitialLoad && widget.agenteParaEditar == null) ppAtual = ppMax;
+        
+        // Lógica Inteligente para ENCHER os PPs:
+        if (isInitialLoad && widget.agenteParaEditar == null) {
+          ppAtual = ppMax; // Ficha nova
+        } else if (isInitialLoad && widget.agenteParaEditar != null && widget.agenteParaEditar!.ppAtual == null) {
+          ppAtual = ppMax; // Ficha antiga que acabou de virar possuído (e o ppAtual veio nulo)
+        } else if (!isInitialLoad && oldPpMax == 0 && ppMax > 0) {
+          ppAtual = ppMax; // O jogador acabou de clicar em "ESCOLHER ESTA TRILHA" agora mesmo!
+        }
 
         // 2. Gatilho NEX 65% - Ele Me Ensina
         if (nex >= 65 &&

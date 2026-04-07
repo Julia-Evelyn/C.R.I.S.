@@ -3348,20 +3348,32 @@ class _FichaAgenteState extends State<FichaAgente> {
       if (trilhaAtual == 'possuido') {
         // 1. Cálculo do Limite de PPs
         int qtdPoderesParanormais = poderesEscolhidos
-            .where((p) => ["Conhecimento", "Energia", "Morte", "Sangue", "Medo"].contains(p.tipo))
+            .where(
+              (p) => [
+                "Conhecimento",
+                "Energia",
+                "Morte",
+                "Sangue",
+                "Medo",
+              ].contains(p.tipo),
+            )
             .length;
         ppMax = 3 + (2 * qtdPoderesParanormais);
 
         // Corta os excessos se ele perder um poder
         if (ppAtual > ppMax) ppAtual = ppMax;
-        
+
         // Lógica Inteligente para ENCHER os PPs:
         if (isInitialLoad && widget.agenteParaEditar == null) {
           ppAtual = ppMax; // Ficha nova
-        } else if (isInitialLoad && widget.agenteParaEditar != null && widget.agenteParaEditar!.ppAtual == null) {
-          ppAtual = ppMax; // Ficha antiga que acabou de virar possuído (e o ppAtual veio nulo)
+        } else if (isInitialLoad &&
+            widget.agenteParaEditar != null &&
+            widget.agenteParaEditar!.ppAtual == null) {
+          ppAtual =
+              ppMax; // Ficha antiga que acabou de virar possuído (e o ppAtual veio nulo)
         } else if (!isInitialLoad && oldPpMax == 0 && ppMax > 0) {
-          ppAtual = ppMax; // O jogador acabou de clicar em "ESCOLHER ESTA TRILHA" agora mesmo!
+          ppAtual =
+              ppMax; // O jogador acabou de clicar em "ESCOLHER ESTA TRILHA" agora mesmo!
         }
 
         // 2. Gatilho NEX 65% - Ele Me Ensina
@@ -6488,37 +6500,136 @@ class _FichaAgenteState extends State<FichaAgente> {
                 const SizedBox(height: 8),
 
                 if (trilhasOrdem.containsKey(trilhaAtual))
-                  ...trilhasOrdem[trilhaAtual]!.habilidades.entries
-                      .where((e) => nex >= e.key)
-                      .map((e) {
-                        String nomeHab = e.value.keys.first;
-                        String descHab = e.value.values.first;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "NEX ${e.key}% - $nomeHab",
-                                style: TextStyle(
-                                  color: corDestaque,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                descHab,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
+                  ...trilhasOrdem[trilhaAtual]!.habilidades.entries.where((e) => nex >= e.key).map((
+                    e,
+                  ) {
+                    String nomeHab = e.value.keys.first;
+                    String descHab = e.value.values.first;
+
+                    // ==========================================
+                    // LÓGICA DINÂMICA: TRILHA POSSUÍDO E MONSTRUOSO
+                    // ==========================================
+                    if (trilhaAtual == 'possuido' && e.key == 99) {
+                      if (afinidadeAtual == 'Sangue') {
+                        nomeHab = "Tornamo-nos Um (Presente da Obsessão)";
+                        descHab =
+                            "Uma vez por rodada, você pode gastar 6 PE para recuperar 50 PV. Quando faz isso, até o início do seu próximo turno, os bônus por treinamento em suas perícias baseadas em Força e Vigor, e em Intimidação, mudam para +35. As demais perícias baseadas em Presença mudam para –10. Você pode ativar esse poder mesmo inconsciente.";
+                      } else if (afinidadeAtual == 'Morte') {
+                        nomeHab = "Tornamo-nos Um (Presente do Tempo)";
+                        descHab =
+                            "Uma vez por rodada, você pode gastar 6 PE para receber um turno adicional na última contagem de iniciativa da rodada. Você pode ativar essa habilidade mesmo inconsciente.";
+                      } else if (afinidadeAtual == 'Conhecimento') {
+                        nomeHab = "Tornamo-nos Um (Presente do Saber)";
+                        descHab =
+                            "Uma vez por cena, você pode gastar 6 PE para reescrever uma fração de seu próprio ser. Você recebe um poder qualquer até o fim da cena. Você deve cumprir os pré-requisitos do poder escolhido, e não pode escolher poderes de trilha de NEX 99%. A cada vez que usa este poder, você deve fazer um teste de Vontade (DT 15 + 5 para cada vez que usou este poder na mesma missão). Se falhar, perde 1d6 pontos de Sanidade para cada vez que usou esse poder nesta missão.";
+                      } else if (afinidadeAtual == 'Energia') {
+                        nomeHab = "Tornamo-nos Um (Presente do Espaço)";
+                        descHab =
+                            "Uma vez por rodada, você pode gastar 6 PE para se teletransportar para outro ponto em alcance médio. Você não precisa conhecer o local para onde vai nem precisa vê-lo, mas se teletransportar-se para um espaço ocupado vai ser arremessado para o espaço disponível mais próximo.";
+                      } else {
+                        descHab =
+                            "Desabrochando em seu interior, o paranormal se manifesta como uma dádiva poderosa. Baseado no elemento com que tem afinidade, você recebe um poder especial (Escolha sua Afinidade Elemental primeiro).";
+                      }
+                    }
+
+                    if (trilhaAtual == 'monstruoso') {
+                      if (e.key == 10) {
+                        if (afinidadeAtual == 'Sangue') {
+                          descHab =
+                              "Suas presas ficam protuberantes e seus olhos se tornam vermelhos. Você recebe resistência a balístico e Sangue 5 e faro e, quando faz um contra-ataque bem-sucedido, soma seu Vigor na rolagem de dano, mas sofre –1d20 em Ciências e Intuição.\n\nLembre-se: Uma vez por dia, beba sangue humano ou sofrerá de fome e sede.";
+                        } else if (afinidadeAtual == 'Morte') {
+                          descHab =
+                              "Você fica pálido e seu metabolismo se torna bem mais lento. Você recebe resistência a perfuração e Morte 5 e imunidade a fadiga e soma sua Força em seu total de pontos de vida, mas sofre –1d20 em Diplomacia e Enganação.\n\nLembre-se: Uma vez por dia, inale cinzas de mortos ou sofrerá de fome e sede.";
+                        } else if (afinidadeAtual == 'Conhecimento') {
+                          descHab =
+                              "Seus olhos são banhados em um dourado sobrenatural. Você recebe resistência a balístico e Conhecimento 5 e visão no escuro e soma seu Intelecto na Defesa, mas sofre –1d20 em Atletismo e Acrobacia.\n\nLembre-se: Uma vez por dia, tatue palavras que causam medo ou sofrerá de fome e sede.";
+                        } else if (afinidadeAtual == 'Energia') {
+                          descHab =
+                              "Sua pele ganha cicatrizes de queimaduras elétricas com múltiplas cores. Você recebe resistência a corte, eletricidade, fogo e Energia 5 e soma sua Agilidade na RD recebida por um bloqueio bem-sucedido, mas sofre –1d20 em Investigação e Percepção.\n\nLembre-se: Uma vez por dia, receba choques de cabos elétricos ou sofrerá de fome e sede.";
+                        } else {
+                          descHab =
+                              "Em suas veias corre uma maldição paranormal que aos poucos o está transformando em um monstro. Você se torna treinado em Ocultismo (se já for treinado, recebe +2). Escolha seu Elemento Parasita no botão acima.";
+                        }
+                      } else if (e.key == 40) {
+                        if (afinidadeAtual == 'Sangue') {
+                          descHab =
+                              "A RD recebida aumenta para 10, e a penalidade para -2d20. Você veste poucas roupas, expondo o máximo de pele. Seu corpo está repleto de cicatrizes. Devorar qualquer coisa que não seja carne/sangue não contém sua fome.\n\nVocê pode usar FOR para calcular PEs. Pode gastar ação de movimento e 1+ PE (limitado a FOR) para recuperar 1d8 PV por PE gasto.";
+                        } else if (afinidadeAtual == 'Morte') {
+                          descHab =
+                              "A RD recebida aumenta para 10, e a penalidade para -2d20. Roupas modernas não fazem sentido; você usa trajes anacrônicos adornados com itens mortos. Você não precisa mais comer ou beber (mas ainda sofre a fome paranormal).\n\nVocê recebe +1d20 em Intimidação e usa VIG para calcular PEs. Você morre apenas após iniciar 4 turnos morrendo na mesma cena.";
+                        } else if (afinidadeAtual == 'Conhecimento') {
+                          descHab =
+                              "A RD recebida aumenta para 10, e a penalidade para -2d20. Você veste joias de ouro puro; seu corpo está coberto de palavras evocando o medo. Você sabe que é superior a todos.\n\nSeu INT aumenta em +1. Você pode usar INT como atributo-chave para Enganação e para calcular PEs.";
+                        } else if (afinidadeAtual == 'Energia') {
+                          descHab =
+                              "A RD recebida aumenta para 10, e a penalidade para -2d20. Você veste roupas complexas com luzes e dispositivos que dão choques.\n\nVocê pode usar AGI para calcular PEs. Ao acertar um ataque corpo a corpo, gaste 1+ PE (limitado a AGI) para causar +1d6 dano de Energia por PE gasto.";
+                        } else {
+                          descHab =
+                              "Conforme sua humanidade é substituída pela Entidade, as mudanças em seu corpo e mente se intensificam. As resistências aumentam para 10, as penalidades para -2d20, e você ganha o efeito adicional do seu elemento.";
+                        }
+                      } else if (e.key == 65) {
+                        if (afinidadeAtual == 'Sangue') {
+                          descHab =
+                              "Sua RD aumenta para 15. Sua PRE é reduzida permanentemente em 1. Você dilacerou seus órgãos para sentir tudo com total intensidade. A palavra 'não' perdeu o sentido.\n\nVocê tem 50% de chance de ignorar bônus de acerto crítico/furtivo inimigo. Recebe mordida (1d8, 19/x2, Perf). Uma vez por rodada ao agredir com outra arma, gaste 1 PE para atacar com a mordida.";
+                        } else if (afinidadeAtual == 'Morte') {
+                          descHab =
+                              "Sua RD aumenta para 15. Sua PRE é reduzida permanentemente em 1. Lodo preto faz parte do seu consumo, perante a Morte, todas as coisas são iguais.\n\nInício de turno morrendo: Teste VIG (DT 15) acorda com 1 PV. Acertos críticos ou abates recuperam 2 PE.";
+                        } else if (afinidadeAtual == 'Conhecimento') {
+                          descHab =
+                              "Sua RD aumenta para 15. Sua PRE é reduzida permanentemente em 1. Você injeta ouro líquido; registros metódicos são sua rotina.\n\nVocê pode abrir mão de treino em 1 perícia para ganhar dados de bônus igual a INT. Gaste 1 bônus para +1d20 em qualquer teste (até fim da cena). Perícia retorna no interlúdio.";
+                        } else if (afinidadeAtual == 'Energia') {
+                          descHab =
+                              "Sua RD aumenta para 15. Sua PRE é reduzida permanentemente em 1. Os choques aumentam e gotejam ácido. Você inala alucinógenos por uma máscara.\n\nSua RD agora afeta dano Químico. Ação de mov ao tocar fontes elétricas para curar PE (1d4 portátil, 2d4 grande, 4d4 casa). Esgota a fonte irremediavelmente.";
+                        } else {
+                          descHab =
+                              "Sua RD aumenta para 15, e sua Presença é reduzida em 1. Você recebe o efeito passivo especial do elemento parasita.";
+                        }
+                      } else if (e.key == 99) {
+                        if (afinidadeAtual == 'Sangue') {
+                          descHab =
+                              "Efeitos viram permanentes (mas você ainda sofre a fome). Considerado Criatura Paranormal. RD sobe para 20.\n\nVocê é bestial. INT diminui em -1, FOR aumenta em +1. Dano com mordida cura 5 PV. Aprende o ritual 'Forma Monstruosa'. Ao sofrer dano: Vontade (DT 10 + dano) ou sua próxima ação DEVE ser conjurar a Forma (se falhar e não puder, perde a ação).";
+                        } else if (afinidadeAtual == 'Morte') {
+                          descHab =
+                              "Efeitos viram permanentes (mas você ainda sofre a fome). Considerado Criatura Paranormal. RD sobe para 20.\n\nVocê é um cadáver. PRE diminui em -1, VIG aumenta em +1. Imune a dano de Morte e Imortal (restaurado no dia seguinte pelo Lodo). Fogo/Energia anulam imortalidade. Aprende o ritual 'Fim Inevitável'.";
+                        } else if (afinidadeAtual == 'Conhecimento') {
+                          descHab =
+                              "Efeitos viram permanentes (mas você ainda sofre a fome). Considerado Criatura Paranormal. RD sobe para 20.\n\nBoca costurada, olhos esclera negra. FOR diminui em -1, INT aumenta em +1. Ganha Percepção às Cegas. Aprende um ritual de Conhecimento de 4º Círculo. Ao conjurá-lo, perde a memória de tudo vivenciado na cena.";
+                        } else if (afinidadeAtual == 'Energia') {
+                          descHab =
+                              "Efeitos viram permanentes (mas você ainda sofre a fome). Considerado Criatura Paranormal. RD sobe para 20.\n\nForma plasmática. Flutua acima do chão. FOR diminui em -1, AGI aumenta em +1. Ignora terreno difícil, imune a queda, passa em frestas minúsculas e é imune a condições paralisantes físicas. Aprende o ritual 'Deflagração de Energia'. Não usa itens vestidos e só manipula coisas pela mente (uma de cada vez, tamanho de 2 mãos).";
+                        } else {
+                          descHab =
+                              "O habitat perfeito para a Entidade. RD 20, vira criatura paranormal e seus atributos mudam irreversivelmente.";
+                        }
+                      }
+                    }
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "NEX ${e.key}% - $nomeHab",
+                            style: TextStyle(
+                              color: corDestaque,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
                           ),
-                        );
-                      }),
+                          const SizedBox(height: 4),
+                          Text(
+                            descHab,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
               ],
             ),
 

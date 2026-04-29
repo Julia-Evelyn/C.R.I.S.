@@ -296,7 +296,7 @@ final List<Poder> catalogoPoderesCombatente = [
     nome: "Caminho para Forca",
     tipo: "Combatente",
     descricao:
-        "Se for para alguém do seu grupo ser pego, que seja você. Quando usa a ação sacrifício em uma cena de perseguição (p. 90), você pode gastar 1 PE para fornecer +O extra (para um total de +2O) nos testes dos outros personagens e, quando usa a ação chamar atenção em uma cena de furtividade (p. 92), você pode gastar 1 PE para diminuir a visibilidade de todos os seus aliados próximos em –2 (em vez de –1).",
+        "Se for para alguém do seu grupo ser pego, que seja você. Quando usa a ação sacrifício em uma cena de perseguição (p. 90), você pode gastar 1 PE para fornecer +1d20 extra (para um total de +2d20) nos testes dos outros personagens e, quando usa a ação chamar atenção em uma cena de furtividade (p. 92), você pode gastar 1 PE para diminuir a visibilidade de todos os seus aliados próximos em –2 (em vez de –1).",
     custoPE: 1,
   ),
   Poder(
@@ -365,6 +365,7 @@ final List<Poder> catalogoPoderesCombatente = [
     tipo: "Combatente",
     descricao:
         "Você sabe que eles estão lá fora, e fará tudo ao seu alcance para mantê-los assim. Uma vez por cena, você pode gastar uma rodada e 3 PE. Se fizer isso, você e cada aliado presente escolhe entre receber +5 na Defesa contra o próximo ataque que sofrer na cena ou receber um bônus de +5 em um único teste de perícia feito até o fim da cena.",
+    custoPE: 3,
   ),
   Poder(
     nome: "Presteza Atlética",
@@ -391,6 +392,7 @@ final List<Poder> catalogoPoderesCombatente = [
     descricao:
         "Diante de algo que não pode ser vencido, você abre mão da autopreservação para superar seus limites de fuga. Uma vez por cena de perseguição (p. 90), quando faz a ação esforço extra, você pode gastar 2 PE para passar automaticamente no teste de perícia.",
     preRequisitos: "Treinado em Atletismo",
+    custoPE: 2,
   ),
   Poder(
     nome: "Segurar o Gatilho",
@@ -412,6 +414,7 @@ final List<Poder> catalogoPoderesCombatente = [
     descricao:
         "Você pode gastar uma ação de movimento e 2 PE para analisar o ambiente. Se fizer isso, recebe um bônus em Defesa e em testes de resistência igual ao seu Intelecto até o final da cena.",
     preRequisitos: "Int 2, Treinado em Percepção e Tática",
+    custoPE: 2,
   ),
   Poder(
     nome: "Tanque de Guerra",
@@ -920,7 +923,7 @@ final List<Poder> catalogoPoderesMorte = [
     nome: "Antecipar Vitalidade",
     tipo: "Morte",
     descricao:
-        "Você pode acumular cargas de antecipação (até seu Vigor) para adicionar +O a testes. Cada carga consumida tira recuperação na ação dormir.\nAfinidade: limite aumenta em +2 e perde 2 cargas por ação dormir.",
+        "Você pode acumular cargas de antecipação (até seu Vigor) para adicionar +1d20 a testes. Cada carga consumida tira recuperação na ação dormir.\nAfinidade: limite aumenta em +2 e perde 2 cargas por ação dormir.",
   ),
   Poder(
     nome: "Aprender Ritual (Morte)",

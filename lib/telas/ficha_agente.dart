@@ -70,6 +70,13 @@ class _FichaAgenteState extends State<FichaAgente> {
   bool armaDeSangueAtiva = false;
   bool encararAMorteAtivo = false;
 
+  // SWITCHES DO COMBATENTE
+  bool combateDefensivoAtivo = false;
+  bool instintoDeFugaAtivo = false;
+  bool paranoiaDefensivaAtivo = false;
+  bool sentidoTaticoAtivo = false;
+  String? paranoiaDefensivaEscolha; // "Defesa" ou o "ID da Perícia"
+
   String _idade = "", _genero = "", _nacionalidade = "", _aparencia = "";
   String _historico = "", _objetivo = "", _extra = "";
 
@@ -164,6 +171,9 @@ class _FichaAgenteState extends State<FichaAgente> {
     int baseDesl = 9;
     if (origemAtual == 'ginasta') baseDesl += 3;
     if (poderesEscolhidos.any((p) => p.nome == "Atlético")) baseDesl += 3;
+    if (poderesEscolhidos.any((p) => p.nome == "Correria Desesperada")) {
+      baseDesl += 3;
+    }
     if (estaSobrecarregado) baseDesl -= 3;
     return baseDesl;
   }
@@ -790,6 +800,106 @@ class _FichaAgenteState extends State<FichaAgente> {
       return;
     }
 
+    if (poder.nome == "Sentido Tático" && !sentidoTaticoAtivo) {
+      if (peAtual >= poder.custoPE) {
+        setState(() {
+          peAtual -= poder.custoPE;
+          sentidoTaticoAtivo = true;
+          atualizarFicha();
+        });
+        _salvarSilencioso();
+        _mostrarNotificacao("Sentido Tático ativado!");
+      }
+      return;
+    }
+
+    if (poder.nome == "Paranoia Defensiva" && !paranoiaDefensivaAtivo) {
+      if (peAtual >= poder.custoPE) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF1A1A1A),
+            title: Text(
+              "Paranoia Defensiva",
+              style: TextStyle(color: corDestaque),
+            ),
+            content: const Text(
+              "Escolha onde aplicar o bônus de +5:",
+              style: TextStyle(color: Colors.white),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    peAtual -= poder.custoPE;
+                    paranoiaDefensivaAtivo = true;
+                    paranoiaDefensivaEscolha = "Defesa";
+                    atualizarFicha();
+                  });
+                  Navigator.pop(ctx);
+                },
+                child: const Text(
+                  "DEFESA (+5)",
+                  style: TextStyle(color: Colors.greenAccent),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  // Pop-up secundário para escolher a perícia
+                  showDialog(
+                    context: context,
+                    builder: (ctx2) => AlertDialog(
+                      backgroundColor: const Color(0xFF1A1A1A),
+                      title: Text(
+                        "Escolher Perícia",
+                        style: TextStyle(color: corDestaque),
+                      ),
+                      content: SizedBox(
+                        width: double.maxFinite,
+                        height: 300,
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: listaPericias.length,
+                          itemBuilder: (context, idx) {
+                            return ListTile(
+                              title: Text(
+                                listaPericias[idx].nome,
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                              onTap: () {
+                                setState(() {
+                                  peAtual -= poder.custoPE;
+                                  paranoiaDefensivaAtivo = true;
+                                  paranoiaDefensivaEscolha =
+                                      listaPericias[idx].id;
+                                  bonusOrigem[paranoiaDefensivaEscolha!] =
+                                      (bonusOrigem[paranoiaDefensivaEscolha!] ??
+                                          0) +
+                                      5;
+                                  atualizarFicha();
+                                });
+                                Navigator.pop(ctx2);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                child: const Text(
+                  "PERÍCIA (+5)",
+                  style: TextStyle(color: Colors.blueAccent),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
     if (peAtual >= poder.custoPE) {
       setState(() => peAtual -= poder.custoPE);
       _salvarSilencioso();
@@ -931,8 +1041,16 @@ class _FichaAgenteState extends State<FichaAgente> {
       }
     }
 
-    // DEFINIDO APENAS UMA VEZ
     int dadosExtras = isProficiente ? 0 : -2;
+
+    // PROFICIÊNCIA COM ARMAMENTO PESADO (Cancela os -2d20 de não proficiente)
+    if (arma.proficiencia == 'Pesadas' &&
+        poderesEscolhidos.any((p) => p.nome == 'Armamento Pesado')) {
+      dadosExtras += 2;
+    }
+
+    // PENALIDADE DO COMBATE DEFENSIVO
+    if (combateDefensivoAtivo) dadosExtras -= 1;
 
     // COMBATER COM DUAS ARMAS (-1d20)
     int countArmasEquipadas = armas
@@ -981,6 +1099,20 @@ class _FichaAgenteState extends State<FichaAgente> {
         .replaceAll(' ', '')
         .replaceAll('-', '+-');
     var partes = stringDanoLimpo.split('+');
+
+    // GOLPE PESADO (+1 Dado na Arma)
+    if (poderesEscolhidos.any((p) => p.nome == "Golpe Pesado") &&
+        arma.tipo == "Corpo a Corpo" &&
+        partes.isNotEmpty) {
+      if (partes[0].contains('d')) {
+        var dp = partes[0].split('d');
+        if (dp.length == 2) {
+          int q =
+              (int.tryParse(dp[0]) ?? 1) + 1; // Soma +1 na quantidade de dados
+          partes[0] = "${q}d${dp[1]}";
+        }
+      }
+    }
 
     if (aniquilador99 && partes.isNotEmpty && partes[0].contains('d')) {
       var dp = partes[0].split('d');
@@ -2573,6 +2705,24 @@ class _FichaAgenteState extends State<FichaAgente> {
                                           for (String req
                                               in p.preRequisitos.split(',')) {
                                             req = req.trim();
+
+                                            // CHECAGEM SE O REQUISITO É TER OUTRO PODER
+                                            if (req.toLowerCase() ==
+                                                    "proteção pesada" ||
+                                                req.toLowerCase() ==
+                                                    "protecao pesada") {
+                                              if (!poderesEscolhidos.any(
+                                                (pe) =>
+                                                    pe.nome.toLowerCase() ==
+                                                        "proteção pesada" ||
+                                                    pe.nome.toLowerCase() ==
+                                                        "protecao pesada",
+                                              )) {
+                                                cumpre = false;
+                                              }
+                                              continue; // Se já validou isso, pula pro próximo requisito
+                                            }
+
                                             for (String elem in [
                                               "Sangue",
                                               "Morte",
@@ -3103,6 +3253,26 @@ class _FichaAgenteState extends State<FichaAgente> {
                                                                           )) {
                                                                             req =
                                                                                 req.trim();
+
+                                                                            // CHECAGEM SE O REQUISITO É TER OUTRO PODER
+                                                                            if (req.toLowerCase() ==
+                                                                                    "proteção pesada" ||
+                                                                                req.toLowerCase() ==
+                                                                                    "protecao pesada") {
+                                                                              if (!poderesEscolhidos.any(
+                                                                                (
+                                                                                  pe,
+                                                                                ) =>
+                                                                                    pe.nome.toLowerCase() ==
+                                                                                        "proteção pesada" ||
+                                                                                    pe.nome.toLowerCase() ==
+                                                                                        "protecao pesada",
+                                                                              )) {
+                                                                                cumpre = false;
+                                                                              }
+                                                                              continue;
+                                                                            }
+
                                                                             for (String elem in [
                                                                               "Sangue",
                                                                               "Morte",
@@ -4110,9 +4280,7 @@ class _FichaAgenteState extends State<FichaAgente> {
         }
         if (trilhaAtual == 'tropa_de_choque' && nex >= 10) pvMax += nivel;
 
-        // ==========================================
         // VARIÁVEIS DE INVENTÁRIO E PROTEÇÃO
-        // ==========================================
         int defItens = 0, bonusBloqueioBracadeira = 0;
         bool usaProtecaoLeve = false;
         bool usaProtecaoPesada = false;
@@ -4239,13 +4407,6 @@ class _FichaAgenteState extends State<FichaAgente> {
             processarMaldicao(mod);
           }
 
-          if (descLower.contains("proteção pesada") ||
-              descLower.contains("protecao pesada")) {
-            resistencias['Balístico'] = (resistencias['Balístico'] ?? 0) + 2;
-            resistencias['Corte'] = (resistencias['Corte'] ?? 0) + 2;
-            resistencias['Impacto'] = (resistencias['Impacto'] ?? 0) + 2;
-            resistencias['Perfuração'] = (resistencias['Perfuração'] ?? 0) + 2;
-          }
           if (nomeLower.contains("traje hazmat")) {
             resistencias['Químico'] = (resistencias['Químico'] ?? 0) + 10;
           }
@@ -4279,9 +4440,7 @@ class _FichaAgenteState extends State<FichaAgente> {
             defItens += defItemLocal;
             if (item.modificacoes.contains("Reforçada")) defItens += 2;
 
-            // ==========================================
-            // CLASSIFICAÇÃO CORRIGIDA (IGNORANDO A DESCRIÇÃO)
-            // ==========================================
+            // CLASSIFICAÇÃO CORRIGIDA
             bool isEscudoItem = nomeLower.contains("escudo");
             bool isPesadaItem = false;
             bool isLeveItem = false;
@@ -4302,14 +4461,22 @@ class _FichaAgenteState extends State<FichaAgente> {
             }
 
             if (isEscudoItem) usaEscudo = true;
-            if (isPesadaItem) usaProtecaoPesada = true;
+            if (isPesadaItem) {
+              usaProtecaoPesada = true;
+              // RESISTÊNCIA BASE DA PROTEÇÃO PESADA (2 RD)
+              resistencias['Balístico'] = (resistencias['Balístico'] ?? 0) + 2;
+              resistencias['Corte'] = (resistencias['Corte'] ?? 0) + 2;
+              resistencias['Impacto'] = (resistencias['Impacto'] ?? 0) + 2;
+              resistencias['Perfuração'] =
+                  (resistencias['Perfuração'] ?? 0) + 2;
+            }
             if (isLeveItem) usaProtecaoLeve = true;
           }
 
           if (nomeLower.contains("braçadeira reforçada")) {
             bonusBloqueioBracadeira += 2;
           }
-        }
+        } 
 
         for (var arma in armas.where((a) => a.equipado)) {
           for (var mod in arma.modificacoes) {
@@ -4318,18 +4485,41 @@ class _FichaAgenteState extends State<FichaAgente> {
           }
         }
 
-        // ==========================================
         // APLICAÇÃO OFICIAL DE PENALIDADES DA CLASSE
-        // ==========================================
         sofrePenalidadeProtecao = false;
         String cLimpa = classeAtual.toLowerCase().trim();
 
         bool temPoderPesada = poderesEscolhidos.any(
-          (p) =>
-              p.nome.toLowerCase().contains('proteção pesada') ||
-              p.nome.toLowerCase().contains('protecao pesada'),
+          (p) => p.nome == "Proteção Pesada",
         );
 
+        // Se tem Tanque de Guerra e está usando proteção pesada, aumenta defItens e RD
+        if (usaProtecaoPesada &&
+            poderesEscolhidos.any((p) => p.nome == "Tanque de Guerra")) {
+          defItens += 2;
+          resistencias['Balístico'] = (resistencias['Balístico'] ?? 0) + 2;
+          resistencias['Corte'] = (resistencias['Corte'] ?? 0) + 2;
+          resistencias['Impacto'] = (resistencias['Impacto'] ?? 0) + 2;
+          resistencias['Perfuração'] = (resistencias['Perfuração'] ?? 0) + 2;
+        }
+
+        // PENALIDADE DE CARGA: -5 natural por usar Proteção Pesada
+        if (usaProtecaoPesada) {
+          List<String> periciasCarga = [
+            'acrobacia',
+            'atletismo',
+            'crime',
+            'furtividade',
+            'iniciativa',
+            'pilotagem',
+            'reflexos',
+          ];
+          for (String per in periciasCarga) {
+            bonusOrigem[per] = (bonusOrigem[per] ?? 0) - 5;
+          }
+        }
+
+        // PENALIDADE DE NÃO PROFICIÊNCIA: -2d20
         if (cLimpa == 'combatente') {
           if (usaProtecaoPesada && !temPoderPesada) {
             sofrePenalidadeProtecao = true;
@@ -4367,6 +4557,16 @@ class _FichaAgenteState extends State<FichaAgente> {
         if (trilhaAtual == 'monstruoso' && afinidadeAtual == 'Conhecimento') {
           defesa += efInt;
         }
+
+        if (poderesEscolhidos.any((p) => p.nome == "Reflexos Defensivos")) {
+          defesa += 2;
+        }
+        if (combateDefensivoAtivo) defesa += 5;
+        if (sentidoTaticoAtivo) defesa += efInt;
+        if (paranoiaDefensivaAtivo && paranoiaDefensivaEscolha == "Defesa") {
+          defesa += 5;
+        }
+
         if (estaSobrecarregado) defesa -= 5;
         // PRECOGNIÇÃO (+2 na Defesa)
         if (poderesEscolhidos.any((p) => p.nome.contains("Precognição"))) {
@@ -6328,7 +6528,7 @@ class _FichaAgenteState extends State<FichaAgente> {
                   const SizedBox(height: 4),
                   Text(
                     classeAtual == 'combatente'
-                        ? "Armas simples, armas táticas e proteções leves."
+                        ? "Armas simples, armas táticas${poderesEscolhidos.any((p) => p.nome == 'Armamento Pesado') ? ', armas pesadas' : ''} e proteções leves${poderesEscolhidos.any((p) => p.nome == 'Proteção Pesada') ? ' e pesadas' : ''}."
                         : classeAtual == 'especialista'
                         ? "Armas simples e proteções leves."
                         : classeAtual == 'ocultista'
@@ -7334,86 +7534,184 @@ class _FichaAgenteState extends State<FichaAgente> {
                         ],
                       ),
                       trailing: (() {
-                        bool isPoderDeClasse =
-                            p.nome == "Ataque Especial" ||
-                            p.nome == "Eclético" ||
-                            p.nome.startsWith("Perito") ||
-                            p.nome == "Escolhido pelo Outro Lado";
-
-                        if (block &&
-                            p.nome.contains("Arma de Sangue") &&
-                            armaDeSangueAtiva) {
-                          bool temAfinidadeArma = poderesEscolhidos.any(
-                            (pe) =>
-                                pe.nome.contains("Arma de Sangue") &&
-                                pe.nome.contains("(Afinidade)"),
-                          );
-                          if (temAfinidadeArma) {
-                            return const Icon(
-                              Icons.check_circle,
-                              color: Colors.redAccent,
-                              size: 24,
+                        if (block) {
+                          // SWITCHES ESPECIAIS DE COMBATENTE E OCULTISTA
+                          if (p.nome == "Combate Defensivo") {
+                            return Switch(
+                              value: combateDefensivoAtivo,
+                              activeThumbColor: Colors.blueAccent,
+                              onChanged: (val) {
+                                setState(() {
+                                  combateDefensivoAtivo = val;
+                                  atualizarFicha();
+                                });
+                              },
+                            );
+                          }
+                          if (p.nome == "Instinto de Fuga") {
+                            return Switch(
+                              value: instintoDeFugaAtivo,
+                              activeThumbColor: Colors.amberAccent,
+                              onChanged: (val) {
+                                setState(() {
+                                  instintoDeFugaAtivo = val;
+                                  if (val) {
+                                    for (var pericia in listaPericias) {
+                                      bonusOrigem[pericia.id] =
+                                          (bonusOrigem[pericia.id] ?? 0) + 2;
+                                    }
+                                  } else {
+                                    for (var pericia in listaPericias) {
+                                      bonusOrigem[pericia.id] =
+                                          (bonusOrigem[pericia.id] ?? 0) - 2;
+                                    }
+                                  }
+                                  atualizarFicha();
+                                });
+                              },
+                            );
+                          }
+                          if (p.nome == "Sentido Tático") {
+                            if (!sentidoTaticoAtivo) {
+                              return null; // O botão de usar gasta PE e liga
+                            }
+                            return Switch(
+                              value: sentidoTaticoAtivo,
+                              activeThumbColor: Colors.cyanAccent,
+                              onChanged: (val) {
+                                if (!val) {
+                                  setState(() {
+                                    sentidoTaticoAtivo = false;
+                                    atualizarFicha();
+                                  });
+                                }
+                              },
+                            );
+                          }
+                          if (p.nome == "Paranoia Defensiva") {
+                            if (!paranoiaDefensivaAtivo) return null;
+                            return Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (paranoiaDefensivaEscolha != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 8.0),
+                                    child: Text(
+                                      paranoiaDefensivaEscolha == "Defesa"
+                                          ? "+5 DEF"
+                                          : "+5 Perícia",
+                                      style: const TextStyle(
+                                        color: Colors.greenAccent,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                Switch(
+                                  value: paranoiaDefensivaAtivo,
+                                  activeThumbColor: Colors.greenAccent,
+                                  onChanged: (val) {
+                                    if (!val) {
+                                      setState(() {
+                                        paranoiaDefensivaAtivo = false;
+                                        if (paranoiaDefensivaEscolha !=
+                                                "Defesa" &&
+                                            paranoiaDefensivaEscolha != null) {
+                                          bonusOrigem[paranoiaDefensivaEscolha!] =
+                                              (bonusOrigem[paranoiaDefensivaEscolha!] ??
+                                                  0) -
+                                              5;
+                                        }
+                                        paranoiaDefensivaEscolha = null;
+                                        atualizarFicha();
+                                      });
+                                    }
+                                  },
+                                ),
+                              ],
                             );
                           }
 
-                          return Switch(
-                            value: armaDeSangueAtiva,
-                            activeThumbColor: Colors.redAccent,
-                            onChanged: (val) {
-                              if (!val) {
-                                setState(() {
-                                  armaDeSangueAtiva = false;
-                                  armas.removeWhere(
-                                    (a) => a.nome == "Arma de Sangue",
-                                  );
-                                  atualizarFicha();
-                                });
-                                _salvarSilencioso();
-                                _mostrarNotificacao("Arma de Sangue desfeita.");
-                              }
-                            },
-                          );
-                        }
-
-                        if (block && p.nome.contains("Encarar a Morte")) {
-                          return Switch(
-                            value: encararAMorteAtivo,
-                            activeThumbColor: Colors.white,
-                            onChanged: (val) {
-                              setState(() {
-                                encararAMorteAtivo = val;
-                                atualizarFicha();
-                              });
-                            },
-                          );
-                        }
-
-                        if (block) return null;
-                        if (isPoderDeClasse) {
-                          return const Icon(
-                            Icons.lock,
-                            color: Colors.grey,
-                            size: 20,
-                          );
-                        } else {
-                          return IconButton(
-                            icon: const Icon(
-                              Icons.delete,
-                              color: Colors.redAccent,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                poderesEscolhidos.removeAt(index);
-                                if (p.nome.contains("Arma de Sangue")) {
-                                  armaDeSangueAtiva = false;
-                                  armas.removeWhere(
-                                    (a) => a.nome == "Arma de Sangue",
+                          if (p.nome.contains("Arma de Sangue") &&
+                              armaDeSangueAtiva) {
+                            bool temAfinidadeArma = poderesEscolhidos.any(
+                              (pe) =>
+                                  pe.nome.contains("Arma de Sangue") &&
+                                  pe.nome.contains("(Afinidade)"),
+                            );
+                            if (temAfinidadeArma) {
+                              return const Icon(
+                                Icons.check_circle,
+                                color: Colors.redAccent,
+                                size: 24,
+                              );
+                            }
+                            return Switch(
+                              value: armaDeSangueAtiva,
+                              activeThumbColor: Colors.redAccent,
+                              onChanged: (val) {
+                                if (!val) {
+                                  setState(() {
+                                    armaDeSangueAtiva = false;
+                                    armas.removeWhere(
+                                      (a) => a.nome == "Arma de Sangue",
+                                    );
+                                    atualizarFicha();
+                                  });
+                                  _salvarSilencioso();
+                                  _mostrarNotificacao(
+                                    "Arma de Sangue desfeita.",
                                   );
                                 }
-                              });
-                              atualizarFicha();
-                            },
-                          );
+                              },
+                            );
+                          }
+                          if (p.nome.contains("Encarar a Morte")) {
+                            return Switch(
+                              value: encararAMorteAtivo,
+                              activeThumbColor: Colors.white,
+                              onChanged: (val) {
+                                setState(() {
+                                  encararAMorteAtivo = val;
+                                  atualizarFicha();
+                                });
+                              },
+                            );
+                          }
+                          return null; // Demais poderes não têm switch
+                        } else {
+                          // MODO DE EDIÇÃO: LIXEIRA
+                          bool isPoderDeClasse =
+                              p.nome == "Ataque Especial" ||
+                              p.nome == "Eclético" ||
+                              p.nome.startsWith("Perito") ||
+                              p.nome == "Escolhido pelo Outro Lado";
+                          if (isPoderDeClasse) {
+                            return const Icon(
+                              Icons.lock,
+                              color: Colors.grey,
+                              size: 20,
+                            );
+                          } else {
+                            return IconButton(
+                              icon: const Icon(
+                                Icons.delete,
+                                color: Colors.redAccent,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  poderesEscolhidos.removeAt(index);
+                                  if (p.nome.contains("Arma de Sangue")) {
+                                    armaDeSangueAtiva = false;
+                                    armas.removeWhere(
+                                      (a) => a.nome == "Arma de Sangue",
+                                    );
+                                  }
+                                });
+                                atualizarFicha();
+                              },
+                            );
+                          }
                         }
                       })(),
                     ),
